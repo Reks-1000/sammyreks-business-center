@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+supabase
+cloudinary
+python-multipart
+pydantic
+pandas
+requests
+python-dotenv
+Jinja2

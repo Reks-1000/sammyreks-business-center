@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sammyreks Business Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans">
+
+    <!-- Navbar -->
+    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold">🏢 Sammyreks Business Center</h1>
+            <div id="nav-links" class="flex items-center space-x-2">
+                <button onclick="switchPortal('customer')" class="bg-blue-600 hover:bg-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold">🛍️ Customer Shop</button>
+                <button onclick="switchPortal('staff')" class="bg-blue-600 hover:bg-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold">🔑 Staff Portal</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 py-6">
+
+        <!-- ================= CUSTOMER PORTAL ================= -->
+        <div id="portal-customer" class="portal-view">
+            <div id="notice-banner" class="hidden bg-blue-600 text-white p-3 rounded-xl text-center font-bold mb-4"></div>
+            
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">🛒 Product Catalog</h2>
+                <button onclick="toggleCartModal()" class="bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center space-x-2 shadow">
+                    <span>🛒 Cart</span>
+                    <span id="cart-badge" class="bg-red-500 text-xs px-2 py-0.5 rounded-full">0</span>
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="customer-product-grid">
+                <p class="col-span-full text-center py-10 text-slate-500">Loading products...</p>
+            </div>
+        </div>
+
+        <!-- ================= STAFF / ADMIN PORTAL ================= -->
+        <div id="portal-staff" class="portal-view hidden">
+            <div id="login-screen" class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-md mt-10">
+                <h3 class="text-2xl font-bold mb-4 text-center">🔑 Staff & CEO Login</h3>
+                <form onsubmit="handleLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Username</label>
+                        <input type="text" id="login-user" required class="w-full border rounded-lg p-2.5">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">Password</label>
+                        <input type="password" id="login-pass" required class="w-full border rounded-lg p-2.5">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl">Login to Dashboard</button>
+                </form>
+            </div>
+
+            <!-- Dashboard Tabs -->
+            <div id="staff-dashboard" class="hidden">
+                <div class="flex flex-wrap gap-2 mb-6 border-b pb-4">
+                    <button onclick="switchStaffTab('pos')" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">💳 POS & Sales</button>
+                    <button onclick="switchStaffTab('inventory')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-semibold text-sm">📦 Inventory</button>
+                    <button onclick="switchStaffTab('vault')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-semibold text-sm">📜 Receipts Vault</button>
+                    <button onclick="switchStaffTab('debtors')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-semibold text-sm">📓 Debtors</button>
+                </div>
+
+                <!-- STAFF TAB: POS -->
+                <div id="staff-tab-pos" class="staff-tab">
+                    <h3 class="text-xl font-bold mb-4">💳 POS Counter</h3>
+                    <div class="bg-white p-6 rounded-xl shadow max-w-lg">
+                        <form onsubmit="submitPOS(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Select Item</label>
+                                <select id="pos-item" class="w-full border rounded-lg p-2.5" onchange="updatePOSTotal()"></select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-semibold mb-1">Quantity</label>
+                                    <input type="number" id="pos-qty" value="1" min="1" class="w-full border rounded-lg p-2.5" oninput="updatePOSTotal()">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-semibold mb-1">Payment Gateway</label>
+                                    <select id="pos-gateway" class="w-full border rounded-lg p-2.5">
+                                        <option>Moniepoint MFB</option><option>OPay</option><option>Access Bank</option><option>Cash</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Customer Name</label>
+                                <input type="text" id="pos-cust-name" placeholder="Walk-in Customer" class="w-full border rounded-lg p-2.5">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold mb-1">Customer Phone</label>
+                                <input type="text" id="pos-cust-phone" placeholder="080XXXXXXXX" class="w-full border rounded-lg p-2.5">
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-lg flex justify-between items-center border">
+                                <span class="font-bold">Total:</span>
+                                <span id="pos-total-display" class="text-xl font-extrabold text-blue-600">₦0.00</span>
+                            </div>
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl">Complete Sale & Save Receipt</button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- STAFF TAB: INVENTORY -->
+                <div id="staff-tab-inventory" class="staff-tab hidden">
+                    <h3 class="text-xl font-bold mb-4">📦 Inventory Management</h3>
+                    <div class="bg-white rounded-xl shadow overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-200 text-sm">
+                                <tr><th class="p-3">Name</th><th class="p-3">Category</th><th class="p-3">Stock</th><th class="p-3">Price</th></tr>
+                            </thead>
+                            <tbody id="inventory-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- STAFF TAB: RECEIPTS VAULT -->
+                <div id="staff-tab-vault" class="staff-tab hidden">
+                    <h3 class="text-xl font-bold mb-4">📜 Saved Receipts Vault</h3>
+                    <div id="vault-list" class="space-y-3"></div>
+                </div>
+
+                <!-- STAFF TAB: DEBTORS -->
+                <div id="staff-tab-debtors" class="staff-tab hidden">
+                    <h3 class="text-xl font-bold mb-4">📓 Debtors Log</h3>
+                    <div id="debtors-list" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex justify-end">
+        <div class="bg-white w-full max-w-md h-full p-6 flex flex-col justify-between shadow-2xl">
+            <div>
+                <div class="flex justify-between items-center border-b pb-4 mb-4">
+                    <h3 class="text-xl font-bold">🛒 Shopping Cart</h3>
+                    <button onclick="toggleCartModal()" class="text-xl font-bold">&times;</button>
+                </div>
+                <div id="cart-items" class="space-y-3 max-h-[60vh] overflow-y-auto"></div>
+            </div>
+            <div class="border-t pt-4">
+                <div class="flex justify-between font-bold text-lg mb-4">
+                    <span>Total:</span>
+                    <span id="cart-total">₦0.00</span>
+                </div>
+                <button onclick="alert('Order submitted successfully!')" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold">Checkout</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Frontend Script -->
+    <script>
+        let products = [];
+        let cart = [];
+
+        function switchPortal(portal) {
+            document.querySelectorAll('.portal-view').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`portal-${portal}`).classList.remove('hidden');
+            if (portal === 'customer') fetchProducts();
+        }
+
+        async function fetchProducts() {
+            const res = await fetch('/api/products');
+            const data = await res.json();
+            products = data.products || [];
+            renderShop(products);
+            populatePOSDropdown(products);
+        }
+
+        function renderShop(list) {
+            const grid = document.getElementById('customer-product-grid');
+            if (list.length === 0) { grid.innerHTML = '<p class="col-span-full text-center py-10 text-slate-500">No products available.</p>'; return; }
+            grid.innerHTML = list.map(p => `
+                <div class="bg-white rounded-xl shadow border overflow-hidden flex flex-col justify-between">
+                    <img src="${p.img_data || 'https://via.placeholder.com/300'}" class="w-full h-44 object-cover">
+                    <div class="p-4">
+                        <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">${p.category || 'General'}</span>
+                        <h4 class="font-bold text-lg mt-2">${p.name}</h4>
+                        <p class="text-slate-600 text-sm mt-1">${p.description || ''}</p>
+                    </div>
+                    <div class="p-4 border-t bg-slate-50 flex justify-between items-center">
+                        <span class="font-extrabold text-lg">₦${(p.price_retail || p.price_carton || 0).toLocaleString()}</span>
+                        <button onclick='addToCart(${JSON.stringify(p)})' class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold">Add to Cart</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addToCart(p) {
+            const price = p.price_retail || p.price_carton || 0;
+            const existing = cart.find(i => i.id === p.id);
+            if (existing) { existing.qty += 1; existing.total = existing.qty * price; }
+            else { cart.push({ id: p.id, name: p.name, price: price, qty: 1, total: price }); }
+            updateCartUI();
+            alert(`${p.name} added to cart!`);
+        }
+
+        function updateCartUI() {
+            document.getElementById('cart-badge').innerText = cart.reduce((sum, i) => sum + i.qty, 0);
+            const listEl = document.getElementById('cart-items');
+            const totalEl = document.getElementById('cart-total');
+            if (cart.length === 0) { listEl.innerHTML = '<p class="text-slate-500 text-center py-4">Cart is empty.</p>'; totalEl.innerText = '₦0.00'; return; }
+            let total = 0;
+            listEl.innerHTML = cart.map(i => {
+                total += i.total;
+                return `<div class="flex justify-between border-b pb-2"><div><h5 class="font-semibold">${i.name}</h5><p class="text-xs text-slate-500">₦${i.price.toLocaleString()} x ${i.qty}</p></div><span class="font-bold">₦${i.total.toLocaleString()}</span></div>`;
+            }).join('');
+            totalEl.innerText = `₦${total.toLocaleString()}`;
+        }
+
+        function toggleCartModal() { document.getElementById('cart-modal').classList.toggle('hidden'); }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const formData = new URLSearchParams();
+            formData.append('username', document.getElementById('login-user').value);
+            formData.append('password', document.getElementById('login-pass').value);
+            const res = await fetch('/api/auth/login', { method: 'POST', body: formData });
+            if (res.ok) {
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('staff-dashboard').classList.remove('hidden');
+                fetchProducts();
+            } else { alert('Invalid credentials'); }
+        }
+
+        function switchStaffTab(tab) {
+            document.querySelectorAll('.staff-tab').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`staff-tab-${tab}`).classList.remove('hidden');
+            if (tab === 'inventory') fetchInventory();
+            if (tab === 'vault') fetchVault();
+            if (tab === 'debtors') fetchDebtors();
+        }
+
+        function populatePOSDropdown(list) {
+            const select = document.getElementById('pos-item');
+            select.innerHTML = list.map(p => `<option value="${p.name}" data-price="${p.price_retail || p.price_carton || 0}">${p.name} (₦${(p.price_retail || p.price_carton || 0).toLocaleString()})</option>`).join('');
+            updatePOSTotal();
+        }
+
+        function updatePOSTotal() {
+            const select = document.getElementById('pos-item');
+            const opt = select.options[select.selectedIndex];
+            if (!opt) return;
+            const price = parseFloat(opt.getAttribute('data-price')) || 0;
+            const qty = parseInt(document.getElementById('pos-qty').value) || 1;
+            document.getElementById('pos-total-display').innerText = `₦${(price * qty).toLocaleString()}`;
+        }
+
+        async function submitPOS(e) {
+            e.preventDefault();
+            const select = document.getElementById('pos-item');
+            const opt = select.options[select.selectedIndex];
+            const price = parseFloat(opt.getAttribute('data-price')) || 0;
+            const qty = parseInt(document.getElementById('pos-qty').value) || 1;
+            const formData = new URLSearchParams();
+            formData.append('item_name', opt.value);
+            formData.append('unit', 'Retail Unit');
+            formData.append('qty', qty);
+            formData.append('total', price * qty);
+            formData.append('customer_name', document.getElementById('pos-cust-name').value || 'Walk-in Customer');
+            formData.append('customer_phone', document.getElementById('pos-cust-phone').value || 'N/A');
+            formData.append('payment_source', document.getElementById('pos-gateway').value);
+            const res = await fetch('/api/pos/sale', { method: 'POST', body: formData });
+            if (res.ok) { alert('Sale recorded & receipt saved!'); switchStaffTab('vault'); }
+        }
+
+        async function fetchInventory() {
+            const res = await fetch('/api/products');
+            const data = await res.json();
+            document.getElementById('inventory-table-body').innerHTML = (data.products || []).map(p => `
+                <tr class="border-b"><td class="p-3 font-semibold">${p.name}</td><td class="p-3">${p.category || 'General'}</td><td class="p-3">${p.qty_cartons}</td><td class="p-3 font-bold text-blue-600">₦${(p.price_retail || 0).toLocaleString()}</td></tr>
+            `).join('');
+        }
+
+        async function fetchVault() {
+            const res = await fetch('/api/saved-receipts');
+            const data = await res.json();
+            document.getElementById('vault-list').innerHTML = (data.receipts || []).map(r => `
+                <div class="bg-white p-4 rounded-xl shadow border flex justify-between items-center"><div><span class="text-xs font-bold bg-slate-200 px-2 py-0.5 rounded">${r.payment_ref}</span><h4 class="font-bold text-lg mt-1">${r.customer_name}</h4><p class="text-xs text-slate-500">${r.timestamp}</p></div><span class="font-extrabold text-green-600">₦${parseFloat(r.grand_total).toLocaleString()}</span></div>
+            `).join('');
+        }
+
+        async function fetchDebtors() {
+            const res = await fetch('/api/debtors');
+            const data = await res.json();
+            document.getElementById('debtors-list').innerHTML = (data.debtors || []).map(d => `
+                <div class="bg-white p-4 rounded-xl shadow border flex justify-between items-center"><div><h4 class="font-bold">${d.customer} (${d.phone})</h4><p class="text-sm text-slate-600">${d.items_bought}</p></div><span class="font-extrabold text-red-600">₦${parseFloat(d.amount).toLocaleString()}</span></div>
+            `).join('');
+        }
+
+        fetchProducts();
+    </script>
+</body>
+</html>

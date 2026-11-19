@@ -25,13 +25,13 @@ if os.path.isdir("static"):
 templates = Jinja2Templates(directory="templates")
 
 # ---------------------------------------------------------------------------
-# Auth & Admin Credentials
+# Auth & Admin Credentials (reads from Railway Variables / .env)
 # ---------------------------------------------------------------------------
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
 # ---------------------------------------------------------------------------
-# Cloudinary Configuration
+# Cloudinary Setup (reads from Railway Variables / .env)
 # ---------------------------------------------------------------------------
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
@@ -52,6 +52,7 @@ _db_client = None
 
 
 def get_db():
+    """Lazily initialize and return the Firestore client."""
     global _db_client
     if _db_client is not None:
         return _db_client
@@ -127,7 +128,7 @@ class SettingsPayload(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Health, Home & Universal Login
+# Health, Home & Universal Portal Login Routes
 # ---------------------------------------------------------------------------
 @app.get("/health")
 def health_check():
@@ -222,7 +223,7 @@ async def portal_login(request: Request):
 
 
 # ---------------------------------------------------------------------------
-# Products (Firestore `products` + Cloudinary Media)
+# Products & Inventory (Firestore `products` + Cloudinary Image/Video)
 # ---------------------------------------------------------------------------
 @app.get("/api/products")
 @app.get("/products")
@@ -243,74 +244,166 @@ def list_products():
 @app.post("/products")
 @app.post("/api/inventory")
 @app.post("/inventory")
-async def create_product(request: Request):
+async def save_product(request: Request):
     try:
         content_type = request.headers.get("content-type", "")
         if "application/json" in content_type:
             body = await request.json()
-            upload_file = None
+            image_file = None
+            video_file = None
         else:
             form = await request.form()
             body = dict(form)
-            upload_file = (
-                form.get("file")
-                or form.get("image")
-                or form.get("photo")
-                or form.get("media")
-            )
+            image_file = form.get("image_file") or form.get("file") or form.get("image")
+            video_file = form.get("video_file") or form.get("video")
+
+        def to_float(val, default=0.0):
+            try:
+                if val is None or str(val).strip() == "":
+                    return default
+                return float(val)
+            except (ValueError, TypeError):
+                return default
+
+        def to_int(val, default=0):
+            try:
+                if val is None or str(val).strip() == "":
+                    return default
+                return int(float(val))
+            except (ValueError, TypeError):
+                return default
+
+        action_mode = str(body.get("action_mode") or "create").strip().lower()
+        existing_id = str(body.get("existing_product_id") or body.get("id") or "").strip()
 
         name = (
             body.get("name")
             or body.get("title")
             or body.get("product_name")
-            or body.get("item_name")
+            or ""
         )
-        raw_price = (
-            body.get("price")
-            or body.get("unit_price")
-            or body.get("selling_price")
-            or body.get("amount")
-        )
-        raw_stock = (
-            body.get("stock")
-            or body.get("quantity")
-            or body.get("qty")
-            or 0
-        )
-        category = body.get("category") or body.get("type") or "General"
-        description = body.get("description") or body.get("details") or ""
-        final_image_url = str(body.get("image_url") or body.get("url") or "").strip()
+        name = str(name).strip()
 
-        if not name or raw_price is None or str(raw_price).strip() == "":
-            raise HTTPException(status_code=400, detail="Product name and price are required.")
+        price_carton = to_float(
+            body.get("price_carton") or body.get("price") or body.get("unit_price"),
+            0.0,
+        )
+        cost_price_carton = to_float(body.get("cost_price_carton"), 0.0)
+        price_pack = to_float(body.get("price_pack"), 0.0)
+        price_retail = to_float(body.get("price_retail"), 0.0)
+        packs_per_carton = max(1, to_int(body.get("packs_per_carton"), 1))
+        retail_per_pack = max(1, to_int(body.get("retail_per_pack"), 1))
+        stock_cartons = to_float(
+            body.get("stock_cartons")
+            if body.get("stock_cartons") not in (None, "")
+            else body.get("stock"),
+            0.0,
+        )
 
-        if hasattr(upload_file, "filename") and upload_file.filename:
-            if not (CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET):
-                raise HTTPException(status_code=400, detail="Cloudinary environment variables are not configured.")
-            content = await upload_file.read()
-            upload_res = cloudinary.uploader.upload(
-                content,
-                folder="sammyreks_business_center/products",
-                resource_type="auto",
+        main_unit = str(body.get("main_unit") or "Carton").strip()
+        sub_unit = str(body.get("sub_unit") or "Pack").strip()
+        retail_unit = str(body.get("retail_unit") or "Piece").strip()
+        category = str(body.get("category") or "General").strip()
+        shelf_location = str(body.get("shelf_location") or "").strip()
+        expiry_date = str(body.get("expiry_date") or "").strip()
+        video_link = str(body.get("video_link") or "").strip()
+        description = str(body.get("description") or "").strip()
+
+        final_image_url = str(body.get("image_url") or "").strip()
+        final_video_url = str(body.get("video_url") or video_link).strip()
+
+        has_cloud = bool(
+            CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET
+        )
+
+        if hasattr(image_file, "filename") and image_file.filename:
+            if not has_cloud:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cloudinary environment variables are not configured.",
+                )
+            img_bytes = await image_file.read()
+            res = cloudinary.uploader.upload(
+                img_bytes,
+                folder="sammyreks_business_center/products/images",
+                resource_type="image",
             )
-            final_image_url = upload_res.get("secure_url", final_image_url)
+            final_image_url = res.get("secure_url", final_image_url)
 
-        doc_id = str(uuid.uuid4())
-        record = {
-            "id": doc_id,
-            "name": str(name).strip(),
-            "title": str(name).strip(),
-            "price": float(raw_price),
-            "stock": int(float(raw_stock)),
-            "quantity": int(float(raw_stock)),
-            "category": str(category).strip(),
-            "description": str(description).strip(),
-            "image_url": final_image_url,
-            "created_at": utc_now_iso(),
-        }
+        if hasattr(video_file, "filename") and video_file.filename:
+            if not has_cloud:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Cloudinary environment variables are not configured.",
+                )
+            vid_bytes = await video_file.read()
+            res = cloudinary.uploader.upload(
+                vid_bytes,
+                folder="sammyreks_business_center/products/videos",
+                resource_type="video",
+            )
+            final_video_url = res.get("secure_url", final_video_url)
 
         db = get_db()
-        db.collection("products").document(doc_id).set(record)
+        existing_doc = {}
+        if action_mode == "update" and existing_id:
+            snap = db.collection("products").document(existing_id).get()
+            if snap.exists:
+                existing_doc = snap.to_dict() or {}
+                if not name:
+                    name = str(existing_doc.get("name") or "").strip()
+                if not final_image_url:
+                    final_image_url = str(existing_doc.get("image_url") or "")
+                if not final_video_url:
+                    final_video_url = str(existing_doc.get("video_url") or "")
+
+        if not name:
+            raise HTTPException(status_code=400, detail="Product name is required.")
+
+        primary_price = (
+            price_carton
+            if price_carton > 0
+            else (price_pack if price_pack > 0 else price_retail)
+        )
+        total_retail_units = int(
+            round(stock_cartons * packs_per_carton * retail_per_pack)
+        )
+
+        doc_id = (
+            existing_id
+            if (action_mode == "update" and existing_id)
+            else str(uuid.uuid4())
+        )
+        record = {
+            "id": doc_id,
+            "name": name,
+            "title": name,
+            "price": primary_price,
+            "price_carton": price_carton,
+            "cost_price_carton": cost_price_carton,
+            "price_pack": price_pack,
+            "price_retail": price_retail,
+            "main_unit": main_unit,
+            "sub_unit": sub_unit,
+            "retail_unit": retail_unit,
+            "packs_per_carton": packs_per_carton,
+            "retail_per_pack": retail_per_pack,
+            "stock_cartons": stock_cartons,
+            "stock": int(round(stock_cartons)),
+            "quantity": int(round(stock_cartons)),
+            "total_retail_units": total_retail_units,
+            "category": category,
+            "shelf_location": shelf_location,
+            "expiry_date": expiry_date,
+            "description": description,
+            "image_url": final_image_url,
+            "video_url": final_video_url,
+            "video_link": video_link,
+            "created_at": existing_doc.get("created_at") or utc_now_iso(),
+            "updated_at": utc_now_iso(),
+        }
+
+        db.collection("products").document(doc_id).set(record, merge=True)
         return {
             "status": "success",
             "success": True,
@@ -321,7 +414,7 @@ async def create_product(request: Request):
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to create product: {exc}")
+        raise HTTPException(status_code=500, detail=f"Failed to save product: {exc}")
 
 
 @app.delete("/api/products/{product_id}")
@@ -364,7 +457,11 @@ async def post_message(request: Request):
         else:
             form_data = await request.form()
             payload = dict(form_data)
-            if "order_items" in payload and isinstance(payload["order_items"], str) and payload["order_items"]:
+            if (
+                "order_items" in payload
+                and isinstance(payload["order_items"], str)
+                and payload["order_items"]
+            ):
                 try:
                     payload["order_items"] = json.loads(payload["order_items"])
                 except json.JSONDecodeError:
@@ -377,7 +474,9 @@ async def post_message(request: Request):
         total_amount = payload.get("total_amount")
 
         if not text and not order_items:
-            raise HTTPException(status_code=400, detail="Message text or order items are required.")
+            raise HTTPException(
+                status_code=400, detail="Message text or order items are required."
+            )
 
         doc_id = str(uuid.uuid4())
         record = {
@@ -386,13 +485,22 @@ async def post_message(request: Request):
             "sender": sender,
             "text": text or "Submitted an order",
             "order_items": order_items,
-            "total_amount": float(total_amount) if total_amount is not None and str(total_amount).strip() != "" else None,
+            "total_amount": (
+                float(total_amount)
+                if total_amount is not None and str(total_amount).strip() != ""
+                else None
+            ),
             "created_at": utc_now_iso(),
         }
 
         db = get_db()
         db.collection("messages").document(doc_id).set(record)
-        return {"status": "success", "success": True, "message": record, "data": record}
+        return {
+            "status": "success",
+            "success": True,
+            "message": record,
+            "data": record,
+        }
     except HTTPException:
         raise
     except Exception as exc:
@@ -400,7 +508,7 @@ async def post_message(request: Request):
 
 
 # ---------------------------------------------------------------------------
-# Sales, Debtors, Expenses, Workers & Settings
+# POS Sales, Debtors, Expenses, Workers & Settings
 # ---------------------------------------------------------------------------
 @app.get("/api/sales")
 def list_sales():
@@ -425,16 +533,28 @@ def create_sale(sale: SalePayload):
 
         for item in sale.items:
             prod_id = item.get("id") or item.get("product_id")
-            qty = int(item.get("qty") or item.get("quantity") or 0)
+            qty = float(item.get("qty") or item.get("quantity") or 0)
             if prod_id and qty > 0:
                 prod_ref = db.collection("products").document(str(prod_id))
                 prod_snap = prod_ref.get()
                 if prod_snap.exists:
-                    current_stock = int((prod_snap.to_dict() or {}).get("stock", 0))
-                    prod_ref.update({
-                        "stock": max(0, current_stock - qty),
-                        "quantity": max(0, current_stock - qty),
-                    })
+                    pdata = prod_snap.to_dict() or {}
+                    current_cartons = float(
+                        pdata.get("stock_cartons", pdata.get("stock", 0))
+                    )
+                    new_cartons = max(0.0, current_cartons - qty)
+                    packs_per_carton = max(1, int(pdata.get("packs_per_carton", 1)))
+                    retail_per_pack = max(1, int(pdata.get("retail_per_pack", 1)))
+                    prod_ref.update(
+                        {
+                            "stock_cartons": new_cartons,
+                            "stock": int(round(new_cartons)),
+                            "quantity": int(round(new_cartons)),
+                            "total_retail_units": int(
+                                round(new_cartons * packs_per_carton * retail_per_pack)
+                            ),
+                        }
+                    )
 
         return {"status": "success", "success": True, "sale": record, "data": record}
     except Exception as exc:
@@ -461,7 +581,12 @@ def create_debtor(debtor: DebtorPayload):
         record["id"] = doc_id
         record["created_at"] = utc_now_iso()
         db.collection("debtors").document(doc_id).set(record)
-        return {"status": "success", "success": True, "debtor": record, "data": record}
+        return {
+            "status": "success",
+            "success": True,
+            "debtor": record,
+            "data": record,
+        }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to save debtor: {exc}")
 
@@ -486,7 +611,12 @@ def create_expense(expense: ExpensePayload):
         record["id"] = doc_id
         record["created_at"] = utc_now_iso()
         db.collection("expenses").document(doc_id).set(record)
-        return {"status": "success", "success": True, "expense": record, "data": record}
+        return {
+            "status": "success",
+            "success": True,
+            "expense": record,
+            "data": record,
+        }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to save expense: {exc}")
 
@@ -511,7 +641,12 @@ def create_worker(worker: WorkerPayload):
         record["id"] = doc_id
         record["created_at"] = utc_now_iso()
         db.collection("workers").document(doc_id).set(record)
-        return {"status": "success", "success": True, "worker": record, "data": record}
+        return {
+            "status": "success",
+            "success": True,
+            "worker": record,
+            "data": record,
+        }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to save worker: {exc}")
 
@@ -540,7 +675,12 @@ def save_settings(payload: SettingsPayload):
         data = payload.model_dump()
         data["updated_at"] = utc_now_iso()
         db.collection("settings").document("business_profile").set(data, merge=True)
-        return {"status": "success", "success": True, "settings": data, "data": data}
+        return {
+            "status": "success",
+            "success": True,
+            "settings": data,
+            "data": data,
+        }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to save settings: {exc}")
 

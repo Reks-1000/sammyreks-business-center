@@ -1,8 +1,8 @@
 fastapi
 uvicorn
+python-multipart
 supabase
 cloudinary
 python-dotenv
 jinja2
 pydantic
-pandas

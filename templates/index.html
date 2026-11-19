@@ -21,7 +21,7 @@
       object-fit: cover;
     }
     .chat-box {
-      max-height: 340px;
+      max-height: 360px;
       overflow-y: auto;
       background: #ffffff;
     }
@@ -40,6 +40,9 @@
       width: 100%;
       background: #000000;
       border-radius: 6px;
+    }
+    .order-entry {
+      cursor: pointer;
     }
   </style>
 </head>
@@ -525,23 +528,23 @@
           <!-- Staff Tab 3: Orders & Live Chat -->
           <div id="staffOrdersChatTab" class="staff-tab-pane d-none">
             <div class="row g-3">
-              <div class="col-lg-5">
+              <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                   <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                      <h5 class="card-title mb-0"><i class="fa-solid fa-receipt me-1 text-primary"></i>Customer Orders</h5>
+                      <h5 class="card-title mb-0"><i class="fa-solid fa-receipt me-1 text-primary"></i>Cart Orders &amp; Multi-Item Requests</h5>
                       <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-staff-orders-chat">
                         <i class="fa-solid fa-rotate-right me-1"></i>Refresh
                       </button>
                     </div>
                     <div id="staffOrdersBox" class="chat-box border rounded p-2">
-                      <div class="text-muted small">Loading customer orders...</div>
+                      <div class="text-muted small">Loading customer orders and multi-item requests...</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div class="col-lg-7">
+              <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                   <div class="card-body">
                     <h5 class="card-title"><i class="fa-solid fa-comments me-1 text-success"></i>Live Chat &amp; Receipts</h5>
@@ -1083,31 +1086,53 @@
       }
     }
 
+    function formatOrderEntry(o) {
+      const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
+      const orderType = hasSpecial ? "Multi-Item Request" : "Cart Order";
+      const badgeClass = hasSpecial ? "bg-info text-dark" : "bg-primary";
+      const phoneVal = o.contact_phone || o.phone || "";
+      const refHtml = o.payment_ref ? `<div class="small text-muted">Ref: ${escapeHtml(o.payment_ref)}</div>` : "";
+      const noteHtml = o.notes ? `<div class="small text-secondary">Note: ${escapeHtml(o.notes)}</div>` : "";
+
+      let bodyHtml = "";
+      if (hasSpecial) {
+        bodyHtml = o.special_items
+          .map((sp) => `<div class="small">${escapeHtml(sp.item || sp.name || "")}</div>`)
+          .join("");
+      } else if (Array.isArray(o.items) && o.items.length > 0) {
+        const orderTotal = o.items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
+        const lines = o.items
+          .map((it) => `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) × ${escapeHtml(it.qty || 1)} — ${state.currency}${Number(it.total_price || 0).toFixed(2)}</div>`)
+          .join("");
+        bodyHtml = `${lines}<div class="small fw-bold mt-1">Total: ${state.currency}${orderTotal.toFixed(2)}</div>`;
+      } else {
+        bodyHtml = `<div class="small">${escapeHtml(o.items || o.notes || "Order submitted")}</div>`;
+      }
+
+      return `
+        <div class="border rounded p-2 mb-2 bg-light order-entry" data-action="select-order-phone" data-phone="${escapeHtml(phoneVal)}">
+          <div class="d-flex justify-content-between align-items-center small mb-1">
+            <strong>${escapeHtml(o.customer || o.customer_name || "Customer")}</strong>
+            <span class="badge ${badgeClass}">${orderType}</span>
+          </div>
+          <div class="small text-muted mb-1">${escapeHtml(phoneVal)} • ${escapeHtml(o.timestamp || "")}</div>
+          ${bodyHtml}
+          ${noteHtml}
+          ${refHtml}
+        </div>
+      `;
+    }
+
     async function loadStaffOrders() {
       const box = document.getElementById("staffOrdersBox");
       try {
         const res = await apiRequest("/api/orders");
         const orders = res.orders || res.data || [];
         if (!orders.length) {
-          box.innerHTML = `<div class="text-muted small p-2">No customer orders yet.</div>`;
+          box.innerHTML = `<div class="text-muted small p-2">No cart orders or multi-item requests yet.</div>`;
           return;
         }
-        box.innerHTML = orders.map((o) => {
-          const itemsList = Array.isArray(o.items)
-            ? o.items.map((it) => `${escapeHtml(it.name || it.item || "Item")} × ${escapeHtml(it.qty || 1)}`).join(", ")
-            : escapeHtml(o.items || o.notes || "");
-          const phoneVal = o.contact_phone || o.phone || "";
-          return `
-            <div class="border-bottom pb-2 mb-2 px-1">
-              <div class="d-flex justify-content-between small">
-                <strong>${escapeHtml(o.customer || o.customer_name || "Customer")}</strong>
-                <span class="badge bg-light text-dark border">${escapeHtml(o.status || "Pending")}</span>
-              </div>
-              <div class="small text-muted">${escapeHtml(phoneVal)} • ${escapeHtml(o.timestamp || "")}</div>
-              <div class="small mt-1">${itemsList}</div>
-            </div>
-          `;
-        }).join("");
+        box.innerHTML = orders.map(formatOrderEntry).join("");
       } catch (err) {
         box.innerHTML = `<div class="text-danger small p-2">Failed to load orders: ${escapeHtml(err.message)}</div>`;
       }
@@ -1198,6 +1223,14 @@
       } else if (action === "load-staff-chat" || action === "refresh-staff-orders-chat") {
         await loadStaffOrders();
         await loadStaffChatMessages();
+      } else if (action === "select-order-phone") {
+        const phone = (target.dataset.phone || "").trim();
+        if (phone) {
+          document.getElementById("staffChatPhoneFilter").value = phone;
+          document.getElementById("staffChatSendPhone").value = phone;
+          await loadStaffChatMessages();
+          showBanner(`Loaded chat for ${phone}.`, "info");
+        }
       } else if (action === "watch-ad") {
         const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
         if (prod && hasValidVideoUrl(prod.video_url)) {

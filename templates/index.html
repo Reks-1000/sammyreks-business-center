@@ -16,33 +16,14 @@
       border-right: 1px solid #e5e7eb;
       min-height: 100vh;
     }
-    .hero-banner {
-      background: linear-gradient(135deg, #1565c0, #0d47a1);
-      color: #ffffff;
-      border-radius: 12px;
-    }
-    .notice-banner {
-      background: #1565c0;
-      color: #ffffff;
-      border-radius: 10px;
-      font-weight: 600;
-    }
     .product-card img {
       height: 170px;
       object-fit: cover;
     }
     .chat-box {
-      max-height: 360px;
+      max-height: 340px;
       overflow-y: auto;
       background: #ffffff;
-    }
-    .thermal-box {
-      background: #fdfcf7;
-      color: #111111;
-      border: 1px solid #dcd6cd;
-      border-radius: 6px;
-      font-family: "Courier New", Courier, monospace;
-      max-width: 420px;
     }
     .nav-pill-btn.active {
       font-weight: 600;
@@ -52,10 +33,10 @@
 <body>
   <div class="container-fluid">
     <div class="row">
-      <!-- Left Sidebar -->
+      <!-- Left Portal & Staff/Admin Login Sidebar -->
       <aside class="col-lg-3 col-xl-2 sidebar p-3">
         <div class="mb-3">
-          <h4 class="fw-bold mb-1"><i class="fa-solid fa-building text-primary me-2"></i>Sammyreks Portal</h4>
+          <h4 class="fw-bold mb-1"><i class="fa-solid fa-store text-primary me-2"></i>Sammyreks Portal</h4>
           <small class="text-muted">Business Center • Firestore + Cloudinary</small>
         </div>
 
@@ -64,10 +45,10 @@
         </div>
 
         <form id="loginForm" class="border rounded p-3 bg-light mb-3">
-          <label class="form-label small fw-semibold">Choose Portal</label>
-          <select id="loginPortalChoice" class="form-select form-select-sm mb-2">
-            <option value="staff">Staff/Admin Login</option>
-            <option value="customer">Customer Shop</option>
+          <label class="form-label small fw-semibold">Choose Portal Mode</label>
+          <select id="loginMode" class="form-select form-select-sm mb-2">
+            <option value="admin">Staff / Admin Login</option>
+            <option value="staff">Staff Login</option>
           </select>
 
           <input type="text" id="loginUsername" class="form-control form-control-sm mb-2" value="admin" placeholder="Username" required />
@@ -83,172 +64,107 @@
 
         <div class="d-grid gap-1">
           <button type="button" class="btn btn-outline-dark btn-sm text-start nav-pill-btn active" data-action="switch-section" data-section="customerSection">
-            <i class="fa-solid fa-bag-shopping me-2"></i>Customer Shop
+            <i class="fa-solid fa-bag-shopping me-2"></i>Customer Storefront
           </button>
           <button type="button" class="btn btn-outline-primary btn-sm text-start nav-pill-btn" data-action="switch-section" data-section="staffSection">
-            <i class="fa-solid fa-gauge-high me-2"></i>Staff / CEO Dashboard
+            <i class="fa-solid fa-gauge-high me-2"></i>Staff / Admin Panel
           </button>
         </div>
 
         <hr />
         <div class="small text-muted">
-          <div id="sidebarFooterTitle">Sammyreks Business Center</div>
-          <div>v19.0 | 2026</div>
+          <div id="sidebarBusinessName">Sammyreks Business Center</div>
+          <div>v21.0 | 2026</div>
         </div>
       </aside>
 
-      <!-- Main Workspace -->
+      <!-- Main Content Area -->
       <main class="col-lg-9 col-xl-10 p-3 p-md-4">
-        <!-- Global Feedback Banner -->
+        <!-- Live Feedback Banner -->
         <div id="appFeedbackBanner" class="alert alert-info d-flex align-items-center justify-content-between py-2 px-3 mb-3" role="alert">
-          <span id="appFeedbackText"><i class="fa-solid fa-circle-info me-2"></i>Ready. Loading data from Firestore...</span>
+          <span id="appFeedbackText"><i class="fa-solid fa-circle-info me-2"></i>Ready. Loading products from Firestore...</span>
           <button type="button" class="btn-close btn-sm" data-action="dismiss-banner" aria-label="Close"></button>
         </div>
 
         <!-- ================================================================ -->
-        <!-- CUSTOMER STOREFRONT                                              -->
+        <!-- CUSTOMER SECTION                                                 -->
         <!-- ================================================================ -->
         <section id="customerSection">
-          <div class="hero-banner p-4 text-center mb-3 shadow-sm">
-            <h1 class="h3 fw-bold mb-1" id="heroTitle">🏢 Welcome to Sammyreks Business Center</h1>
-            <p class="mb-0" id="heroTagline">Your trusted plug for quality provisions, groceries, and goods!</p>
-          </div>
-
-          <div id="activeNoticeBanner" class="notice-banner p-3 text-center mb-3 d-none"></div>
-          <div id="broadcastVideoBox" class="mb-3 d-none"></div>
-
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <ul class="nav nav-pills gap-1" id="customerTabs">
-              <li class="nav-item">
-                <button type="button" class="nav-link active" data-action="switch-customer-tab" data-tab="shopTab">
-                  <i class="fa-solid fa-cart-shopping me-1"></i>Shop &amp; Cart
-                </button>
-              </li>
-              <li class="nav-item">
-                <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="requestTab">
-                  <i class="fa-solid fa-file-lines me-1"></i>Multi-Item Special Request
-                </button>
-              </li>
-              <li class="nav-item">
-                <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="chatTab">
-                  <i class="fa-solid fa-comments me-1"></i>Live Chat &amp; Receipt Center
-                </button>
-              </li>
-              <li class="nav-item">
-                <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="vaultTab">
-                  <i class="fa-solid fa-receipt me-1"></i>My Saved Receipts
-                </button>
-              </li>
-            </ul>
-
-            <button type="button" class="btn btn-success btn-sm" data-action="switch-customer-tab" data-tab="shopTab">
+            <div>
+              <h2 class="h4 fw-bold mb-0" id="businessTitleDisplay">Sammyreks Business Center</h2>
+              <small class="text-muted" id="businessTaglineDisplay">Quality products, fast orders &amp; live support</small>
+            </div>
+            <button type="button" class="btn btn-success btn-sm" data-action="switch-customer-tab" data-tab="cartTab">
               <i class="fa-solid fa-cart-shopping me-1"></i>Cart (<span id="cartCountBadge">0</span>) • <span id="cartTotalBadge">₦0.00</span>
             </button>
           </div>
 
-          <!-- Customer Tab 1: Shop & Cart -->
+          <div id="customerNoticeAlert" class="alert alert-primary py-2 px-3 mb-3 d-none"></div>
+          <div id="customerBroadcastAlert" class="alert alert-light border py-2 px-3 mb-3 d-none"></div>
+
+          <!-- Customer Sub-Tabs -->
+          <ul class="nav nav-pills mb-3 gap-1" id="customerTabs">
+            <li class="nav-item">
+              <button type="button" class="nav-link active" data-action="switch-customer-tab" data-tab="shopTab">
+                <i class="fa-solid fa-shop me-1"></i>Shop &amp; Cart
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="requestTab">
+                <i class="fa-solid fa-list-check me-1"></i>Multi-Item Request
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="chatTab">
+                <i class="fa-solid fa-comments me-1"></i>Live Chat &amp; Receipts
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="cartTab">
+                <i class="fa-solid fa-receipt me-1"></i>View Cart &amp; Checkout
+              </button>
+            </li>
+          </ul>
+
+          <!-- Tab 1: Shop & Cart -->
           <div id="shopTab" class="customer-tab-pane">
-            <div class="card shadow-sm mb-3">
-              <div class="card-body">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                  <div><strong>Shopping Cart:</strong> <span id="cartSummaryCount">0</span> product(s)</div>
-                  <div><strong>Total:</strong> <span id="cartSummaryTotal">₦0.00</span></div>
-                </div>
-
-                <div id="cartCheckoutPanel" class="mt-3 pt-3 border-top d-none">
-                  <h6 class="fw-bold"><i class="fa-solid fa-bag-shopping me-1 text-primary"></i>View Cart &amp; Send Order to Live Chat</h6>
-                  <div class="table-responsive mb-3">
-                    <table class="table table-sm table-bordered align-middle">
-                      <thead class="table-light">
-                        <tr>
-                          <th>Product</th>
-                          <th>Unit</th>
-                          <th>Qty</th>
-                          <th>Total</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody id="cartItemsTableBody"></tbody>
-                    </table>
-                  </div>
-                  <div class="fw-bold mb-2">Grand Total: <span id="cartGrandTotalText">₦0.00</span></div>
-
-                  <form id="checkoutCartForm" class="row g-2">
-                    <div class="col-md-4">
-                      <input type="text" id="chkNameInput" class="form-control" placeholder="Your Full Name" required />
-                    </div>
-                    <div class="col-md-4">
-                      <input type="text" id="chkPhoneInput" class="form-control" placeholder="Your Phone Number" required />
-                    </div>
-                    <div class="col-md-4">
-                      <input type="text" id="chkAddressInput" class="form-control" placeholder="Delivery Address & Order Notes" />
-                    </div>
-                    <div class="col-12 d-flex gap-2">
-                      <button type="submit" class="btn btn-primary">
-                        <i class="fa-solid fa-rocket me-1"></i>Send Order to Live Chat
-                      </button>
-                      <button type="button" class="btn btn-outline-danger" data-action="clear-cart">
-                        <i class="fa-solid fa-trash me-1"></i>Clear Cart
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-
-            <!-- Category & Search Filter -->
             <div class="row g-2 mb-3">
               <div class="col-md-4">
-                <label class="form-label small fw-semibold">Category</label>
-                <select id="shopCatSelect" class="form-select">
+                <select id="shopCategorySelect" class="form-select">
                   <option value="All Categories">All Categories</option>
                 </select>
               </div>
               <div class="col-md-8">
-                <label class="form-label small fw-semibold">Search products...</label>
-                <input type="text" id="shopSearchInput" class="form-control" placeholder="Type product name..." />
+                <input type="text" id="shopSearchInput" class="form-control" placeholder="Search products..." />
               </div>
             </div>
-
             <div class="row g-3" id="productsGrid">
               <div class="col-12 text-muted">Loading products...</div>
             </div>
           </div>
 
-          <!-- Customer Tab 2: Multi-Item Special Request -->
+          <!-- Tab 2: Multi-Item Request -->
           <div id="requestTab" class="customer-tab-pane d-none">
             <div class="card shadow-sm">
               <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-file-lines me-2 text-primary"></i>Multi-Item Special Request</h5>
-                <form id="specialRequestForm">
-                  <div class="row g-2 mb-3">
-                    <div class="col-md-6">
-                      <label class="form-label">Your Full Name</label>
-                      <input type="text" id="reqCustName" class="form-control" required />
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">Your Phone Number</label>
-                      <input type="text" id="reqCustPhone" class="form-control" required />
-                    </div>
+                <h5 class="card-title"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Multi-Item Request</h5>
+                <form id="multiRequestForm" class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Your Full Name</label>
+                    <input type="text" id="reqName" class="form-control" placeholder="Your name" required />
                   </div>
-
-                  <div id="specialItemsContainer">
-                    <div class="row g-2 mb-2 special-item-row">
-                      <div class="col-md-8">
-                        <input type="text" class="form-control special-item-name" placeholder="Item #1 Name" required />
-                      </div>
-                      <div class="col-md-4">
-                        <input type="number" min="1" value="1" class="form-control special-item-qty" placeholder="Qty" required />
-                      </div>
-                    </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Your Phone Number</label>
+                    <input type="text" id="reqPhone" class="form-control" placeholder="e.g. 08012345678" required />
                   </div>
-
-                  <div class="d-flex flex-wrap gap-2 mt-3">
-                    <button type="button" class="btn btn-outline-secondary btn-sm" data-action="add-special-row">
-                      <i class="fa-solid fa-plus me-1"></i>Add Item Row
-                    </button>
+                  <div class="col-12">
+                    <label class="form-label">Items Needed &amp; Quantities</label>
+                    <textarea id="reqItemsText" class="form-control" rows="3" placeholder="List items, sizes, or quantities you need..." required></textarea>
+                  </div>
+                  <div class="col-12">
                     <button type="submit" class="btn btn-primary">
-                      <i class="fa-solid fa-rocket me-1"></i>Send Special Request to Live Chat
+                      <i class="fa-solid fa-paper-plane me-1"></i>Send Request to Live Chat
                     </button>
                   </div>
                 </form>
@@ -256,38 +172,35 @@
             </div>
           </div>
 
-          <!-- Customer Tab 3: Live Chat & Receipt Center -->
+          <!-- Tab 3: Live Chat & Receipts -->
           <div id="chatTab" class="customer-tab-pane d-none">
             <div class="card shadow-sm">
               <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h5 class="card-title mb-0"><i class="fa-solid fa-comments me-2 text-success"></i>Live Chat &amp; Payment Receipt Center</h5>
-                  <button type="button" class="btn btn-outline-primary btn-sm" data-action="load-customer-chat">
-                    <i class="fa-solid fa-rotate me-1"></i>Refresh Messages
-                  </button>
-                </div>
-
+                <h5 class="card-title"><i class="fa-solid fa-comments me-2 text-success"></i>Live Chat &amp; Receipts</h5>
                 <div class="row g-2 mb-3">
-                  <div class="col-md-6">
-                    <label class="form-label small">Your Full Name</label>
-                    <input type="text" id="custChatName" class="form-control" placeholder="Your Full Name" />
+                  <div class="col-md-8">
+                    <input type="text" id="chatPhoneFilter" class="form-control" placeholder="Enter phone number to load chat & receipts" />
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label small">Your Phone Number</label>
-                    <input type="text" id="custChatPhone" class="form-control" placeholder="Your Phone Number" />
+                  <div class="col-md-4 d-grid">
+                    <button type="button" class="btn btn-outline-primary" data-action="load-chat">
+                      <i class="fa-solid fa-rotate me-1"></i>Load Chat
+                    </button>
                   </div>
                 </div>
 
-                <div id="custChatBox" class="border rounded p-3 mb-3 chat-box">
-                  <div class="text-muted small">Enter your phone number to load your conversation and receipts.</div>
+                <div id="chatMessagesBox" class="border rounded p-3 mb-3 chat-box">
+                  <div class="text-muted small">Enter a phone number and click Load Chat to view messages and receipts.</div>
                 </div>
 
-                <form id="customerChatForm" enctype="multipart/form-data" class="row g-2">
-                  <div class="col-md-6">
-                    <input type="text" name="message" id="custChatInput" class="form-control" placeholder="Type message / reply here..." />
+                <form id="chatSendForm" enctype="multipart/form-data" class="row g-2">
+                  <div class="col-md-3">
+                    <input type="text" name="phone" id="chatSendPhone" class="form-control" placeholder="Phone number" required />
                   </div>
-                  <div class="col-md-4">
-                    <input type="file" name="proof_file" id="custChatProof" class="form-control" accept="image/png,image/jpeg,image/webp,image/*" />
+                  <div class="col-md-5">
+                    <input type="text" name="text" id="chatSendText" class="form-control" placeholder="Type a message..." />
+                  </div>
+                  <div class="col-md-2">
+                    <input type="file" name="proof_file" id="chatProofFile" class="form-control" accept="image/*" />
                   </div>
                   <div class="col-md-2 d-grid">
                     <button type="submit" class="btn btn-success">
@@ -299,199 +212,76 @@
             </div>
           </div>
 
-          <!-- Customer Tab 4: My Saved Receipts Vault -->
-          <div id="vaultTab" class="customer-tab-pane d-none">
+          <!-- Tab 4: View Cart & Checkout -->
+          <div id="cartTab" class="customer-tab-pane d-none">
             <div class="card shadow-sm">
               <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-receipt me-2 text-primary"></i>My Saved Transaction Receipts</h5>
-                <div class="row g-2 mb-3">
-                  <div class="col-md-8">
-                    <input type="text" id="custVaultPhone" class="form-control" placeholder="Enter Your Phone Number to View Receipts" />
+                <h5 class="card-title"><i class="fa-solid fa-cart-shopping me-2 text-primary"></i>Your Cart &amp; Order Checkout</h5>
+                <div id="cartItemsContainer" class="mb-3">
+                  <p class="text-muted">Your cart is empty.</p>
+                </div>
+                <form id="customerOrderForm" class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" id="orderCustomerName" class="form-control" placeholder="Your full name" required />
                   </div>
-                  <div class="col-md-4 d-grid">
-                    <button type="button" class="btn btn-outline-primary" data-action="load-customer-vault">
-                      <i class="fa-solid fa-magnifying-glass me-1"></i>Load My Receipts
+                  <div class="col-md-4">
+                    <label class="form-label">Customer Phone Number</label>
+                    <input type="text" id="orderPhone" class="form-control" placeholder="e.g. 08012345678" required />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Delivery / Order Note</label>
+                    <input type="text" id="orderNote" class="form-control" placeholder="Optional note..." />
+                  </div>
+                  <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-check me-1"></i>Submit Order to Live Chat
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" data-action="clear-cart">
+                      <i class="fa-solid fa-trash me-1"></i>Clear Cart
                     </button>
                   </div>
-                </div>
-                <div id="custVaultList"></div>
+                </form>
               </div>
             </div>
           </div>
         </section>
 
         <!-- ================================================================ -->
-        <!-- STAFF / CEO DASHBOARD                                            -->
+        <!-- STAFF / ADMIN SECTION                                            -->
         <!-- ================================================================ -->
         <section id="staffSection" class="d-none">
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <h2 class="h4 fw-bold mb-0" id="staffDashboardTitle">🏢 Dashboard: Sammyreks Business Center</h2>
-            <span class="badge bg-success" id="staffSessionBadge">Logged In</span>
+            <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-toolbox me-2 text-primary"></i>Staff &amp; Admin Workspace</h2>
+            <span class="badge bg-success" id="staffSessionLabel">Logged In</span>
           </div>
 
-          <ul class="nav nav-tabs mb-3 flex-wrap" id="staffTabs">
+          <ul class="nav nav-tabs mb-3" id="staffTabs">
             <li class="nav-item">
-              <button type="button" class="nav-link active" data-action="switch-staff-tab" data-tab="dashAnalyticsTab">📊 Dashboard</button>
+              <button type="button" class="nav-link active" data-action="switch-staff-tab" data-tab="inventoryTab">
+                <i class="fa-solid fa-boxes-stacked me-1"></i>Add / Update Item &amp; Inventory
+              </button>
             </li>
             <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="posSalesTab">💳 POS &amp; Sales</button>
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="posTab">
+                <i class="fa-solid fa-cash-register me-1"></i>POS Sale
+              </button>
             </li>
             <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="inventoryTab">📦 Inventory</button>
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="recordsTab">
+                <i class="fa-solid fa-book me-1"></i>Debtors, Expenses &amp; Workers
+              </button>
             </li>
             <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="staffChatTab">💬 Live Chat &amp; Receipt Center</button>
-            </li>
-            <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="staffVaultTab">📜 Saved Receipts Vault</button>
-            </li>
-            <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="debtorsTab">📓 Debtors</button>
-            </li>
-            <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="settingsTab">⚙️ Settings</button>
-            </li>
-            <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="expensesTab">💸 Expenses</button>
-            </li>
-            <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="workersTab">👥 Workers</button>
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="settingsTab">
+                <i class="fa-solid fa-gear me-1"></i>Settings
+              </button>
             </li>
           </ul>
 
-          <!-- Staff Tab 0: Dashboard Analytics -->
-          <div id="dashAnalyticsTab" class="staff-tab-pane">
-            <div class="row g-3 mb-3">
-              <div class="col-sm-6 col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><div class="small text-muted">Total Revenue</div><div class="h5 fw-bold mb-0" id="metricRevenue">₦0.00</div></div></div>
-              </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><div class="small text-muted">Total Profit</div><div class="h5 fw-bold mb-0" id="metricProfit">₦0.00</div></div></div>
-              </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><div class="small text-muted">Total Expenses</div><div class="h5 fw-bold mb-0" id="metricExpenses">₦0.00</div></div></div>
-              </div>
-              <div class="col-sm-6 col-md-3">
-                <div class="card shadow-sm"><div class="card-body"><div class="small text-muted">Net Cashflow</div><div class="h5 fw-bold mb-0" id="metricCashflow">₦0.00</div></div></div>
-              </div>
-            </div>
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h6 class="fw-bold mb-2">Recent Sales Log</h6>
-                <div class="table-responsive">
-                  <table class="table table-sm table-striped">
-                    <thead>
-                      <tr><th>Timestamp</th><th>Item</th><th>Qty</th><th>Total</th><th>Profit</th><th>Payment</th><th>Worker</th></tr>
-                    </thead>
-                    <tbody id="salesLogTableBody"><tr><td colspan="7" class="text-muted">No sales recorded yet.</td></tr></tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Staff Tab 1: POS & Sales -->
-          <div id="posSalesTab" class="staff-tab-pane d-none">
-            <div class="row g-4">
-              <div class="col-lg-7">
-                <div class="card shadow-sm">
-                  <div class="card-body">
-                    <h5 class="card-title"><i class="fa-solid fa-cash-register me-1 text-success"></i>POS &amp; Sales Counter</h5>
-                    <form id="posSaleForm" class="row g-3">
-                      <div class="col-12">
-                        <label class="form-label">Search &amp; Select Item</label>
-                        <select id="posSelItem" class="form-select"></select>
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label">Selling Unit</label>
-                        <select id="posSaleUnit" class="form-select"></select>
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label">Quantity</label>
-                        <input type="number" min="1" value="1" id="posSaleQty" class="form-control" required />
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label">Customer Name</label>
-                        <input type="text" id="posCustName" class="form-control" placeholder="Customer Name" />
-                      </div>
-                      <div class="col-md-6">
-                        <label class="form-label">Customer Phone Number</label>
-                        <input type="text" id="posCustPhone" class="form-control" placeholder="Customer Phone Number" />
-                      </div>
-                      <div class="col-12">
-                        <label class="form-label">Payment Gateway / Source</label>
-                        <select id="posPaySource" class="form-select">
-                          <option value="Moniepoint MFB">Moniepoint MFB</option>
-                          <option value="OPay">OPay</option>
-                          <option value="Access Bank">Access Bank</option>
-                          <option value="Cash">Cash</option>
-                          <option value="Transfer">Transfer</option>
-                        </select>
-                      </div>
-                      <div class="col-12 d-flex flex-wrap gap-2">
-                        <button type="submit" class="btn btn-success">
-                          <i class="fa-solid fa-flag-checkered me-1"></i>Cash Sale &amp; Delivery Receipt
-                        </button>
-                        <button type="button" class="btn btn-warning" data-action="pos-record-debt">
-                          <i class="fa-solid fa-book me-1"></i>Record Debt
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-lg-5">
-                <div class="card shadow-sm">
-                  <div class="card-body">
-                    <div class="h5 fw-bold mb-3">Total: <span id="posLiveTotalText">₦0.00</span></div>
-                    <div id="posReceiptPreview">
-                      <div class="text-muted small">Complete a cash sale to generate a thermal receipt and WhatsApp share link.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Staff Tab 2: Inventory Control (Streamlit Headings Restored) -->
-          <div id="inventoryTab" class="staff-tab-pane d-none">
+          <!-- Staff Tab 1: Add / Update Item & Inventory Table -->
+          <div id="inventoryTab" class="staff-tab-pane">
             <div class="card shadow-sm mb-4">
-              <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h5 class="card-title mb-0"><i class="fa-solid fa-boxes-stacked me-2 text-primary"></i>Stock &amp; Warehouse Control</h5>
-                  <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-products">
-                    <i class="fa-solid fa-rotate-right me-1"></i>Refresh
-                  </button>
-                </div>
-
-                <div class="table-responsive">
-                  <table class="table table-sm table-bordered table-hover align-middle">
-                    <thead class="table-light">
-                      <tr>
-                        <th>Product Name</th>
-                        <th>Category</th>
-                        <th>Price (Per Carton)</th>
-                        <th>Total Stock (Cartons)</th>
-                        <th>Cost Price (Per Carton)</th>
-                        <th>Price (Per Pack)</th>
-                        <th>Price (Per Retail Unit)</th>
-                        <th>Count of Packs in 1 Carton</th>
-                        <th>Count of Retail Units in 1 Pack</th>
-                        <th>Shelf Location</th>
-                        <th>Expiry Date</th>
-                        <th>Action</th>
-                      </tr>
-                    </thead>
-                    <tbody id="adminProductsTableBody">
-                      <tr><td colspan="12" class="text-muted">No inventory items loaded yet.</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-
-            <div class="card shadow-sm">
               <div class="card-body">
                 <h5 class="card-title mb-3"><i class="fa-solid fa-pen-to-square me-2 text-primary"></i>Add / Update Item</h5>
 
@@ -509,9 +299,9 @@
                   </div>
 
                   <div id="existingProductSelectorWrap" class="mb-3 d-none">
-                    <label class="form-label fw-semibold">Select Item to Update</label>
+                    <label class="form-label fw-semibold">Select Existing Product to Update</label>
                     <select id="existingProductSelect" name="existing_product_id" class="form-select">
-                      <option value="">-- Choose saved item --</option>
+                      <option value="">-- Choose saved product --</option>
                     </select>
                   </div>
 
@@ -612,200 +402,177 @@
                     <textarea name="description" id="prodDescription" class="form-control" rows="3" placeholder="Product Description"></textarea>
                   </div>
 
-                  <button type="submit" class="btn btn-primary">
+                  <button type="submit" id="saveProductBtn" class="btn btn-primary">
                     <i class="fa-solid fa-floppy-disk me-1"></i>Save Product Data
                   </button>
                 </form>
               </div>
             </div>
-          </div>
 
-          <!-- Staff Tab 3: Live Chat & One-Tap Receipt Center -->
-          <div id="staffChatTab" class="staff-tab-pane d-none">
             <div class="card shadow-sm">
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h5 class="card-title mb-0">💬 Live Chat &amp; One-Tap Receipt Center</h5>
-                  <button type="button" class="btn btn-outline-primary btn-sm" data-action="load-staff-chat">
-                    <i class="fa-solid fa-rotate me-1"></i>Refresh Messages
+                  <h5 class="card-title mb-0"><i class="fa-solid fa-table me-2 text-secondary"></i>Saved Firestore Inventory</h5>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-products">
+                    <i class="fa-solid fa-rotate-right me-1"></i>Refresh
                   </button>
                 </div>
-
-                <div class="mb-3">
-                  <label class="form-label">Select Customer Chat Thread</label>
-                  <select id="staffChatThreadSel" class="form-select"></select>
-                </div>
-
-                <div id="staffChatMessagesBox" class="border rounded p-3 mb-3 chat-box">
-                  <div class="text-muted small">Select a customer thread to view messages and payment proofs.</div>
-                </div>
-
-                <div class="row g-3">
-                  <div class="col-md-7">
-                    <form id="staffChatReplyForm" class="d-flex gap-2">
-                      <input type="text" id="staffReplyText" class="form-control" placeholder="Type message / availability / substitute options..." required />
-                      <button type="submit" class="btn btn-primary text-nowrap">📤 Send Chat</button>
-                    </form>
-                  </div>
-                  <div class="col-md-5">
-                    <div class="border rounded p-2 bg-light">
-                      <label class="form-label small fw-semibold">Select Payment Account/Gateway</label>
-                      <select id="staffPaySourceChoice" class="form-select form-select-sm mb-2">
-                        <option value="Moniepoint MFB">Moniepoint MFB</option>
-                        <option value="OPay">OPay</option>
-                        <option value="Access Bank">Access Bank</option>
-                        <option value="Cash">Cash</option>
-                        <option value="Transfer">Transfer</option>
-                      </select>
-                      <button type="button" class="btn btn-success btn-sm w-100" data-action="staff-one-tap-approve">
-                        ✅ One-Tap Approve &amp; Release Thermal Receipt
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Staff Tab 4: Saved Receipts Vault -->
-          <div id="staffVaultTab" class="staff-tab-pane d-none">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title">📜 Saved Receipts Vault (Bank-Style Ledger)</h5>
-                <input type="text" id="vaultSearchInput" class="form-control mb-3" placeholder="🔍 Search by Ref Code or Customer Name/Phone" />
-                <div id="staffVaultList"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Staff Tab 5: Debtors -->
-          <div id="debtorsTab" class="staff-tab-pane d-none">
-            <div class="card shadow-sm mb-3">
-              <div class="card-body">
-                <h5 class="card-title">📓 Debtors Management</h5>
                 <div class="table-responsive">
-                  <table class="table table-sm table-bordered">
-                    <thead><tr><th>Customer</th><th>Phone</th><th>Items Bought</th><th>Amount</th><th>Date</th><th>Action</th></tr></thead>
-                    <tbody id="debtorsTableBody"><tr><td colspan="6" class="text-muted">No debtors logged yet.</td></tr></tbody>
+                  <table class="table table-sm table-bordered table-hover align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Product Name</th>
+                        <th>Category</th>
+                        <th>Price (Per Carton)</th>
+                        <th>Total Stock (Cartons)</th>
+                        <th>Cost Price (Per Carton)</th>
+                        <th>Price (Per Pack)</th>
+                        <th>Price (Per Retail Unit)</th>
+                        <th>Count of Packs in 1 Carton</th>
+                        <th>Count of Retail Units in 1 Pack</th>
+                        <th>Shelf Location</th>
+                        <th>Expiry Date</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminProductsTableBody">
+                      <tr><td colspan="12" class="text-muted">No inventory items loaded yet.</td></tr>
+                    </tbody>
                   </table>
                 </div>
               </div>
             </div>
+          </div>
 
-            <div class="card shadow-sm">
+          <!-- Staff Tab 2: POS Sale -->
+          <div id="posTab" class="staff-tab-pane d-none">
+            <div class="card shadow-sm mb-3">
               <div class="card-body">
-                <h6 class="fw-bold">➕ Log New Debt</h6>
-                <form id="debtForm" class="row g-2">
-                  <div class="col-md-3"><input type="text" id="newDebtCust" class="form-control" placeholder="Customer Name" required /></div>
-                  <div class="col-md-3"><input type="text" id="newDebtPhone" class="form-control" placeholder="Phone" /></div>
-                  <div class="col-md-3"><input type="text" id="newDebtItems" class="form-control" placeholder="Evidence (Items Bought)" /></div>
-                  <div class="col-md-3"><input type="number" step="0.01" id="newDebtAmt" class="form-control" placeholder="Amount (₦)" required /></div>
-                  <div class="col-12"><button type="submit" class="btn btn-warning">Log New Debt</button></div>
+                <h5 class="card-title"><i class="fa-solid fa-cash-register me-1 text-success"></i>Record POS Sale</h5>
+                <form id="posSaleForm" class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Search &amp; Select Item</label>
+                    <select id="posProductSelect" class="form-select"></select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Selling Unit</label>
+                    <select id="posUnitSelect" class="form-select"></select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" id="posQty" class="form-control" value="1" min="1" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" id="posCustomerName" class="form-control" value="Walk-in Customer" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Phone</label>
+                    <input type="text" id="posPhone" class="form-control" placeholder="Optional" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Payment Gateway / Source</label>
+                    <select id="posPaymentMethod" class="form-select">
+                      <option value="Moniepoint MFB">Moniepoint MFB</option>
+                      <option value="OPay">OPay</option>
+                      <option value="Access Bank">Access Bank</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Transfer">Transfer</option>
+                    </select>
+                  </div>
+                  <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
+                    <button type="submit" class="btn btn-success">
+                      <i class="fa-solid fa-check-circle me-1"></i>Cash Sale &amp; Delivery Receipt
+                    </button>
+                    <button type="button" class="btn btn-warning" data-action="pos-debt">
+                      <i class="fa-solid fa-book me-1"></i>Record Debt
+                    </button>
+                    <span class="ms-auto fw-bold">Total: <span id="posTotalPreview">₦0.00</span></span>
+                  </div>
                 </form>
+                <div id="posReceiptBox" class="mt-3"></div>
               </div>
             </div>
           </div>
 
-          <!-- Staff Tab 6: Settings -->
+          <!-- Staff Tab 3: Debtors, Expenses & Workers -->
+          <div id="recordsTab" class="staff-tab-pane d-none">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <h6 class="fw-bold">Add Debtor</h6>
+                    <form id="debtorForm">
+                      <input type="text" id="debtorName" class="form-control form-control-sm mb-2" placeholder="Customer name" required />
+                      <input type="text" id="debtorPhone" class="form-control form-control-sm mb-2" placeholder="Phone" required />
+                      <input type="number" step="0.01" id="debtorAmount" class="form-control form-control-sm mb-2" placeholder="Amount owed (₦)" required />
+                      <input type="text" id="debtorNote" class="form-control form-control-sm mb-2" placeholder="Note / Items bought" />
+                      <button type="submit" class="btn btn-warning btn-sm w-100">Save Debtor</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <h6 class="fw-bold">Add Expense</h6>
+                    <form id="expenseForm">
+                      <input type="text" id="expenseTitle" class="form-control form-control-sm mb-2" placeholder="Expense title / category" required />
+                      <input type="number" step="0.01" id="expenseAmount" class="form-control form-control-sm mb-2" placeholder="Amount (₦)" required />
+                      <input type="text" id="expenseCategory" class="form-control form-control-sm mb-2" value="Operations" />
+                      <input type="text" id="expenseNote" class="form-control form-control-sm mb-2" placeholder="Note" />
+                      <button type="submit" class="btn btn-danger btn-sm w-100">Save Expense</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <h6 class="fw-bold">Add Worker / Staff</h6>
+                    <form id="workerForm">
+                      <input type="text" id="workerName" class="form-control form-control-sm mb-2" placeholder="Full name" required />
+                      <input type="text" id="workerRole" class="form-control form-control-sm mb-2" value="Staff" />
+                      <input type="text" id="workerUsername" class="form-control form-control-sm mb-2" placeholder="Login username" />
+                      <input type="password" id="workerPassword" class="form-control form-control-sm mb-2" placeholder="Login password" />
+                      <button type="submit" class="btn btn-dark btn-sm w-100">Save Worker</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Tab 4: Settings -->
           <div id="settingsTab" class="staff-tab-pane d-none">
             <div class="card shadow-sm">
               <div class="card-body">
-                <h5 class="card-title">⚙️ User Settings &amp; Announcements</h5>
-                <form id="noticeForm" enctype="multipart/form-data" class="row g-3">
+                <h5 class="card-title"><i class="fa-solid fa-sliders me-1 text-primary"></i>Business Settings</h5>
+                <form id="settingsForm" class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label">Business Name</label>
-                    <input type="text" name="business_name" id="setBusinessName" class="form-control" value="Sammyreks Business Center" />
+                    <input type="text" id="setBusinessName" class="form-control" value="Sammyreks Business Center" required />
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">Store Tagline</label>
-                    <input type="text" name="tagline" id="setTagline" class="form-control" value="Your trusted plug for quality provisions, groceries, and goods!" />
+                    <label class="form-label">Tagline</label>
+                    <input type="text" id="setTagline" class="form-control" placeholder="Quality products, fast orders & live support" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Notice Message</label>
+                    <input type="text" id="setNotice" class="form-control" placeholder="Optional announcement banner" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">Broadcast Video Link</label>
+                    <input type="text" id="setBroadcastVideo" class="form-control" placeholder="https://..." />
                   </div>
                   <div class="col-12">
-                    <label class="form-label">Notice Message (Ticker)</label>
-                    <textarea name="active_notice" id="settingsNoticeInput" class="form-control" rows="2"></textarea>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Choose MP4 Video File for Top Broadcast</label>
-                    <input type="file" name="broadcast_video_file" id="broadcastFileUploader" class="form-control" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" />
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">OR Direct Video / YouTube URL</label>
-                    <input type="text" name="broadcast_video_url" id="settingsVideoInput" class="form-control" placeholder="https://..." />
-                  </div>
-                  <div class="col-12">
-                    <button type="submit" class="btn btn-primary">📢 Publish Notice &amp; Broadcast Video</button>
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-floppy-disk me-1"></i>Save Settings
+                    </button>
                   </div>
                 </form>
-              </div>
-            </div>
-          </div>
-
-          <!-- Staff Tab 7: Expenses (CEO Only) -->
-          <div id="expensesTab" class="staff-tab-pane d-none">
-            <div id="expensesRestrictedMsg" class="alert alert-warning d-none">⚠️ Access restricted to CEO accounts only.</div>
-            <div id="expensesContent" class="d-none">
-              <div class="card shadow-sm mb-3">
-                <div class="card-body">
-                  <h5 class="card-title">💸 Expenditure Log</h5>
-                  <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                      <thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Note</th></tr></thead>
-                      <tbody id="expensesTableBody"></tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-              <div class="card shadow-sm">
-                <div class="card-body">
-                  <form id="expenseEntryForm" class="row g-2">
-                    <div class="col-md-4">
-                      <select id="expCatSel" class="form-select">
-                        <option value="Salaries">Salaries</option>
-                        <option value="Rent">Rent</option>
-                        <option value="Utility">Utility</option>
-                        <option value="Stocking">Stocking</option>
-                        <option value="Fuel">Fuel</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                    <div class="col-md-4"><input type="number" step="0.01" id="expValInput" class="form-control" placeholder="Amount" required /></div>
-                    <div class="col-md-4"><input type="text" id="expNoteInput" class="form-control" placeholder="Note" /></div>
-                    <div class="col-12"><button type="submit" class="btn btn-danger">Record Expense</button></div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Staff Tab 8: Workers (CEO Only) -->
-          <div id="workersTab" class="staff-tab-pane d-none">
-            <div id="workersRestrictedMsg" class="alert alert-warning d-none">⚠️ Access restricted to CEO accounts only.</div>
-            <div id="workersContent" class="d-none">
-              <div class="card shadow-sm mb-3">
-                <div class="card-body">
-                  <h5 class="card-title">👥 Staff Management</h5>
-                  <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                      <thead><tr><th>Worker Name</th><th>Role</th><th>Added</th></tr></thead>
-                      <tbody id="workersTableBody"></tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-              <div class="card shadow-sm">
-                <div class="card-body">
-                  <form id="workerAddForm" class="row g-2">
-                    <div class="col-md-4"><input type="text" id="workerNameInput" class="form-control" placeholder="Worker Name" required /></div>
-                    <div class="col-md-4">
-                      <select id="workerRoleSel" class="form-select">
-                        <option value="Staff">Staff</option>
-                        <option value="CEO">CEO</option>
-                      </select>
-                    </div>
-                    <div class="col-md-4"><input type="password" id="workerPassInput" class="form-control" placeholder="Password (Min 6 chars)" required /></div>
-                    <div class="col-12"><button type="submit" class="btn btn-dark">Create Account</button></div>
-                  </form>
-                </div>
               </div>
             </div>
           </div>
@@ -819,20 +586,26 @@
     const state = {
       products: [],
       cart: [],
-      auth: { logged_in: false, user: null, role: null },
+      isLoggedIn: false,
+      user: null,
       currency: "₦",
-      storeTitle: "Sammyreks Business Center",
-      activeCustPhone: "",
-      activeCustName: "",
-      threads: [],
     };
 
-    function showBanner(msg, type = "info") {
+    function showBanner(message, type = "info") {
       const banner = document.getElementById("appFeedbackBanner");
       const textEl = document.getElementById("appFeedbackText");
       banner.className = `alert alert-${type} d-flex align-items-center justify-content-between py-2 px-3 mb-3`;
       banner.classList.remove("d-none");
-      textEl.innerHTML = `<i class="fa-solid ${type === "danger" ? "fa-triangle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info"} me-2"></i>${escapeHtml(msg)}`;
+      textEl.innerHTML = `<i class="fa-solid ${type === "danger" ? "fa-triangle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info"} me-2"></i>${message}`;
+    }
+
+    async function apiRequest(url, options = {}) {
+      const response = await fetch(url, options);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || `Request failed (${response.status})`);
+      }
+      return data;
     }
 
     function escapeHtml(str) {
@@ -843,54 +616,42 @@
         .replace(/"/g, "&quot;");
     }
 
-    function fmtMoney(val) {
-      return `${state.currency}${Number(val || 0).toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    function getPriceForUnit(prod, unitName) {
+      const mLbl = prod.unit_main_label || "Carton";
+      const pLbl = prod.unit_pack_label || "Pack";
+      if (unitName === mLbl) return Number(prod.price_carton ?? prod.price ?? 0);
+      if (unitName === pLbl) return Number(prod.price_pack ?? 0);
+      return Number(prod.price_retail ?? prod.price_carton ?? prod.price ?? 0);
     }
 
-    async function apiRequest(url, options = {}) {
-      const resp = await fetch(url, options);
-      const data = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new Error(data.detail || data.message || `Request failed (${resp.status})`);
-      return data;
-    }
-
-    function updateRoleVisibility() {
-      const isCeo = state.auth.logged_in && String(state.auth.role).toUpperCase() === "CEO";
-      document.getElementById("expensesRestrictedMsg").classList.toggle("d-none", isCeo);
-      document.getElementById("expensesContent").classList.toggle("d-none", !isCeo);
-      document.getElementById("workersRestrictedMsg").classList.toggle("d-none", isCeo);
-      document.getElementById("workersContent").classList.toggle("d-none", !isCeo);
-    }
-
-    function updateCartUI() {
-      const count = state.cart.length;
-      const total = state.cart.reduce((s, i) => s + Number(i.total_price || 0), 0);
-
+    function updateCartSummary() {
+      const count = state.cart.reduce((sum, item) => sum + Number(item.qty || 1), 0);
+      const total = state.cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
       document.getElementById("cartCountBadge").textContent = count;
-      document.getElementById("cartTotalBadge").textContent = fmtMoney(total);
-      document.getElementById("cartSummaryCount").textContent = count;
-      document.getElementById("cartSummaryTotal").textContent = fmtMoney(total);
-      document.getElementById("cartGrandTotalText").textContent = fmtMoney(total);
+      document.getElementById("cartTotalBadge").textContent = `${state.currency}${total.toFixed(2)}`;
 
-      const panel = document.getElementById("cartCheckoutPanel");
-      const tbody = document.getElementById("cartItemsTableBody");
-
-      if (!count) {
-        panel.classList.add("d-none");
-        tbody.innerHTML = "";
+      const container = document.getElementById("cartItemsContainer");
+      if (!state.cart.length) {
+        container.innerHTML = `<p class="text-muted">Your cart is empty.</p>`;
         return;
       }
 
-      panel.classList.remove("d-none");
-      tbody.innerHTML = state.cart.map((item, idx) => `
-        <tr>
-          <td>${escapeHtml(item.name)}</td>
-          <td>${escapeHtml(item.unit)}</td>
-          <td>${Number(item.qty)}</td>
-          <td>${fmtMoney(item.total_price)}</td>
-          <td><button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-cart-item" data-index="${idx}"><i class="fa-solid fa-xmark"></i></button></td>
-        </tr>
-      `).join("");
+      container.innerHTML = `
+        <ul class="list-group">
+          ${state.cart.map((item, idx) => `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <strong>${escapeHtml(item.name)}</strong> <span class="badge bg-light text-dark border">${escapeHtml(item.unit || "Unit")}</span>
+                <div class="small text-muted">${state.currency}${Number(item.price).toFixed(2)} × ${item.qty}</div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-cart-item" data-index="${idx}">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </li>
+          `).join("")}
+        </ul>
+        <div class="mt-2 fw-bold">Total: ${state.currency}${total.toFixed(2)}</div>
+      `;
     }
 
     function toggleUpdateMode() {
@@ -902,118 +663,103 @@
     document.getElementById("actionUpdateExisting").addEventListener("change", toggleUpdateMode);
 
     document.getElementById("existingProductSelect").addEventListener("change", (e) => {
-      const p = state.products.find((item) => String(item.id) === String(e.target.value));
-      if (!p) return;
-      document.getElementById("prodName").value = p.name || "";
-      document.getElementById("prodCategory").value = p.category || "General";
-      document.getElementById("prodMainUnit").value = p.unit_main_label || "Carton";
-      document.getElementById("prodSubUnit").value = p.unit_pack_label || "Pack";
-      document.getElementById("prodRetailUnit").value = p.unit_retail_label || "Retail Unit";
-      document.getElementById("prodPriceCarton").value = Number(p.price_carton ?? 0).toFixed(2);
-      document.getElementById("prodStockCartons").value = Number(p.qty_cartons ?? p.stock ?? 0).toFixed(2);
-      document.getElementById("prodCostCarton").value = Number(p.cost ?? 0).toFixed(2);
-      document.getElementById("prodPricePack").value = Number(p.price_pack ?? 0).toFixed(2);
-      document.getElementById("prodPacksPerCarton").value = p.packs_per_carton ?? 1;
-      document.getElementById("prodShelfLocation").value = p.shelf || "";
-      document.getElementById("prodPriceRetail").value = Number(p.price_retail ?? 0).toFixed(2);
-      document.getElementById("prodRetailPerPack").value = p.units_per_pack ?? 1;
-      document.getElementById("prodExpiryDate").value = p.expiry || "";
-      document.getElementById("prodVideoLink").value = p.video_url || "";
-      document.getElementById("prodDescription").value = p.description || "";
+      const prod = state.products.find((p) => String(p.id) === String(e.target.value));
+      if (!prod) return;
+      document.getElementById("prodName").value = prod.name || "";
+      document.getElementById("prodCategory").value = prod.category || "General";
+      document.getElementById("prodMainUnit").value = prod.unit_main_label || "Carton";
+      document.getElementById("prodSubUnit").value = prod.unit_pack_label || "Pack";
+      document.getElementById("prodRetailUnit").value = prod.unit_retail_label || "Retail Unit";
+      document.getElementById("prodPriceCarton").value = Number(prod.price_carton ?? prod.price ?? 0).toFixed(2);
+      document.getElementById("prodStockCartons").value = Number(prod.qty_cartons ?? prod.stock ?? 0).toFixed(2);
+      document.getElementById("prodCostCarton").value = Number(prod.cost ?? 0).toFixed(2);
+      document.getElementById("prodPricePack").value = Number(prod.price_pack ?? 0).toFixed(2);
+      document.getElementById("prodPacksPerCarton").value = prod.packs_per_carton ?? 1;
+      document.getElementById("prodShelfLocation").value = prod.shelf || "";
+      document.getElementById("prodPriceRetail").value = Number(prod.price_retail ?? 0).toFixed(2);
+      document.getElementById("prodRetailPerPack").value = prod.units_per_pack ?? 1;
+      document.getElementById("prodExpiryDate").value = prod.expiry || "";
+      document.getElementById("prodVideoLink").value = prod.video_url || "";
+      document.getElementById("prodDescription").value = prod.description || "";
     });
 
-    function populatePosUnits() {
-      const prodId = document.getElementById("posSelItem").value;
-      const p = state.products.find((item) => String(item.id) === String(prodId));
-      const unitSel = document.getElementById("posSaleUnit");
-      if (!p) {
+    function syncPosUnitOptions() {
+      const prod = state.products.find((p) => String(p.id) === String(document.getElementById("posProductSelect").value));
+      const unitSel = document.getElementById("posUnitSelect");
+      if (!prod) {
         unitSel.innerHTML = `<option value="Carton">Carton</option>`;
-        updatePosLiveTotal();
+        updatePosTotalPreview();
         return;
       }
-      const mLbl = p.unit_main_label || "Carton";
-      const pLbl = p.unit_pack_label || "Pack";
-      const rLbl = p.unit_retail_label || "Retail Unit";
-      unitSel.innerHTML = [mLbl, pLbl, rLbl].map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
-      updatePosLiveTotal();
+      const units = [prod.unit_main_label || "Carton", prod.unit_pack_label || "Pack", prod.unit_retail_label || "Retail Unit"];
+      unitSel.innerHTML = units.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
+      updatePosTotalPreview();
     }
 
-    function updatePosLiveTotal() {
-      const prodId = document.getElementById("posSelItem").value;
-      const unitType = document.getElementById("posSaleUnit").value;
-      const qty = Math.max(1, Number(document.getElementById("posSaleQty").value || 1));
-      const p = state.products.find((item) => String(item.id) === String(prodId));
-      if (!p) {
-        document.getElementById("posLiveTotalText").textContent = fmtMoney(0);
-        return;
-      }
-      const mLbl = p.unit_main_label || "Carton";
-      const pLbl = p.unit_pack_label || "Pack";
-      const unitPrice = unitType === mLbl
-        ? Number(p.price_carton ?? p.price ?? 0)
-        : unitType === pLbl
-          ? Number(p.price_pack ?? 0)
-          : Number(p.price_retail ?? 0);
-      document.getElementById("posLiveTotalText").textContent = fmtMoney(unitPrice * qty);
+    function updatePosTotalPreview() {
+      const prod = state.products.find((p) => String(p.id) === String(document.getElementById("posProductSelect").value));
+      const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
+      const unit = document.getElementById("posUnitSelect").value;
+      const unitPrice = prod ? getPriceForUnit(prod, unit) : 0;
+      document.getElementById("posTotalPreview").textContent = `${state.currency}${(unitPrice * qty).toFixed(2)}`;
     }
 
-    document.getElementById("posSelItem").addEventListener("change", populatePosUnits);
-    document.getElementById("posSaleUnit").addEventListener("change", updatePosLiveTotal);
-    document.getElementById("posSaleQty").addEventListener("input", updatePosLiveTotal);
+    document.getElementById("posProductSelect").addEventListener("change", syncPosUnitOptions);
+    document.getElementById("posUnitSelect").addEventListener("change", updatePosTotalPreview);
+    document.getElementById("posQty").addEventListener("input", updatePosTotalPreview);
 
-    function renderShopProducts() {
+    function renderProducts() {
       const grid = document.getElementById("productsGrid");
-      const catSel = document.getElementById("shopCatSelect");
-      const selectedCat = catSel.value;
-      const searchQ = document.getElementById("shopSearchInput").value.trim().toLowerCase();
+      const tbody = document.getElementById("adminProductsTableBody");
+      const posSelect = document.getElementById("posProductSelect");
+      const existingSelect = document.getElementById("existingProductSelect");
+      const catSelect = document.getElementById("shopCategorySelect");
 
+      const prevCat = catSelect.value;
       const cats = ["All Categories", ...Array.from(new Set(state.products.map((p) => p.category || "General"))).sort()];
-      catSel.innerHTML = cats.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
-      if (cats.includes(selectedCat)) catSel.value = selectedCat;
+      catSelect.innerHTML = cats.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+      if (cats.includes(prevCat)) catSelect.value = prevCat;
 
+      const queryText = document.getElementById("shopSearchInput").value.trim().toLowerCase();
       const filtered = state.products.filter((p) => {
-        const matchCat = catSel.value === "All Categories" || (p.category || "General") === catSel.value;
-        const matchSearch = !searchQ || String(p.name || "").toLowerCase().includes(searchQ);
-        return matchCat && matchSearch;
+        const okCat = catSelect.value === "All Categories" || (p.category || "General") === catSelect.value;
+        const okSearch = !queryText || String(p.name || "").toLowerCase().includes(queryText);
+        return okCat && okSearch;
       });
 
       if (!filtered.length) {
-        grid.innerHTML = `<div class="col-12"><div class="alert alert-warning">No products available in stock yet.</div></div>`;
-        return;
-      }
+        grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products available yet. Log in as Staff/Admin to add products.</div></div>`;
+      } else {
+        grid.innerHTML = filtered.map((p) => {
+          const imgSrc = p.img_data || p.image_url || "";
+          const mLbl = p.unit_main_label || "Carton";
+          const pLbl = p.unit_pack_label || "Pack";
+          const rLbl = p.unit_retail_label || "Retail Unit";
+          const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
+          const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+          const imgHtml = imgSrc
+            ? `<img src="${escapeHtml(imgSrc)}" class="card-img-top" alt="${escapeHtml(p.name)}" />`
+            : `<div class="bg-light d-flex align-items-center justify-content-center text-muted" style="height:170px;"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
 
-      grid.innerHTML = filtered.map((p) => {
-        const mLbl = p.unit_main_label || "Carton";
-        const pLbl = p.unit_pack_label || "Pack";
-        const rLbl = p.unit_retail_label || "Retail Unit";
-        const imgHtml = p.img_data && String(p.img_data).startsWith("http")
-          ? `<img src="${escapeHtml(p.img_data)}" class="card-img-top" alt="${escapeHtml(p.name)}" />`
-          : `<div class="bg-light d-flex align-items-center justify-content-center text-muted" style="height:170px;">No Image</div>`;
-
-        const vidHtml = p.video_url && String(p.video_url).startsWith("http")
-          ? `<div class="mb-2"><a href="${escapeHtml(p.video_url)}" target="_blank" class="small text-decoration-none"><i class="fa-solid fa-video me-1"></i>Watch Video Advert</a></div>`
-          : "";
-
-        return `
-          <div class="col-md-6 col-xl-4">
-            <div class="card h-100 shadow-sm product-card">
-              ${imgHtml}
-              <div class="card-body d-flex flex-column">
-                <h5 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h5>
-                <div class="small text-muted mb-2">Category: <strong>${escapeHtml(p.category || "General")}</strong> • Shelf: ${escapeHtml(p.shelf || "N/A")}</div>
-                <p class="small text-secondary">${escapeHtml(p.description || "")}</p>
-                ${vidHtml}
-                <div class="mt-auto">
-                  <div class="row g-2 mb-2">
+          return `
+            <div class="col-sm-6 col-md-4">
+              <div class="card h-100 shadow-sm product-card">
+                ${imgHtml}
+                <div class="card-body d-flex flex-column">
+                  <h6 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h6>
+                  <div class="text-primary fw-semibold mb-1">${state.currency}${displayPrice.toFixed(2)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
+                  <div class="small text-muted mb-2">Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} • ${escapeHtml(p.category || "General")}</div>
+                  <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
+                  <div class="row g-1 mb-2">
                     <div class="col-7">
-                      <select class="form-select form-select-sm shop-unit-sel" data-prod-id="${escapeHtml(p.id)}">
-                        <option value="${escapeHtml(rLbl)}">${escapeHtml(rLbl)} (${fmtMoney(p.price_retail)})</option>
-                        <option value="${escapeHtml(pLbl)}">${escapeHtml(pLbl)} (${fmtMoney(p.price_pack)})</option>
-                        <option value="${escapeHtml(mLbl)}">${escapeHtml(mLbl)} (${fmtMoney(p.price_carton)})</option>
+                      <select class="form-select form-select-sm card-unit-sel">
+                        <option value="${escapeHtml(rLbl)}">${escapeHtml(rLbl)} (${state.currency}${Number(p.price_retail ?? displayPrice).toFixed(2)})</option>
+                        <option value="${escapeHtml(pLbl)}">${escapeHtml(pLbl)} (${state.currency}${Number(p.price_pack ?? displayPrice).toFixed(2)})</option>
+                        <option value="${escapeHtml(mLbl)}">${escapeHtml(mLbl)} (${state.currency}${Number(p.price_carton ?? displayPrice).toFixed(2)})</option>
                       </select>
                     </div>
                     <div class="col-5">
-                      <input type="number" min="1" value="1" class="form-control form-control-sm shop-qty-inp" data-prod-id="${escapeHtml(p.id)}" />
+                      <input type="number" min="1" value="1" class="form-control form-control-sm card-qty-inp" />
                     </div>
                   </div>
                   <button type="button" class="btn btn-primary btn-sm w-100" data-action="add-to-cart" data-id="${escapeHtml(p.id)}">
@@ -1022,65 +768,75 @@
                 </div>
               </div>
             </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function renderAdminInventory() {
-      const tbody = document.getElementById("adminProductsTableBody");
-      const posSel = document.getElementById("posSelItem");
-      const updSel = document.getElementById("existingProductSelect");
+          `;
+        }).join("");
+      }
 
       if (!state.products.length) {
-        tbody.innerHTML = `<tr><td colspan="12" class="text-muted">No inventory items loaded yet.</td></tr>`;
-        posSel.innerHTML = `<option value="">No items available</option>`;
-        updSel.innerHTML = `<option value="">-- Choose saved item --</option>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="text-muted">No inventory records in Firestore yet.</td></tr>`;
+        posSelect.innerHTML = `<option value="">No products available</option>`;
+        existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>`;
+        syncPosUnitOptions();
         return;
       }
 
-      tbody.innerHTML = state.products.map((p) => `
-        <tr>
-          <td class="fw-semibold">${escapeHtml(p.name)}</td>
-          <td>${escapeHtml(p.category || "General")}</td>
-          <td>${fmtMoney(p.price_carton)}</td>
-          <td>${Number(p.qty_cartons ?? p.stock ?? 0).toFixed(2)}</td>
-          <td>${fmtMoney(p.cost)}</td>
-          <td>${fmtMoney(p.price_pack)}</td>
-          <td>${fmtMoney(p.price_retail)}</td>
-          <td>${Number(p.packs_per_carton ?? 1)}</td>
-          <td>${Number(p.units_per_pack ?? 1)}</td>
-          <td>${escapeHtml(p.shelf || "-")}</td>
-          <td>${escapeHtml(p.expiry || "-")}</td>
-          <td>
-            <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `).join("");
+      tbody.innerHTML = state.products.map((p) => {
+        const pCarton = Number(p.price_carton ?? p.price ?? 0);
+        const stockCartons = Number(p.qty_cartons ?? p.stock ?? 0);
+        const cCarton = Number(p.cost ?? 0);
+        const pPack = Number(p.price_pack ?? 0);
+        const pRetail = Number(p.price_retail ?? 0);
+        const packsCount = Number(p.packs_per_carton ?? 1);
+        const retailCount = Number(p.units_per_pack ?? 1);
 
-      const prevPos = posSel.value;
-      posSel.innerHTML = state.products.map((p) =>
-        `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (Stock: ${Number(p.qty_cartons ?? p.stock ?? 0).toFixed(2)})</option>`
-      ).join("");
-      if (prevPos) posSel.value = prevPos;
+        return `
+          <tr>
+            <td class="fw-semibold">${escapeHtml(p.name)}</td>
+            <td>${escapeHtml(p.category || "General")}</td>
+            <td>${state.currency}${pCarton.toFixed(2)}</td>
+            <td>${stockCartons.toFixed(2)}</td>
+            <td>${state.currency}${cCarton.toFixed(2)}</td>
+            <td>${state.currency}${pPack.toFixed(2)}</td>
+            <td>${state.currency}${pRetail.toFixed(2)}</td>
+            <td>${packsCount}</td>
+            <td>${retailCount}</td>
+            <td>${escapeHtml(p.shelf || "-")}</td>
+            <td>${escapeHtml(p.expiry || "-")}</td>
+            <td>
+              <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
 
-      const prevUpd = updSel.value;
-      updSel.innerHTML = `<option value="">-- Choose saved item --</option>` + state.products.map((p) =>
+      const prevPos = posSelect.value;
+      posSelect.innerHTML = state.products.map((p) => {
+        const priceVal = Number(p.price_carton ?? p.price ?? 0);
+        const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+        return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${state.currency}${priceVal.toFixed(2)} • Stock: ${stockVal.toFixed(2)})</option>`;
+      }).join("");
+      if (prevPos) posSelect.value = prevPos;
+
+      const prevExisting = existingSelect.value;
+      existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>` + state.products.map((p) =>
         `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${escapeHtml(p.category || "General")})</option>`
       ).join("");
-      if (prevUpd) updSel.value = prevUpd;
+      if (prevExisting) existingSelect.value = prevExisting;
 
-      populatePosUnits();
+      syncPosUnitOptions();
     }
+
+    document.getElementById("shopCategorySelect").addEventListener("change", renderProducts);
+    document.getElementById("shopSearchInput").addEventListener("input", renderProducts);
 
     async function loadProducts() {
       try {
         const res = await apiRequest("/api/products");
         state.products = res.products || res.data || [];
-        renderShopProducts();
-        renderAdminInventory();
+        renderProducts();
+        showBanner(`Loaded ${state.products.length} product(s) from Firestore.`, "success");
       } catch (err) {
         showBanner(`Could not load products: ${err.message}`, "danger");
       }
@@ -1089,296 +845,110 @@
     async function loadSettings() {
       try {
         const res = await apiRequest("/api/settings");
-        const s = res.settings || {};
-        state.storeTitle = s.business_name || "Sammyreks Business Center";
-        state.currency = s.currency || "₦";
+        const s = res.settings || res.data || {};
+        if (s.business_name) {
+          document.getElementById("businessTitleDisplay").textContent = s.business_name;
+          document.getElementById("sidebarBusinessName").textContent = s.business_name;
+          document.getElementById("setBusinessName").value = s.business_name;
+        }
+        if (s.tagline) {
+          document.getElementById("businessTaglineDisplay").textContent = s.tagline;
+          document.getElementById("setTagline").value = s.tagline;
+        }
+        if (s.currency) state.currency = s.currency;
+        document.getElementById("setNotice").value = s.active_notice || "";
+        document.getElementById("setBroadcastVideo").value = s.broadcast_video_url || "";
 
-        document.getElementById("heroTitle").textContent = `🏢 Welcome to ${state.storeTitle}`;
-        document.getElementById("heroTagline").textContent = s.tagline || "";
-        document.getElementById("sidebarFooterTitle").textContent = state.storeTitle;
-        document.getElementById("staffDashboardTitle").textContent = `🏢 Dashboard: ${state.storeTitle}`;
-
-        document.getElementById("setBusinessName").value = state.storeTitle;
-        document.getElementById("setTagline").value = s.tagline || "";
-        document.getElementById("settingsNoticeInput").value = s.active_notice || "";
-        document.getElementById("settingsVideoInput").value = s.broadcast_video_url || "";
-
-        const noticeEl = document.getElementById("activeNoticeBanner");
+        const noticeEl = document.getElementById("customerNoticeAlert");
         if (s.active_notice && s.active_notice.trim()) {
-          noticeEl.textContent = `📢 ${s.active_notice.trim()}`;
+          noticeEl.textContent = s.active_notice.trim();
           noticeEl.classList.remove("d-none");
         } else {
           noticeEl.classList.add("d-none");
         }
 
-        const vidBox = document.getElementById("broadcastVideoBox");
+        const vidEl = document.getElementById("customerBroadcastAlert");
         if (s.broadcast_video_url && s.broadcast_video_url.trim()) {
-          vidBox.innerHTML = `
-            <div class="card shadow-sm">
-              <div class="card-body py-2 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="small fw-bold text-primary"><i class="fa-solid fa-video me-1"></i>FEATURED BROADCAST VIDEO ADVERT &amp; ANNOUNCEMENT</span>
-                <a href="${escapeHtml(s.broadcast_video_url)}" target="_blank" class="btn btn-sm btn-outline-primary">Watch Broadcast Video</a>
+          vidEl.innerHTML = `<span class="small fw-semibold">Broadcast Video:</span> <a href="${escapeHtml(s.broadcast_video_url.trim())}" target="_blank">${escapeHtml(s.broadcast_video_url.trim())}</a>`;
+          vidEl.classList.remove("d-none");
+        } else {
+          vidEl.classList.add("d-none");
+        }
+
+        renderProducts();
+        updateCartSummary();
+      } catch (_) {}
+    }
+
+    async function loadChatMessages() {
+      const phone = document.getElementById("chatPhoneFilter").value.trim();
+      const box = document.getElementById("chatMessagesBox");
+      try {
+        const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
+        const res = await apiRequest(`/api/messages${query}`);
+        const msgs = res.messages || res.data || [];
+
+        if (!msgs.length) {
+          box.innerHTML = `<div class="text-muted small">No messages or receipts found${phone ? ` for ${escapeHtml(phone)}` : ""}.</div>`;
+          return;
+        }
+
+        box.innerHTML = msgs.map((m) => {
+          const proofImg = m.proof_url && String(m.proof_url).startsWith("http")
+            ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
+            : "";
+          return `
+            <div class="border-bottom pb-2 mb-2">
+              <div class="d-flex justify-content-between small">
+                <strong>${escapeHtml(m.sender || "Customer")}</strong>
+                <span class="text-muted">${escapeHtml(m.customer_phone || m.phone || "")} • ${escapeHtml(m.timestamp || "")}</span>
               </div>
+              <div>${m.sender === "System" ? (m.message || "") : escapeHtml(m.message || m.text || "")}</div>
+              ${proofImg}
             </div>
           `;
-          vidBox.classList.remove("d-none");
-        } else {
-          vidBox.classList.add("d-none");
-        }
-      } catch (_) {}
-    }
-
-    async function loadAnalyticsAndSales() {
-      try {
-        const res = await apiRequest("/api/sales");
-        const sum = res.summary || {};
-        document.getElementById("metricRevenue").textContent = fmtMoney(sum.total_revenue);
-        document.getElementById("metricProfit").textContent = fmtMoney(sum.total_profit);
-        document.getElementById("metricExpenses").textContent = fmtMoney(sum.total_expenses);
-        document.getElementById("metricCashflow").textContent = fmtMoney(sum.net_cashflow);
-
-        const sales = res.sales || [];
-        const tbody = document.getElementById("salesLogTableBody");
-        if (!sales.length) {
-          tbody.innerHTML = `<tr><td colspan="7" class="text-muted">No sales recorded yet.</td></tr>`;
-          return;
-        }
-        tbody.innerHTML = sales.map((s) => `
-          <tr>
-            <td>${escapeHtml(s.timestamp)}</td>
-            <td>${escapeHtml(s.item)}</td>
-            <td>${escapeHtml(s.qty)}</td>
-            <td>${fmtMoney(s.total)}</td>
-            <td>${fmtMoney(s.profit)}</td>
-            <td>${escapeHtml(s.payment_source || "")}</td>
-            <td>${escapeHtml(s.worker || "")}</td>
-          </tr>
-        `).join("");
-      } catch (_) {}
-    }
-
-    async function loadDebtors() {
-      try {
-        const res = await apiRequest("/api/debtors");
-        const items = res.debtors || [];
-        const tbody = document.getElementById("debtorsTableBody");
-        if (!items.length) {
-          tbody.innerHTML = `<tr><td colspan="6" class="text-muted">No debtors logged yet.</td></tr>`;
-          return;
-        }
-        tbody.innerHTML = items.map((d) => `
-          <tr>
-            <td class="fw-semibold">${escapeHtml(d.customer)}</td>
-            <td>${escapeHtml(d.phone || "-")}</td>
-            <td>${escapeHtml(d.items_bought || "-")}</td>
-            <td>${fmtMoney(d.amount)}</td>
-            <td>${escapeHtml(d.date || "")}</td>
-            <td><button type="button" class="btn btn-sm btn-outline-success" data-action="clear-debt" data-id="${escapeHtml(d.id)}">Clear Debt</button></td>
-          </tr>
-        `).join("");
-      } catch (_) {}
-    }
-
-    async function loadExpensesAndWorkers() {
-      if (!state.auth.logged_in || String(state.auth.role).toUpperCase() !== "CEO") return;
-      try {
-        const [expRes, wrkRes] = await Promise.all([apiRequest("/api/expenses"), apiRequest("/api/workers")]);
-        const exps = expRes.expenses || [];
-        document.getElementById("expensesTableBody").innerHTML = exps.length
-          ? exps.map((e) => `<tr><td>${escapeHtml(e.date || "")}</td><td>${escapeHtml(e.category || "")}</td><td>${fmtMoney(e.amount)}</td><td>${escapeHtml(e.note || "")}</td></tr>`).join("")
-          : `<tr><td colspan="4" class="text-muted">No expenses recorded yet.</td></tr>`;
-
-        const wrks = wrkRes.workers || [];
-        document.getElementById("workersTableBody").innerHTML = wrks.length
-          ? wrks.map((w) => `<tr><td>${escapeHtml(w.name || "")}</td><td>${escapeHtml(w.role || "")}</td><td>${escapeHtml(w.timestamp || "")}</td></tr>`).join("")
-          : `<tr><td colspan="3" class="text-muted">No workers added yet.</td></tr>`;
-      } catch (_) {}
-    }
-
-    function renderMessageList(container, msgs, isCustomerView = false) {
-      if (!msgs.length) {
-        container.innerHTML = `<div class="text-muted small">No messages in this conversation yet.</div>`;
-        return;
-      }
-      container.innerHTML = msgs.map((m) => {
-        const sender = m.sender || "Customer";
-        const proofHtml = m.proof_url && String(m.proof_url).startsWith("http")
-          ? `<div class="mt-2"><img src="${escapeHtml(m.proof_url)}" style="max-width:250px;" class="img-thumbnail" alt="Payment Proof" /></div>`
-          : "";
-        if (sender === "System") {
-          return `<div class="border rounded p-2 mb-2 bg-light"><div class="small text-muted">🤖 Receipt Notice (${escapeHtml(m.timestamp || "")})</div><div>${m.message || ""}</div></div>`;
-        }
-        const label = isCustomerView && sender === "Customer" ? "You" : sender;
-        return `
-          <div class="border-bottom pb-2 mb-2">
-            <div class="d-flex justify-content-between small">
-              <strong>${escapeHtml(label)}</strong>
-              <span class="text-muted">${escapeHtml(m.timestamp || "")}</span>
-            </div>
-            <div class="mt-1">${escapeHtml(m.message || "")}</div>
-            ${proofHtml}
-          </div>
-        `;
-      }).join("");
-    }
-
-    async function loadCustomerChat() {
-      const phone = document.getElementById("custChatPhone").value.trim() || state.activeCustPhone;
-      if (!phone) return;
-      state.activeCustPhone = phone;
-      const box = document.getElementById("custChatBox");
-      try {
-        const res = await apiRequest(`/api/messages?phone=${encodeURIComponent(phone)}`);
-        renderMessageList(box, res.messages || [], true);
+        }).join("");
+        showBanner(`Loaded ${msgs.length} chat record(s).`, "success");
       } catch (err) {
-        showBanner(`Chat load error: ${err.message}`, "danger");
-      }
-    }
-
-    async function loadStaffChat(preserveSelection = true) {
-      const sel = document.getElementById("staffChatThreadSel");
-      const prevPhone = preserveSelection ? sel.value : "";
-      const box = document.getElementById("staffChatMessagesBox");
-      try {
-        const res = await apiRequest("/api/messages");
-        state.threads = res.threads || [];
-        if (!state.threads.length) {
-          sel.innerHTML = `<option value="">No active chat threads</option>`;
-          box.innerHTML = `<div class="text-muted small">No active chat conversations yet.</div>`;
-          return;
-        }
-        sel.innerHTML = state.threads.map((t) => `<option value="${escapeHtml(t.phone)}">${escapeHtml(t.label)}</option>`).join("");
-        const targetPhone = prevPhone && state.threads.some((t) => t.phone === prevPhone) ? prevPhone : state.threads[0].phone;
-        sel.value = targetPhone;
-
-        const threadRes = await apiRequest(`/api/messages?phone=${encodeURIComponent(targetPhone)}`);
-        renderMessageList(box, threadRes.messages || [], false);
-      } catch (err) {
-        showBanner(`Staff chat error: ${err.message}`, "danger");
-      }
-    }
-
-    document.getElementById("staffChatThreadSel").addEventListener("change", () => loadStaffChat(true));
-
-    function renderReceiptsVault(container, receipts) {
-      if (!receipts.length) {
-        container.innerHTML = `<div class="text-muted small">No saved receipts found.</div>`;
-        return;
-      }
-      container.innerHTML = receipts.map((r) => {
-        let items = [];
-        try { items = JSON.parse(r.items_json || "[]"); } catch (_) {}
-        const rowsHtml = Array.isArray(items) && items.length
-          ? items.map((i) => `<tr><td>${escapeHtml(i.name)} (${Number(i.qty || 1)} x ${fmtMoney(i.price)})</td><td class="text-end">${fmtMoney(i.total)}</td></tr>`).join("")
-          : `<tr><td colspan="2">${escapeHtml(r.items_json || "")}</td></tr>`;
-
-        return `
-          <div class="thermal-box p-3 mb-3 shadow-sm">
-            <div class="text-center border-bottom pb-2 mb-2">
-              <div class="fw-bold">${escapeHtml(state.storeTitle.toUpperCase())}</div>
-              <div class="small">VERIFIED TRANSACTION RECEIPT</div>
-            </div>
-            <div class="small border-bottom pb-2 mb-2">
-              <div><b>Ref:</b> ${escapeHtml(r.payment_ref || "")}</div>
-              <div><b>Customer:</b> ${escapeHtml(r.customer_name || "")} (${escapeHtml(r.customer_phone || "")})</div>
-              <div><b>Gateway:</b> ${escapeHtml(r.payment_source || "")}</div>
-              <div><b>Cashier:</b> ${escapeHtml(r.cashier || "")}</div>
-              <div><b>Date:</b> ${escapeHtml(r.timestamp || "")}</div>
-            </div>
-            <table class="table table-sm table-borderless mb-2 small"><tbody>${rowsHtml}</tbody></table>
-            <div class="border-top pt-2 d-flex justify-content-between fw-bold">
-              <span>TOTAL PAID:</span>
-              <span>${fmtMoney(r.grand_total)}</span>
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    async function loadStaffVault() {
-      const q = document.getElementById("vaultSearchInput").value.trim().toLowerCase();
-      const box = document.getElementById("staffVaultList");
-      try {
-        const res = await apiRequest("/api/receipts");
-        let list = res.receipts || [];
-        if (q) {
-          list = list.filter((r) =>
-            String(r.payment_ref || "").toLowerCase().includes(q) ||
-            String(r.customer_name || "").toLowerCase().includes(q) ||
-            String(r.customer_phone || "").toLowerCase().includes(q)
-          );
-        }
-        renderReceiptsVault(box, list);
-      } catch (err) {
-        showBanner(`Vault error: ${err.message}`, "danger");
-      }
-    }
-
-    document.getElementById("vaultSearchInput").addEventListener("input", loadStaffVault);
-
-    async function loadCustomerVault() {
-      const phone = document.getElementById("custVaultPhone").value.trim() || state.activeCustPhone;
-      const box = document.getElementById("custVaultList");
-      if (!phone) {
-        box.innerHTML = `<div class="text-muted small">Enter your phone number to view saved receipts.</div>`;
-        return;
-      }
-      try {
-        const res = await apiRequest(`/api/receipts?phone=${encodeURIComponent(phone)}`);
-        renderReceiptsVault(box, res.receipts || []);
-      } catch (err) {
-        showBanner(`Receipt lookup error: ${err.message}`, "danger");
+        showBanner(`Failed to load chat: ${err.message}`, "danger");
       }
     }
 
     function switchSection(sectionId) {
-      if (sectionId === "staffSection" && !state.auth.logged_in) {
-        showBanner("Please log in using Staff/Admin Login on the left sidebar first.", "warning");
+      if (sectionId === "staffSection" && !state.isLoggedIn) {
+        showBanner("Please log in using the left sidebar first to open the Staff / Admin Panel.", "warning");
         return;
       }
       document.getElementById("customerSection").classList.toggle("d-none", sectionId !== "customerSection");
       document.getElementById("staffSection").classList.toggle("d-none", sectionId !== "staffSection");
-      document.querySelectorAll(".nav-pill-btn").forEach((b) => b.classList.toggle("active", b.dataset.section === sectionId));
-      if (sectionId === "staffSection") {
-        updateRoleVisibility();
-        loadAnalyticsAndSales();
-        loadDebtors();
-        loadExpensesAndWorkers();
-        loadStaffChat(true);
-        loadStaffVault();
-      }
+      document.querySelectorAll(".nav-pill-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.section === sectionId);
+      });
     }
 
     function switchCustomerTab(tabId) {
-      document.querySelectorAll(".customer-tab-pane").forEach((p) => p.classList.toggle("d-none", p.id !== tabId));
-      document.querySelectorAll("#customerTabs .nav-link").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
-      if (tabId === "chatTab") {
-        if (state.activeCustName && !document.getElementById("custChatName").value) document.getElementById("custChatName").value = state.activeCustName;
-        if (state.activeCustPhone && !document.getElementById("custChatPhone").value) document.getElementById("custChatPhone").value = state.activeCustPhone;
-        loadCustomerChat();
-      } else if (tabId === "vaultTab") {
-        if (state.activeCustPhone && !document.getElementById("custVaultPhone").value) document.getElementById("custVaultPhone").value = state.activeCustPhone;
-        loadCustomerVault();
-      }
+      document.querySelectorAll(".customer-tab-pane").forEach((pane) => {
+        pane.classList.toggle("d-none", pane.id !== tabId);
+      });
+      document.querySelectorAll("#customerTabs .nav-link").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.tab === tabId);
+      });
+      if (tabId === "chatTab") loadChatMessages();
     }
 
     function switchStaffTab(tabId) {
-      document.querySelectorAll(".staff-tab-pane").forEach((p) => p.classList.toggle("d-none", p.id !== tabId));
-      document.querySelectorAll("#staffTabs .nav-link").forEach((b) => b.classList.toggle("active", b.dataset.tab === tabId));
-      if (tabId === "dashAnalyticsTab") loadAnalyticsAndSales();
-      if (tabId === "debtorsTab") loadDebtors();
-      if (tabId === "staffChatTab") loadStaffChat(true);
-      if (tabId === "staffVaultTab") loadStaffVault();
-      if (tabId === "expensesTab" || tabId === "workersTab") loadExpensesAndWorkers();
+      document.querySelectorAll(".staff-tab-pane").forEach((pane) => {
+        pane.classList.toggle("d-none", pane.id !== tabId);
+      });
+      document.querySelectorAll("#staffTabs .nav-link").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.tab === tabId);
+      });
     }
 
-    document.getElementById("shopCatSelect").addEventListener("change", renderShopProducts);
-    document.getElementById("shopSearchInput").addEventListener("input", renderShopProducts);
-
-    // Single Delegated Click Handler
     document.addEventListener("click", async (event) => {
       const target = event.target.closest("[data-action]");
       if (!target) return;
+
       const action = target.dataset.action;
 
       if (action === "dismiss-banner") {
@@ -1394,80 +964,46 @@
         const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
         if (!prod) return;
         const card = target.closest(".card");
-        const unitChoice = card.querySelector(".shop-unit-sel").value;
-        const qtyChoice = Math.max(1, Number(card.querySelector(".shop-qty-inp").value || 1));
-        const mLbl = prod.unit_main_label || "Carton";
-        const pLbl = prod.unit_pack_label || "Pack";
-        const unitPrice = unitChoice === mLbl
-          ? Number(prod.price_carton ?? 0)
-          : unitChoice === pLbl
-            ? Number(prod.price_pack ?? 0)
-            : Number(prod.price_retail ?? 0);
-        state.cart.push({
-          product_id: prod.id,
-          name: prod.name,
-          unit: unitChoice,
-          qty: qtyChoice,
-          unit_price: unitPrice,
-          total_price: unitPrice * qtyChoice,
-        });
-        updateCartUI();
-        showBanner(`Added ${qtyChoice} ${unitChoice}(s) of "${prod.name}" to cart!`, "success");
+        const unit = card ? card.querySelector(".card-unit-sel").value : (prod.unit_retail_label || "Retail Unit");
+        const qty = card ? Math.max(1, Number(card.querySelector(".card-qty-inp").value || 1)) : 1;
+        const unitPrice = getPriceForUnit(prod, unit);
+        const existing = state.cart.find((c) => String(c.id) === String(prod.id) && c.unit === unit);
+        if (existing) {
+          existing.qty += qty;
+        } else {
+          state.cart.push({ id: prod.id, name: prod.name, unit, price: unitPrice, qty });
+        }
+        updateCartSummary();
+        showBanner(`Added ${qty} ${unit}(s) of "${prod.name}" to cart.`, "success");
       } else if (action === "remove-cart-item") {
         state.cart.splice(Number(target.dataset.index), 1);
-        updateCartUI();
+        updateCartSummary();
+        showBanner("Removed item from cart.", "info");
       } else if (action === "clear-cart") {
         state.cart = [];
-        updateCartUI();
+        updateCartSummary();
         showBanner("Cart cleared.", "info");
-      } else if (action === "add-special-row") {
-        const container = document.getElementById("specialItemsContainer");
-        const idx = container.querySelectorAll(".special-item-row").length + 1;
-        const div = document.createElement("div");
-        div.className = "row g-2 mb-2 special-item-row";
-        div.innerHTML = `
-          <div class="col-md-8"><input type="text" class="form-control special-item-name" placeholder="Item #${idx} Name" /></div>
-          <div class="col-md-4"><input type="number" min="1" value="1" class="form-control special-item-qty" placeholder="Qty" /></div>
-        `;
-        container.appendChild(div);
-      } else if (action === "load-customer-chat") {
-        await loadCustomerChat();
-      } else if (action === "load-customer-vault") {
-        await loadCustomerVault();
-      } else if (action === "load-staff-chat") {
-        await loadStaffChat(true);
+      } else if (action === "load-chat") {
+        await loadChatMessages();
       } else if (action === "refresh-products") {
         await loadProducts();
-        showBanner("Inventory refreshed from Firestore.", "success");
       } else if (action === "delete-product") {
         try {
           await apiRequest(`/api/products/${encodeURIComponent(target.dataset.id)}`, { method: "DELETE" });
           await loadProducts();
           showBanner("Product deleted from Firestore.", "success");
         } catch (err) {
-          showBanner(`Delete error: ${err.message}`, "danger");
+          showBanner(`Failed to delete product: ${err.message}`, "danger");
         }
-      } else if (action === "clear-debt") {
-        try {
-          await apiRequest("/api/debtors", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ customer: "", amount: 0, debt_id: target.dataset.id, clear_debt: true }),
-          });
-          await loadDebtors();
-          showBanner("Debt cleared!", "success");
-        } catch (err) {
-          showBanner(`Debt clear error: ${err.message}`, "danger");
-        }
-      } else if (action === "pos-record-debt") {
-        const prodId = document.getElementById("posSelItem").value;
+      } else if (action === "pos-debt") {
+        const prodId = document.getElementById("posProductSelect").value;
         const prod = state.products.find((p) => String(p.id) === String(prodId));
-        const unitType = document.getElementById("posSaleUnit").value;
-        const qty = Math.max(1, Number(document.getElementById("posSaleQty").value || 1));
-        const custName = document.getElementById("posCustName").value.trim();
-        const custPhone = document.getElementById("posCustPhone").value.trim();
-        if (!custName) {
-          showBanner("Customer name required for Debt Evidence!", "danger");
+        const unitType = document.getElementById("posUnitSelect").value;
+        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
+        const custName = document.getElementById("posCustomerName").value.trim();
+        const phone = document.getElementById("posPhone").value.trim();
+        if (!custName || custName === "Walk-in Customer") {
+          showBanner("Enter the customer's name to record a debt.", "warning");
           return;
         }
         try {
@@ -1480,71 +1016,49 @@
               unit_type: unitType,
               qty,
               customer_name: custName,
-              customer_phone: custPhone,
-              worker: state.auth.user || "admin",
+              customer_phone: phone,
+              worker: state.user || "admin",
               record_debt: true,
             }),
           });
-          await Promise.all([loadProducts(), loadDebtors()]);
+          await loadProducts();
           showBanner(`Debt logged for ${custName}!`, "warning");
         } catch (err) {
-          showBanner(`Debt log error: ${err.message}`, "danger");
-        }
-      } else if (action === "staff-one-tap-approve") {
-        const activePhone = document.getElementById("staffChatThreadSel").value;
-        const paySource = document.getElementById("staffPaySourceChoice").value;
-        if (!activePhone) {
-          showBanner("Select a customer chat thread first.", "warning");
-          return;
-        }
-        try {
-          const res = await apiRequest("/api/receipts/approve", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              customer_phone: activePhone,
-              payment_source: paySource,
-              cashier: state.auth.user || "admin",
-            }),
-          });
-          await Promise.all([loadStaffChat(true), loadStaffVault(), loadAnalyticsAndSales()]);
-          showBanner(`Approved [${res.payment_ref}] & sent receipt to chat!`, "success");
-        } catch (err) {
-          showBanner(`Approval error: ${err.message}`, "danger");
+          showBanner(`Failed to log debt: ${err.message}`, "danger");
         }
       }
     });
 
-    // Login & Logout
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (document.getElementById("loginPortalChoice").value === "customer") {
-        switchSection("customerSection");
-        return;
-      }
       const username = document.getElementById("loginUsername").value.trim();
       const password = document.getElementById("loginPassword").value;
+      const mode = document.getElementById("loginMode").value;
+
       try {
         const res = await apiRequest("/api/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password }),
+          body: JSON.stringify({ username, password, mode }),
         });
-        state.auth = { logged_in: true, user: res.user || username, role: res.role || "Staff" };
+        state.isLoggedIn = true;
+        state.user = res;
         document.getElementById("authBadge").className = "badge bg-success";
-        document.getElementById("authBadge").textContent = `${state.auth.user} (${state.auth.role})`;
-        document.getElementById("staffSessionBadge").textContent = `${state.auth.user} • ${state.auth.role}`;
+        document.getElementById("authBadge").textContent = `${res.role || "CEO"}: ${res.username || username}`;
+        document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username}`;
         document.getElementById("logoutBtn").classList.remove("d-none");
         document.getElementById("loginPassword").value = "";
         switchSection("staffSection");
-        showBanner(`Welcome back, ${state.auth.user}!`, "success");
+        await loadProducts();
+        showBanner(`Logged in as ${res.username || username}.`, "success");
       } catch (err) {
-        showBanner(err.message, "danger");
+        showBanner(`Login failed: ${err.message}`, "danger");
       }
     });
 
     document.getElementById("logoutBtn").addEventListener("click", () => {
-      state.auth = { logged_in: false, user: null, role: null };
+      state.isLoggedIn = false;
+      state.user = null;
       document.getElementById("authBadge").className = "badge bg-secondary";
       document.getElementById("authBadge").textContent = "Customer Mode";
       document.getElementById("logoutBtn").classList.add("d-none");
@@ -1552,12 +1066,11 @@
       showBanner("Logged out.", "info");
     });
 
-    // Add / Update Product
     document.getElementById("addProductForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const fd = new FormData(e.target);
+      const formData = new FormData(e.target);
       try {
-        const res = await apiRequest("/api/products", { method: "POST", body: fd });
+        await apiRequest("/api/products", { method: "POST", body: formData });
         e.target.reset();
         document.getElementById("actionAddNew").checked = true;
         toggleUpdateMode();
@@ -1573,275 +1086,228 @@
         document.getElementById("prodPriceRetail").value = "0.00";
         document.getElementById("prodRetailPerPack").value = "1";
         await loadProducts();
-        showBanner(`Saved "${res.product?.name || "item"}" to Firestore!`, "success");
+        showBanner("Product inventory saved to Firestore and synced!", "success");
       } catch (err) {
-        showBanner(err.message, "danger");
+        showBanner(`Failed to save product: ${err.message}`, "danger");
       }
     });
 
-    // POS Cash Sale
+    document.getElementById("customerOrderForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!state.cart.length) {
+        showBanner("Add at least one product to your cart before submitting an order.", "warning");
+        return;
+      }
+      const customerName = document.getElementById("orderCustomerName").value.trim();
+      const phone = document.getElementById("orderPhone").value.trim();
+      const note = document.getElementById("orderNote").value.trim();
+      const mappedItems = state.cart.map((i) => ({
+        name: i.name,
+        unit: i.unit || "Unit",
+        qty: i.qty,
+        total_price: Number(i.price || 0) * Number(i.qty || 1),
+      }));
+
+      try {
+        const res = await apiRequest("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customer: customerName,
+            contact_phone: phone,
+            notes: note,
+            items: mappedItems,
+          }),
+        });
+        state.cart = [];
+        updateCartSummary();
+        document.getElementById("chatPhoneFilter").value = phone;
+        document.getElementById("chatSendPhone").value = phone;
+        switchCustomerTab("chatTab");
+        await loadChatMessages();
+        showBanner(`Order sent to Live Chat! Ref: ${res.payment_ref || ""}`, "success");
+      } catch (err) {
+        showBanner(`Failed to send order: ${err.message}`, "danger");
+      }
+    });
+
+    document.getElementById("multiRequestForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const customerName = document.getElementById("reqName").value.trim();
+      const phone = document.getElementById("reqPhone").value.trim();
+      const itemsText = document.getElementById("reqItemsText").value.trim();
+      try {
+        await apiRequest("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            customer: customerName,
+            contact_phone: phone,
+            special_items: [{ item: itemsText, qty: 1 }],
+          }),
+        });
+        e.target.reset();
+        document.getElementById("chatPhoneFilter").value = phone;
+        document.getElementById("chatSendPhone").value = phone;
+        switchCustomerTab("chatTab");
+        await loadChatMessages();
+        showBanner("Multi-item request sent to Live Chat!", "success");
+      } catch (err) {
+        showBanner(`Failed to send request: ${err.message}`, "danger");
+      }
+    });
+
+    document.getElementById("chatSendForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const phone = document.getElementById("chatSendPhone").value.trim();
+      const text = document.getElementById("chatSendText").value.trim();
+      const proofFile = document.getElementById("chatProofFile").files[0];
+      const fd = new FormData();
+      fd.append("phone", phone);
+      fd.append("sender", state.isLoggedIn ? "Staff" : "Customer");
+      fd.append("text", text);
+      if (proofFile) fd.append("proof_file", proofFile);
+
+      try {
+        await apiRequest("/api/messages", { method: "POST", body: fd });
+        document.getElementById("chatSendText").value = "";
+        document.getElementById("chatProofFile").value = "";
+        document.getElementById("chatPhoneFilter").value = phone;
+        await loadChatMessages();
+        showBanner("Message sent!", "success");
+      } catch (err) {
+        showBanner(`Failed to send message: ${err.message}`, "danger");
+      }
+    });
+
     document.getElementById("posSaleForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const prodId = document.getElementById("posSelItem").value;
+      const prodId = document.getElementById("posProductSelect").value;
+      const unitType = document.getElementById("posUnitSelect").value;
+      const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
       const prod = state.products.find((p) => String(p.id) === String(prodId));
-      const unitType = document.getElementById("posSaleUnit").value;
-      const qty = Math.max(1, Number(document.getElementById("posSaleQty").value || 1));
-      const custName = document.getElementById("posCustName").value.trim() || "Walk-in Customer";
-      const custPhone = document.getElementById("posCustPhone").value.trim() || "N/A";
-      const paySource = document.getElementById("posPaySource").value;
-
+      if (!prod) {
+        showBanner("Please select a valid product.", "warning");
+        return;
+      }
+      const unitPrice = getPriceForUnit(prod, unitType);
+      const totalAmount = unitPrice * qty;
       try {
         const res = await apiRequest("/api/sales", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            product_id: prodId,
-            item_name: prod ? prod.name : "Item",
+            product_id: prod.id,
+            item_name: prod.name,
             unit_type: unitType,
             qty,
-            customer_name: custName,
-            customer_phone: custPhone,
-            payment_source: paySource,
-            worker: state.auth.user || "admin",
+            unit_price: unitPrice,
+            total: totalAmount,
+            customer_name: document.getElementById("posCustomerName").value.trim() || "Walk-in Customer",
+            customer_phone: document.getElementById("posPhone").value.trim() || "N/A",
+            payment_source: document.getElementById("posPaymentMethod").value,
+            worker: state.user?.username || "admin",
             record_debt: false,
           }),
         });
         const rec = res.receipt || {};
-        const itemsRows = (rec.sold_items || []).map((i) =>
-          `<tr><td><b>${escapeHtml(i.name)}</b><br><span class="small text-muted">${i.qty} x ${fmtMoney(i.price)} (${escapeHtml(i.unit)})</span></td><td class="text-end fw-bold">${fmtMoney(i.total)}</td></tr>`
-        ).join("");
-        const waMsg = encodeURIComponent(
-          `🏢 *${state.storeTitle}*\n*${rec.type || "Official Sales Receipt"}*\n👤 Customer: ${custName}\n📞 Phone: ${custPhone}\n💰 Grand Total: ${fmtMoney(rec.grand_total)}\nRef: ${rec.payment_ref || ""}`
-        );
-        const cleanDigits = custPhone.replace(/\D/g, "");
-        const waHref = cleanDigits ? `https://wa.me/${cleanDigits}?text=${waMsg}` : `https://wa.me/?text=${waMsg}`;
-
-        document.getElementById("posReceiptPreview").innerHTML = `
-          <div class="thermal-box p-3 mb-2">
-            <div class="text-center border-bottom pb-2 mb-2">
-              <div class="fw-bold">${escapeHtml(state.storeTitle.toUpperCase())}</div>
-              <div class="small fw-bold">${escapeHtml(rec.type || "OFFICIAL SALES RECEIPT")}</div>
-            </div>
-            <div class="small border-bottom pb-2 mb-2">
-              <div><b>DATE:</b> ${escapeHtml(rec.date || "")}</div>
-              <div><b>CUSTOMER:</b> ${escapeHtml(custName)}</div>
-              <div><b>PHONE:</b> ${escapeHtml(custPhone)}</div>
-              <div><b>REF CODE:</b> ${escapeHtml(rec.payment_ref || "")}</div>
-              <div><b>GATEWAY:</b> ${escapeHtml(paySource)}</div>
-              <div><b>CASHIER:</b> ${escapeHtml(rec.cashier || "admin")}</div>
-            </div>
-            <table class="table table-sm table-borderless mb-2"><tbody>${itemsRows}</tbody></table>
-            <div class="border-top pt-2 fw-bold d-flex justify-content-between">
-              <span>GRAND TOTAL:</span>
-              <span>${fmtMoney(rec.grand_total)}</span>
-            </div>
+        document.getElementById("posReceiptBox").innerHTML = `
+          <div class="alert alert-success py-2 small">
+            <strong>Receipt Saved (${escapeHtml(rec.payment_ref || "")}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) — <strong>${state.currency}${totalAmount.toFixed(2)}</strong>
           </div>
-          <a href="${waHref}" target="_blank" class="btn btn-success w-100">💬 Send Thermal Receipt via WhatsApp</a>
         `;
-        await Promise.all([loadProducts(), loadAnalyticsAndSales(), loadStaffVault()]);
-        showBanner("Sale Recorded & Permanent Receipt Saved!", "success");
+        await loadProducts();
+        showBanner(`Recorded sale of ${state.currency}${totalAmount.toFixed(2)} and updated stock.`, "success");
       } catch (err) {
-        showBanner(err.message, "danger");
+        showBanner(`Failed to record sale: ${err.message}`, "danger");
       }
     });
 
-    // Cart Checkout Order
-    document.getElementById("checkoutCartForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const custName = document.getElementById("chkNameInput").value.trim();
-      const custPhone = document.getElementById("chkPhoneInput").value.trim();
-      const notes = document.getElementById("chkAddressInput").value.trim();
-      try {
-        const res = await apiRequest("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customer: custName,
-            contact_phone: custPhone,
-            notes,
-            items: state.cart,
-          }),
-        });
-        state.cart = [];
-        state.activeCustName = custName;
-        state.activeCustPhone = res.customer_phone || custPhone;
-        updateCartUI();
-        document.getElementById("custChatName").value = state.activeCustName;
-        document.getElementById("custChatPhone").value = state.activeCustPhone;
-        switchCustomerTab("chatTab");
-        await loadCustomerChat();
-        showBanner(`Order & chat opened! Reference: ${res.payment_ref}`, "success");
-      } catch (err) {
-        showBanner(err.message, "danger");
-      }
-    });
-
-    // Multi-Item Special Request
-    document.getElementById("specialRequestForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const custName = document.getElementById("reqCustName").value.trim();
-      const custPhone = document.getElementById("reqCustPhone").value.trim();
-      const specialItems = Array.from(document.querySelectorAll(".special-item-row")).map((row) => ({
-        item: row.querySelector(".special-item-name").value.trim(),
-        qty: Math.max(1, Number(row.querySelector(".special-item-qty").value || 1)),
-      }));
-      try {
-        const res = await apiRequest("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customer: custName,
-            contact_phone: custPhone,
-            special_items: specialItems,
-          }),
-        });
-        state.activeCustName = custName;
-        state.activeCustPhone = res.customer_phone || custPhone;
-        document.getElementById("custChatName").value = state.activeCustName;
-        document.getElementById("custChatPhone").value = state.activeCustPhone;
-        switchCustomerTab("chatTab");
-        await loadCustomerChat();
-        showBanner(`Special request sent to chat! Reference: ${res.payment_ref}`, "success");
-      } catch (err) {
-        showBanner(err.message, "danger");
-      }
-    });
-
-    // Customer Chat Message / Proof
-    document.getElementById("customerChatForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const phone = document.getElementById("custChatPhone").value.trim();
-      const name = document.getElementById("custChatName").value.trim() || "Customer";
-      if (!phone) {
-        showBanner("Please enter your phone number first.", "warning");
-        return;
-      }
-      const fd = new FormData();
-      fd.append("sender", "Customer");
-      fd.append("customer_phone", phone);
-      fd.append("customer_name", name);
-      fd.append("message", document.getElementById("custChatInput").value.trim());
-      const proofFile = document.getElementById("custChatProof").files[0];
-      if (proofFile) fd.append("proof_file", proofFile);
-
-      try {
-        await apiRequest("/api/messages", { method: "POST", body: fd });
-        document.getElementById("custChatInput").value = "";
-        document.getElementById("custChatProof").value = "";
-        state.activeCustPhone = phone;
-        state.activeCustName = name;
-        await loadCustomerChat();
-        showBanner("Message sent!", "success");
-      } catch (err) {
-        showBanner(err.message, "danger");
-      }
-    });
-
-    // Staff Chat Reply
-    document.getElementById("staffChatReplyForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const phone = document.getElementById("staffChatThreadSel").value;
-      const reply = document.getElementById("staffReplyText").value.trim();
-      if (!phone || !reply) return;
-      const thread = state.threads.find((t) => t.phone === phone);
-      try {
-        await apiRequest("/api/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sender: `Staff (${state.auth.user || "admin"})`,
-            customer_phone: phone,
-            customer_name: thread ? thread.name : "Customer",
-            message: reply,
-          }),
-        });
-        document.getElementById("staffReplyText").value = "";
-        await loadStaffChat(true);
-      } catch (err) {
-        showBanner(err.message, "danger");
-      }
-    });
-
-    // Debtors, Settings, Expenses & Workers
-    document.getElementById("debtForm").addEventListener("submit", async (e) => {
+    document.getElementById("debtorForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       try {
         await apiRequest("/api/debtors", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            customer: document.getElementById("newDebtCust").value.trim(),
-            phone: document.getElementById("newDebtPhone").value.trim(),
-            items_bought: document.getElementById("newDebtItems").value.trim(),
-            amount: Number(document.getElementById("newDebtAmt").value),
+            customer: document.getElementById("debtorName").value.trim(),
+            phone: document.getElementById("debtorPhone").value.trim(),
+            amount: Number(document.getElementById("debtorAmount").value),
+            items_bought: document.getElementById("debtorNote").value.trim(),
           }),
         });
         e.target.reset();
-        await loadDebtors();
-        showBanner("New debt logged to cloud.", "success");
+        showBanner("Debtor saved to Firestore.", "success");
       } catch (err) {
-        showBanner(err.message, "danger");
+        showBanner(`Failed to save debtor: ${err.message}`, "danger");
       }
     });
 
-    document.getElementById("noticeForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const fd = new FormData(e.target);
-      try {
-        await apiRequest("/api/settings", { method: "POST", body: fd });
-        document.getElementById("broadcastFileUploader").value = "";
-        await loadSettings();
-        showBanner("Notice board and broadcast video updated successfully!", "success");
-      } catch (err) {
-        showBanner(err.message, "danger");
-      }
-    });
-
-    document.getElementById("expenseEntryForm").addEventListener("submit", async (e) => {
+    document.getElementById("expenseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       try {
         await apiRequest("/api/expenses", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            category: document.getElementById("expCatSel").value,
-            amount: Number(document.getElementById("expValInput").value),
-            note: document.getElementById("expNoteInput").value.trim(),
+            category: document.getElementById("expenseCategory").value.trim() || document.getElementById("expenseTitle").value.trim() || "Operations",
+            amount: Number(document.getElementById("expenseAmount").value),
+            note: document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim(),
           }),
         });
         e.target.reset();
-        await Promise.all([loadExpensesAndWorkers(), loadAnalyticsAndSales()]);
-        showBanner("Expense recorded.", "success");
+        document.getElementById("expenseCategory").value = "Operations";
+        showBanner("Expense saved to Firestore.", "success");
       } catch (err) {
-        showBanner(err.message, "danger");
+        showBanner(`Failed to save expense: ${err.message}`, "danger");
       }
     });
 
-    document.getElementById("workerAddForm").addEventListener("submit", async (e) => {
+    document.getElementById("workerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       try {
         await apiRequest("/api/workers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: document.getElementById("workerNameInput").value.trim(),
-            role: document.getElementById("workerRoleSel").value,
-            password: document.getElementById("workerPassInput").value,
+            name: document.getElementById("workerName").value.trim(),
+            role: document.getElementById("workerRole").value.trim() || "Staff",
+            password: document.getElementById("workerPassword").value,
           }),
         });
         e.target.reset();
-        await loadExpensesAndWorkers();
-        showBanner("Worker created!", "success");
+        document.getElementById("workerRole").value = "Staff";
+        showBanner("Worker saved to Firestore.", "success");
       } catch (err) {
-        showBanner(err.message, "danger");
+        showBanner(`Failed to save worker: ${err.message}`, "danger");
       }
     });
 
-    (async function initPortal() {
-      updateCartUI();
+    document.getElementById("settingsForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        await apiRequest("/api/settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            business_name: document.getElementById("setBusinessName").value.trim(),
+            tagline: document.getElementById("setTagline").value.trim(),
+            active_notice: document.getElementById("setNotice").value.trim(),
+            broadcast_video_url: document.getElementById("setBroadcastVideo").value.trim(),
+            currency: state.currency,
+          }),
+        });
+        await loadSettings();
+        showBanner("Settings saved to Firestore.", "success");
+      } catch (err) {
+        showBanner(`Failed to save settings: ${err.message}`, "danger");
+      }
+    });
+
+    (async function initApp() {
+      updateCartSummary();
       await loadSettings();
       await loadProducts();
-      showBanner("Connected to Sammyreks Business Center.", "success");
     })();
   </script>
 </body>

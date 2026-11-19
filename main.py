@@ -88,14 +88,6 @@ def serialize_doc(doc) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Pydantic Models
 # ---------------------------------------------------------------------------
-class MessagePayload(BaseModel):
-    phone: str
-    sender: str = "customer"
-    text: str
-    order_items: Optional[List[Dict[str, Any]]] = None
-    total_amount: Optional[float] = None
-
-
 class SalePayload(BaseModel):
     customer_name: str = "Walk-in Customer"
     phone: str = ""
@@ -123,6 +115,8 @@ class WorkerPayload(BaseModel):
     role: str = "Staff"
     phone: str = ""
     shift: str = ""
+    username: str = ""
+    password: str = ""
 
 
 class SettingsPayload(BaseModel):
@@ -134,7 +128,7 @@ class SettingsPayload(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Health, Frontend & Auth Routes
+# Health, Frontend & Universal Portal Login Routes
 # ---------------------------------------------------------------------------
 @app.get("/health")
 def health_check():
@@ -163,6 +157,10 @@ def home(request: Request):
 
 @app.post("/api/login")
 @app.post("/login")
+@app.post("/api/auth/login")
+@app.post("/auth/login")
+@app.post("/api/staff/login")
+@app.post("/staff/login")
 async def portal_login(request: Request):
     content_type = request.headers.get("content-type", "")
     if "application/json" in content_type:
@@ -170,29 +168,60 @@ async def portal_login(request: Request):
     else:
         data = dict(await request.form())
 
-    username = str(data.get("username") or data.get("user") or "admin").strip()
-    password = str(data.get("password") or "").strip()
+    username = str(
+        data.get("username")
+        or data.get("user")
+        or data.get("email")
+        or data.get("staff_id")
+        or "admin"
+    ).strip()
+    password = str(
+        data.get("password")
+        or data.get("passcode")
+        or data.get("pin")
+        or ""
+    ).strip()
+    portal_mode = str(data.get("mode") or data.get("role") or "admin").strip()
 
-    if ADMIN_PASSWORD:
-        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+    if not password:
+        raise HTTPException(status_code=400, detail="Please enter a password")
+
+    # 1. Check Admin credentials from Railway Variables (or allow first-time setup if unset)
+    if username.lower() == ADMIN_USERNAME.lower():
+        if not ADMIN_PASSWORD or password == ADMIN_PASSWORD:
             return {
                 "status": "success",
+                "success": True,
                 "authenticated": True,
                 "role": "admin",
+                "mode": portal_mode,
                 "username": username,
+                "name": "Admin",
+                "token": f"admin-{uuid.uuid4().hex}",
             }
-        raise HTTPException(status_code=401, detail="Invalid username or password")
 
-    # Fallback when ADMIN_PASSWORD is not yet set in Railway Variables
-    if username and password:
-        return {
-            "status": "success",
-            "authenticated": True,
-            "role": "admin",
-            "username": username,
-        }
+    # 2. Check Staff/Worker records stored in Firestore
+    try:
+        db = get_db()
+        for doc in db.collection("workers").stream():
+            w = doc.to_dict() or {}
+            w_user = str(w.get("username") or w.get("name") or "").strip()
+            w_pass = str(w.get("password") or "").strip()
+            if w_user.lower() == username.lower() and w_pass and w_pass == password:
+                return {
+                    "status": "success",
+                    "success": True,
+                    "authenticated": True,
+                    "role": w.get("role", "staff").lower(),
+                    "mode": portal_mode,
+                    "username": w_user,
+                    "name": w.get("name", w_user),
+                    "token": f"staff-{uuid.uuid4().hex}",
+                }
+    except Exception:
+        pass
 
-    raise HTTPException(status_code=400, detail="Please enter a username and password")
+    raise HTTPException(status_code=401, detail="Invalid username or password")
 
 
 # ---------------------------------------------------------------------------

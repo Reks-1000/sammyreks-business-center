@@ -44,6 +44,35 @@
     .order-entry {
       cursor: pointer;
     }
+    .thermal-paper {
+      font-family: "Courier New", Courier, monospace;
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+      background: #ffffff;
+      color: #111827;
+      border: 1px dashed #6b7280;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #thermalReceiptModal,
+      #thermalReceiptModal * {
+        visibility: visible !important;
+      }
+      #thermalReceiptModal {
+        position: static !important;
+        left: 0 !important;
+        top: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -685,18 +714,40 @@
     </div>
   </div>
 
+  <!-- Thermal Receipt Modal -->
+  <div class="modal fade" id="thermalReceiptModal" tabindex="-1" aria-labelledby="thermalReceiptModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header no-print">
+          <h5 class="modal-title" id="thermalReceiptModalLabel"><i class="fa-solid fa-receipt me-2"></i>Thermal Receipt</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="thermalReceiptBody"></div>
+        <div class="modal-footer no-print">
+          <button type="button" class="btn btn-dark btn-sm" data-action="print-thermal-receipt">
+            <i class="fa-solid fa-print me-1"></i>Print Receipt
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     const state = {
       products: [],
       cart: [],
+      ordersFeed: [],
       isLoggedIn: false,
       user: null,
       currency: "₦",
+      businessName: "Sammyreks Business Center",
     };
 
     const productAdModalEl = document.getElementById("productAdModal");
     const productAdModal = new bootstrap.Modal(productAdModalEl);
+    const thermalReceiptModal = new bootstrap.Modal(document.getElementById("thermalReceiptModal"));
 
     productAdModalEl.addEventListener("hidden.bs.modal", () => {
       document.getElementById("productAdModalBody").innerHTML = "";
@@ -725,6 +776,27 @@
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    }
+
+    function openThermalReceipt({ title = "RECEIPT", ref = "", customer = "Customer", phone = "", timestamp = "", lines = [], total = "" }) {
+      const linesHtml = lines.map((l) => `<div>${escapeHtml(l)}</div>`).join("");
+      document.getElementById("thermalReceiptBody").innerHTML = `
+        <div class="thermal-paper">
+          <div class="text-center fw-bold">${escapeHtml(state.businessName)}</div>
+          <div class="text-center small">${escapeHtml(title)}</div>
+          <hr class="my-2" />
+          <div><strong>Customer:</strong> ${escapeHtml(customer)}</div>
+          <div><strong>Phone:</strong> ${escapeHtml(phone || "N/A")}</div>
+          ${ref ? `<div><strong>Ref:</strong> ${escapeHtml(ref)}</div>` : ""}
+          ${timestamp ? `<div><strong>Date:</strong> ${escapeHtml(timestamp)}</div>` : ""}
+          <hr class="my-2" />
+          ${linesHtml}
+          <hr class="my-2" />
+          ${total ? `<div class="fw-bold">TOTAL: ${escapeHtml(total)}</div>` : ""}
+          <div class="text-center small mt-2">Thank you for your patronage!</div>
+        </div>
+      `;
+      thermalReceiptModal.show();
     }
 
     function hasValidVideoUrl(videoUrl) {
@@ -1026,6 +1098,7 @@
         const res = await apiRequest("/api/settings");
         const s = res.settings || res.data || {};
         if (s.business_name) {
+          state.businessName = s.business_name;
           document.getElementById("businessTitleDisplay").textContent = s.business_name;
           document.getElementById("sidebarBusinessName").textContent = s.business_name;
           document.getElementById("setBusinessName").value = s.business_name;
@@ -1086,53 +1159,56 @@
       }
     }
 
-    function formatOrderEntry(o) {
-      const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
-      const orderType = hasSpecial ? "Multi-Item Request" : "Cart Order";
-      const badgeClass = hasSpecial ? "bg-info text-dark" : "bg-primary";
-      const phoneVal = o.contact_phone || o.phone || "";
-      const refHtml = o.payment_ref ? `<div class="small text-muted">Ref: ${escapeHtml(o.payment_ref)}</div>` : "";
-      const noteHtml = o.notes ? `<div class="small text-secondary">Note: ${escapeHtml(o.notes)}</div>` : "";
-
-      let bodyHtml = "";
-      if (hasSpecial) {
-        bodyHtml = o.special_items
-          .map((sp) => `<div class="small">${escapeHtml(sp.item || sp.name || "")}</div>`)
-          .join("");
-      } else if (Array.isArray(o.items) && o.items.length > 0) {
-        const orderTotal = o.items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
-        const lines = o.items
-          .map((it) => `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) × ${escapeHtml(it.qty || 1)} — ${state.currency}${Number(it.total_price || 0).toFixed(2)}</div>`)
-          .join("");
-        bodyHtml = `${lines}<div class="small fw-bold mt-1">Total: ${state.currency}${orderTotal.toFixed(2)}</div>`;
-      } else {
-        bodyHtml = `<div class="small">${escapeHtml(o.items || o.notes || "Order submitted")}</div>`;
-      }
-
-      return `
-        <div class="border rounded p-2 mb-2 bg-light order-entry" data-action="select-order-phone" data-phone="${escapeHtml(phoneVal)}">
-          <div class="d-flex justify-content-between align-items-center small mb-1">
-            <strong>${escapeHtml(o.customer || o.customer_name || "Customer")}</strong>
-            <span class="badge ${badgeClass}">${orderType}</span>
-          </div>
-          <div class="small text-muted mb-1">${escapeHtml(phoneVal)} • ${escapeHtml(o.timestamp || "")}</div>
-          ${bodyHtml}
-          ${noteHtml}
-          ${refHtml}
-        </div>
-      `;
-    }
-
     async function loadStaffOrders() {
       const box = document.getElementById("staffOrdersBox");
       try {
         const res = await apiRequest("/api/orders");
         const orders = res.orders || res.data || [];
+        state.ordersFeed = orders;
+
         if (!orders.length) {
           box.innerHTML = `<div class="text-muted small p-2">No cart orders or multi-item requests yet.</div>`;
           return;
         }
-        box.innerHTML = orders.map(formatOrderEntry).join("");
+
+        box.innerHTML = orders.map((o, idx) => {
+          const phoneVal = o.contact_phone || o.phone || "";
+          const customerVal = o.customer || o.customer_name || "Customer";
+          const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
+          const badgeLabel = hasSpecial ? "Multi-Item Request" : "Cart Order";
+          const badgeClass = hasSpecial ? "bg-info text-dark" : "bg-primary";
+
+          let detailsHtml = "";
+          if (hasSpecial) {
+            detailsHtml = o.special_items
+              .map((sp) => `<div class="small">${escapeHtml(sp.item || sp.name || "")}</div>`)
+              .join("");
+          } else if (Array.isArray(o.items) && o.items.length > 0) {
+            const totalVal = o.items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
+            detailsHtml = o.items
+              .map((it) => `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) × ${escapeHtml(it.qty || 1)} — ${state.currency}${Number(it.total_price || 0).toFixed(2)}</div>`)
+              .join("") + `<div class="small fw-bold mt-1">Total: ${state.currency}${totalVal.toFixed(2)}</div>`;
+          } else {
+            detailsHtml = `<div class="small">${escapeHtml(o.notes || "Order submitted")}</div>`;
+          }
+
+          return `
+            <div class="border rounded p-2 mb-2 bg-light order-entry" data-action="select-order-phone" data-phone="${escapeHtml(phoneVal)}">
+              <div class="d-flex justify-content-between align-items-center small mb-1">
+                <strong>${escapeHtml(customerVal)} (${escapeHtml(phoneVal)})</strong>
+                <span class="badge ${badgeClass}">${badgeLabel}</span>
+              </div>
+              <div class="small text-muted mb-1">${escapeHtml(o.timestamp || "")}${o.payment_ref ? ` • Ref: ${escapeHtml(o.payment_ref)}` : ""}</div>
+              ${detailsHtml}
+              ${o.notes ? `<div class="small text-secondary mt-1">Note: ${escapeHtml(o.notes)}</div>` : ""}
+              <div class="mt-2">
+                <button type="button" class="btn btn-outline-dark btn-sm" data-action="open-order-receipt" data-order-index="${idx}">
+                  <i class="fa-solid fa-print me-1"></i>Thermal Receipt
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("");
       } catch (err) {
         box.innerHTML = `<div class="text-danger small p-2">Failed to load orders: ${escapeHtml(err.message)}</div>`;
       }
@@ -1231,6 +1307,47 @@
           await loadStaffChatMessages();
           showBanner(`Loaded chat for ${phone}.`, "info");
         }
+      } else if (action === "open-order-receipt") {
+        event.stopPropagation();
+        const o = state.ordersFeed[Number(target.dataset.orderIndex)];
+        if (!o) return;
+        const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
+        let lines = [];
+        let totalStr = "";
+        if (hasSpecial) {
+          lines = o.special_items.map((sp) => `${sp.item || sp.name || "Requested Item"}`);
+        } else if (Array.isArray(o.items) && o.items.length > 0) {
+          lines = o.items.map((it) => `${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${state.currency}${Number(it.total_price || 0).toFixed(2)}`);
+          const sum = o.items.reduce((acc, it) => acc + Number(it.total_price || 0), 0);
+          totalStr = `${state.currency}${sum.toFixed(2)}`;
+        } else {
+          lines = [o.notes || "Customer Order"];
+        }
+        if (o.notes) lines.push(`Note: ${o.notes}`);
+        openThermalReceipt({
+          title: hasSpecial ? "MULTI-ITEM REQUEST RECEIPT" : "CUSTOMER ORDER RECEIPT",
+          ref: o.payment_ref || "",
+          customer: o.customer || o.customer_name || "Customer",
+          phone: o.contact_phone || o.phone || "",
+          timestamp: o.timestamp || "",
+          lines,
+          total: totalStr,
+        });
+      } else if (action === "open-pos-receipt") {
+        openThermalReceipt({
+          title: "POS SALES RECEIPT",
+          ref: target.dataset.ref || "",
+          customer: target.dataset.customer || "Walk-in Customer",
+          phone: target.dataset.phone || "N/A",
+          timestamp: new Date().toLocaleString(),
+          lines: [
+            `${target.dataset.item} (${target.dataset.unit}) x ${target.dataset.qty}`,
+            `Payment: ${target.dataset.source || "Cash"}`,
+          ],
+          total: target.dataset.total || "",
+        });
+      } else if (action === "print-thermal-receipt") {
+        window.print();
       } else if (action === "watch-ad") {
         const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
         if (prod && hasValidVideoUrl(prod.video_url)) {
@@ -1295,7 +1412,7 @@
               qty,
               customer_name: custName,
               customer_phone: phone,
-              worker: state.user || "admin",
+              worker: state.user?.username || "admin",
               record_debt: true,
             }),
           });
@@ -1489,6 +1606,10 @@
       }
       const unitPrice = getPriceForUnit(prod, unitType);
       const totalAmount = unitPrice * qty;
+      const custName = document.getElementById("posCustomerName").value.trim() || "Walk-in Customer";
+      const custPhone = document.getElementById("posPhone").value.trim() || "N/A";
+      const paySource = document.getElementById("posPaymentMethod").value;
+
       try {
         const res = await apiRequest("/api/sales", {
           method: "POST",
@@ -1500,17 +1621,23 @@
             qty,
             unit_price: unitPrice,
             total: totalAmount,
-            customer_name: document.getElementById("posCustomerName").value.trim() || "Walk-in Customer",
-            customer_phone: document.getElementById("posPhone").value.trim() || "N/A",
-            payment_source: document.getElementById("posPaymentMethod").value,
+            customer_name: custName,
+            customer_phone: custPhone,
+            payment_source: paySource,
             worker: state.user?.username || "admin",
             record_debt: false,
           }),
         });
         const rec = res.receipt || {};
+        const refCode = rec.payment_ref || "";
         document.getElementById("posReceiptBox").innerHTML = `
-          <div class="alert alert-success py-2 small">
-            <strong>Receipt Saved (${escapeHtml(rec.payment_ref || "")}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) — <strong>${state.currency}${totalAmount.toFixed(2)}</strong>
+          <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) — <strong>${state.currency}${totalAmount.toFixed(2)}</strong>
+            </div>
+            <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${state.currency}${totalAmount.toFixed(2)}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+              <i class="fa-solid fa-print me-1"></i>Thermal Receipt
+            </button>
           </div>
         `;
         await loadProducts();

@@ -290,6 +290,11 @@
               </button>
             </li>
             <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="staffOrdersChatTab">
+                <i class="fa-solid fa-comments me-1"></i>Orders &amp; Live Chat
+              </button>
+            </li>
+            <li class="nav-item">
               <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="recordsTab">
                 <i class="fa-solid fa-book me-1"></i>Debtors, Expenses &amp; Workers
               </button>
@@ -517,7 +522,64 @@
             </div>
           </div>
 
-          <!-- Staff Tab 3: Debtors, Expenses & Workers -->
+          <!-- Staff Tab 3: Orders & Live Chat -->
+          <div id="staffOrdersChatTab" class="staff-tab-pane d-none">
+            <div class="row g-3">
+              <div class="col-lg-5">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                      <h5 class="card-title mb-0"><i class="fa-solid fa-receipt me-1 text-primary"></i>Customer Orders</h5>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-staff-orders-chat">
+                        <i class="fa-solid fa-rotate-right me-1"></i>Refresh
+                      </button>
+                    </div>
+                    <div id="staffOrdersBox" class="chat-box border rounded p-2">
+                      <div class="text-muted small">Loading customer orders...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-7">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <h5 class="card-title"><i class="fa-solid fa-comments me-1 text-success"></i>Live Chat &amp; Receipts</h5>
+                    <div class="row g-2 mb-3">
+                      <div class="col-md-8">
+                        <input type="text" id="staffChatPhoneFilter" class="form-control form-control-sm" placeholder="Filter by customer phone (leave blank for all)" />
+                      </div>
+                      <div class="col-md-4 d-grid">
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-action="load-staff-chat">
+                          <i class="fa-solid fa-rotate me-1"></i>Load Chat
+                        </button>
+                      </div>
+                    </div>
+
+                    <div id="staffChatMessagesBox" class="border rounded p-3 mb-3 chat-box">
+                      <div class="text-muted small">Loading customer chats and payment receipts...</div>
+                    </div>
+
+                    <form id="staffChatSendForm" class="row g-2">
+                      <div class="col-md-4">
+                        <input type="text" id="staffChatSendPhone" class="form-control form-control-sm" placeholder="Customer phone" required />
+                      </div>
+                      <div class="col-md-6">
+                        <input type="text" id="staffChatSendText" class="form-control form-control-sm" placeholder="Reply to customer..." required />
+                      </div>
+                      <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-success btn-sm">
+                          <i class="fa-solid fa-paper-plane me-1"></i>Reply
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Tab 4: Debtors, Expenses & Workers -->
           <div id="recordsTab" class="staff-tab-pane d-none">
             <div class="row g-3">
               <div class="col-md-4">
@@ -567,7 +629,7 @@
             </div>
           </div>
 
-          <!-- Staff Tab 4: Settings -->
+          <!-- Staff Tab 5: Settings -->
           <div id="settingsTab" class="staff-tab-pane d-none">
             <div class="card shadow-sm">
               <div class="card-body">
@@ -1021,6 +1083,68 @@
       }
     }
 
+    async function loadStaffOrders() {
+      const box = document.getElementById("staffOrdersBox");
+      try {
+        const res = await apiRequest("/api/orders");
+        const orders = res.orders || res.data || [];
+        if (!orders.length) {
+          box.innerHTML = `<div class="text-muted small p-2">No customer orders yet.</div>`;
+          return;
+        }
+        box.innerHTML = orders.map((o) => {
+          const itemsList = Array.isArray(o.items)
+            ? o.items.map((it) => `${escapeHtml(it.name || it.item || "Item")} × ${escapeHtml(it.qty || 1)}`).join(", ")
+            : escapeHtml(o.items || o.notes || "");
+          const phoneVal = o.contact_phone || o.phone || "";
+          return `
+            <div class="border-bottom pb-2 mb-2 px-1">
+              <div class="d-flex justify-content-between small">
+                <strong>${escapeHtml(o.customer || o.customer_name || "Customer")}</strong>
+                <span class="badge bg-light text-dark border">${escapeHtml(o.status || "Pending")}</span>
+              </div>
+              <div class="small text-muted">${escapeHtml(phoneVal)} • ${escapeHtml(o.timestamp || "")}</div>
+              <div class="small mt-1">${itemsList}</div>
+            </div>
+          `;
+        }).join("");
+      } catch (err) {
+        box.innerHTML = `<div class="text-danger small p-2">Failed to load orders: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    async function loadStaffChatMessages() {
+      const phone = document.getElementById("staffChatPhoneFilter").value.trim();
+      const box = document.getElementById("staffChatMessagesBox");
+      try {
+        const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
+        const res = await apiRequest(`/api/messages${query}`);
+        const msgs = res.messages || res.data || [];
+        if (!msgs.length) {
+          box.innerHTML = `<div class="text-muted small">No chat messages or receipts found.</div>`;
+          return;
+        }
+        box.innerHTML = msgs.map((m) => {
+          const mPhone = m.customer_phone || m.phone || "";
+          const proofImg = m.proof_url && String(m.proof_url).startsWith("http")
+            ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
+            : "";
+          return `
+            <div class="border-bottom pb-2 mb-2">
+              <div class="d-flex justify-content-between small">
+                <strong>${escapeHtml(m.sender || "Customer")}</strong>
+                <span class="text-muted">${escapeHtml(mPhone)} • ${escapeHtml(m.timestamp || "")}</span>
+              </div>
+              <div>${m.sender === "System" ? (m.message || "") : escapeHtml(m.message || m.text || "")}</div>
+              ${proofImg}
+            </div>
+          `;
+        }).join("");
+      } catch (err) {
+        box.innerHTML = `<div class="text-danger small">Failed to load chat: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
     function switchSection(sectionId) {
       if (sectionId === "staffSection" && !state.isLoggedIn) {
         showBanner("Please log in using the left sidebar first to open the Staff / Admin Panel.", "warning");
@@ -1050,6 +1174,10 @@
       document.querySelectorAll("#staffTabs .nav-link").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.tab === tabId);
       });
+      if (tabId === "staffOrdersChatTab") {
+        loadStaffOrders();
+        loadStaffChatMessages();
+      }
     }
 
     document.addEventListener("click", async (event) => {
@@ -1067,6 +1195,9 @@
         switchCustomerTab(target.dataset.tab);
       } else if (action === "switch-staff-tab") {
         switchStaffTab(target.dataset.tab);
+      } else if (action === "load-staff-chat" || action === "refresh-staff-orders-chat") {
+        await loadStaffOrders();
+        await loadStaffChatMessages();
       } else if (action === "watch-ad") {
         const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
         if (prod && hasValidVideoUrl(prod.video_url)) {
@@ -1140,6 +1271,25 @@
         } catch (err) {
           showBanner(`Failed to log debt: ${err.message}`, "danger");
         }
+      }
+    });
+
+    document.getElementById("staffChatSendForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const phone = document.getElementById("staffChatSendPhone").value.trim();
+      const text = document.getElementById("staffChatSendText").value.trim();
+      const fd = new FormData();
+      fd.append("phone", phone);
+      fd.append("sender", "Staff");
+      fd.append("text", text);
+      try {
+        await apiRequest("/api/messages", { method: "POST", body: fd });
+        document.getElementById("staffChatSendText").value = "";
+        document.getElementById("staffChatPhoneFilter").value = phone;
+        await loadStaffChatMessages();
+        showBanner("Reply sent to customer chat!", "success");
+      } catch (err) {
+        showBanner(`Failed to send reply: ${err.message}`, "danger");
       }
     });
 

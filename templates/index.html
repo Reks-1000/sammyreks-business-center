@@ -28,6 +28,13 @@
     .nav-pill-btn.active {
       font-weight: 600;
     }
+    .broadcast-player {
+      max-height: 360px;
+      width: 100%;
+      object-fit: contain;
+      background: #000000;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
@@ -100,8 +107,17 @@
             </button>
           </div>
 
+          <!-- Always-Visible Customer Notice & Broadcast Video -->
           <div id="customerNoticeAlert" class="alert alert-primary py-2 px-3 mb-3 d-none"></div>
-          <div id="customerBroadcastAlert" class="alert alert-light border py-2 px-3 mb-3 d-none"></div>
+
+          <div id="customerBroadcastCard" class="card shadow-sm mb-3 d-none">
+            <div class="card-body py-2">
+              <div class="small fw-semibold text-primary mb-2">
+                <i class="fa-solid fa-video me-1"></i>Customer Update / Broadcast Video
+              </div>
+              <div id="customerBroadcastPlayerWrap"></div>
+            </div>
+          </div>
 
           <!-- Customer Sub-Tabs -->
           <ul class="nav nav-pills mb-3 gap-1" id="customerTabs">
@@ -550,22 +566,26 @@
             <div class="card shadow-sm">
               <div class="card-body">
                 <h5 class="card-title"><i class="fa-solid fa-sliders me-1 text-primary"></i>Business Settings</h5>
-                <form id="settingsForm" class="row g-3">
+                <form id="settingsForm" enctype="multipart/form-data" class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label">Business Name</label>
-                    <input type="text" id="setBusinessName" class="form-control" value="Sammyreks Business Center" required />
+                    <input type="text" name="business_name" id="setBusinessName" class="form-control" value="Sammyreks Business Center" required />
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">Tagline</label>
-                    <input type="text" id="setTagline" class="form-control" placeholder="Quality products, fast orders & live support" />
+                    <input type="text" name="tagline" id="setTagline" class="form-control" placeholder="Quality products, fast orders & live support" />
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-12">
                     <label class="form-label">Notice Message</label>
-                    <input type="text" id="setNotice" class="form-control" placeholder="Optional announcement banner" />
+                    <input type="text" name="active_notice" id="setNotice" class="form-control" placeholder="Optional announcement banner" />
                   </div>
                   <div class="col-md-6">
-                    <label class="form-label">Broadcast Video Link</label>
-                    <input type="text" id="setBroadcastVideo" class="form-control" placeholder="https://..." />
+                    <label class="form-label">Upload Broadcast Video File</label>
+                    <input type="file" name="broadcast_video_file" id="setBroadcastVideoFile" class="form-control" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" />
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">OR Broadcast Video Link</label>
+                    <input type="text" name="broadcast_video_url" id="setBroadcastVideo" class="form-control" placeholder="https://..." />
                   </div>
                   <div class="col-12">
                     <button type="submit" class="btn btn-primary">
@@ -614,6 +634,44 @@
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    }
+
+    function getYouTubeEmbedUrl(url) {
+      const raw = String(url || "").trim();
+      const watchMatch = raw.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{6,})/);
+      if (watchMatch && watchMatch[1]) {
+        return `https://www.youtube.com/embed/${watchMatch[1]}`;
+      }
+      return null;
+    }
+
+    function renderBroadcastVideo(videoUrl) {
+      const card = document.getElementById("customerBroadcastCard");
+      const wrap = document.getElementById("customerBroadcastPlayerWrap");
+      const cleanUrl = String(videoUrl || "").trim();
+
+      if (!cleanUrl || ["none", "nan"].includes(cleanUrl.toLowerCase())) {
+        card.classList.add("d-none");
+        wrap.innerHTML = "";
+        return;
+      }
+
+      const ytEmbed = getYouTubeEmbedUrl(cleanUrl);
+      if (ytEmbed) {
+        wrap.innerHTML = `
+          <div class="ratio ratio-16x9" style="max-width:640px;">
+            <iframe src="${escapeHtml(ytEmbed)}" title="Broadcast Video" allowfullscreen></iframe>
+          </div>
+        `;
+      } else {
+        wrap.innerHTML = `
+          <video class="broadcast-player" controls preload="metadata" playsinline>
+            <source src="${escapeHtml(cleanUrl)}" />
+            Your browser does not support video playback.
+          </video>
+        `;
+      }
+      card.classList.remove("d-none");
     }
 
     function getPriceForUnit(prod, unitName) {
@@ -867,14 +925,7 @@
           noticeEl.classList.add("d-none");
         }
 
-        const vidEl = document.getElementById("customerBroadcastAlert");
-        if (s.broadcast_video_url && s.broadcast_video_url.trim()) {
-          vidEl.innerHTML = `<span class="small fw-semibold">Broadcast Video:</span> <a href="${escapeHtml(s.broadcast_video_url.trim())}" target="_blank">${escapeHtml(s.broadcast_video_url.trim())}</a>`;
-          vidEl.classList.remove("d-none");
-        } else {
-          vidEl.classList.add("d-none");
-        }
-
+        renderBroadcastVideo(s.broadcast_video_url || "");
         renderProducts();
         updateCartSummary();
       } catch (_) {}
@@ -1285,18 +1336,11 @@
 
     document.getElementById("settingsForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      const fd = new FormData(e.target);
+      fd.append("currency", state.currency);
       try {
-        await apiRequest("/api/settings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            business_name: document.getElementById("setBusinessName").value.trim(),
-            tagline: document.getElementById("setTagline").value.trim(),
-            active_notice: document.getElementById("setNotice").value.trim(),
-            broadcast_video_url: document.getElementById("setBroadcastVideo").value.trim(),
-            currency: state.currency,
-          }),
-        });
+        await apiRequest("/api/settings", { method: "POST", body: fd });
+        document.getElementById("setBroadcastVideoFile").value = "";
         await loadSettings();
         showBanner("Settings saved to Firestore.", "success");
       } catch (err) {

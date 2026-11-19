@@ -74,7 +74,7 @@
         <hr />
         <div class="small text-muted">
           <div>Sammyreks Business Center</div>
-          <div>v19.0 | 2026</div>
+          <div>v20.0 | 2026</div>
         </div>
       </aside>
 
@@ -235,7 +235,7 @@
           <ul class="nav nav-tabs mb-3" id="staffTabs">
             <li class="nav-item">
               <button type="button" class="nav-link active" data-action="switch-staff-tab" data-tab="inventoryTab">
-                <i class="fa-solid fa-boxes-stacked me-1"></i>Products &amp; Media
+                <i class="fa-solid fa-boxes-stacked me-1"></i>Add / Update Item &amp; Inventory
               </button>
             </li>
             <li class="nav-item">
@@ -255,77 +255,173 @@
             </li>
           </ul>
 
-          <!-- Staff Tab 1: Add & Manage Products -->
+          <!-- Staff Tab 1: Add / Update Item & Inventory Table -->
           <div id="inventoryTab" class="staff-tab-pane">
-            <div class="row g-4">
-              <div class="col-lg-5">
-                <div class="card shadow-sm">
-                  <div class="card-body">
-                    <h5 class="card-title"><i class="fa-solid fa-plus-circle me-1 text-primary"></i>Add Product</h5>
-                    <form id="addProductForm" enctype="multipart/form-data">
-                      <div class="mb-2">
-                        <label class="form-label">Product Name</label>
-                        <input type="text" name="name" id="prodName" class="form-control" placeholder="e.g. Wireless Mouse" required />
-                      </div>
-                      <div class="row g-2 mb-2">
-                        <div class="col-6">
-                          <label class="form-label">Price (₦)</label>
-                          <input type="number" step="0.01" name="price" id="prodPrice" class="form-control" placeholder="5000" required />
-                        </div>
-                        <div class="col-6">
-                          <label class="form-label">Stock Qty</label>
-                          <input type="number" name="stock" id="prodStock" class="form-control" value="10" min="0" required />
-                        </div>
-                      </div>
-                      <div class="mb-2">
-                        <label class="form-label">Category</label>
-                        <input type="text" name="category" id="prodCategory" class="form-control" value="General" />
-                      </div>
-                      <div class="mb-2">
-                        <label class="form-label">Description</label>
-                        <textarea name="description" id="prodDescription" class="form-control" rows="2" placeholder="Optional details..."></textarea>
-                      </div>
-                      <div class="mb-2">
-                        <label class="form-label">Upload Image / Video (Cloudinary)</label>
-                        <input type="file" name="file" id="prodFile" class="form-control" accept="image/*,video/*" />
-                      </div>
-                      <div class="mb-3">
-                        <label class="form-label">Or Image URL</label>
-                        <input type="url" name="image_url" id="prodImageUrl" class="form-control" placeholder="https://..." />
-                      </div>
-                      <button type="submit" id="saveProductBtn" class="btn btn-primary w-100">
-                        <i class="fa-solid fa-floppy-disk me-1"></i>Save Product to Firestore
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </div>
+            <div class="card shadow-sm mb-4">
+              <div class="card-body">
+                <h5 class="card-title mb-3"><i class="fa-solid fa-pen-to-square me-2 text-primary"></i>Add / Update Item</h5>
 
-              <div class="col-lg-7">
-                <div class="card shadow-sm">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                      <h5 class="card-title mb-0"><i class="fa-solid fa-table me-1 text-secondary"></i>Saved Firestore Products</h5>
-                      <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-products">
-                        <i class="fa-solid fa-rotate-right me-1"></i>Refresh
-                      </button>
+                <form id="addProductForm" enctype="multipart/form-data">
+                  <!-- Action Mode -->
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold d-block">Action</label>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="action_mode" id="actionAddNew" value="create" checked />
+                      <label class="form-check-label" for="actionAddNew">Add New Item</label>
                     </div>
-                    <div class="table-responsive">
-                      <table class="table table-sm table-hover align-middle">
-                        <thead>
-                          <tr>
-                            <th>Product</th>
-                            <th>Price</th>
-                            <th>Stock</th>
-                            <th>Action</th>
-                          </tr>
-                        </thead>
-                        <tbody id="adminProductsTableBody">
-                          <tr><td colspan="4" class="text-muted">No products loaded yet.</td></tr>
-                        </tbody>
-                      </table>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="action_mode" id="actionUpdateExisting" value="update" />
+                      <label class="form-check-label" for="actionUpdateExisting">Update Existing Item</label>
                     </div>
                   </div>
+
+                  <div id="existingProductSelectorWrap" class="mb-3 d-none">
+                    <label class="form-label fw-semibold">Select Existing Product to Update</label>
+                    <select id="existingProductSelect" name="existing_product_id" class="form-select">
+                      <option value="">-- Choose saved product --</option>
+                    </select>
+                  </div>
+
+                  <!-- Media Uploads -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold">Upload Product Image (PNG, JPG, WEBP)</label>
+                      <input type="file" name="image_file" id="prodImageFile" class="form-control" accept="image/png,image/jpeg,image/webp,image/*" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold">Upload Direct MP4 Video File (MP4, MOV, WEBM, MKV)</label>
+                      <input type="file" name="video_file" id="prodVideoFile" class="form-control" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" />
+                    </div>
+                  </div>
+
+                  <div class="alert alert-info py-2 small">
+                    <i class="fa-solid fa-pen me-1"></i><strong>Category &amp; Box Headings:</strong> Type any category or unit names of your choice below.
+                  </div>
+
+                  <!-- Category & Unit Hierarchy -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                      <label class="form-label">Product Category</label>
+                      <input type="text" name="category" id="prodCategory" class="form-control" value="General" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Main Unit Name (e.g. Carton)</label>
+                      <input type="text" name="main_unit" id="prodMainUnit" class="form-control" value="Carton" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Sub-Unit Name (e.g. Pack)</label>
+                      <input type="text" name="sub_unit" id="prodSubUnit" class="form-control" value="Pack" />
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label">Retail Name (e.g. Piece)</label>
+                      <input type="text" name="retail_unit" id="prodRetailUnit" class="form-control" value="Piece" />
+                    </div>
+                  </div>
+
+                  <!-- Product Name, Carton Price & Stock -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Product Name</label>
+                      <input type="text" name="name" id="prodName" class="form-control" placeholder="e.g. Knorr Seasoning" required />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Price (Per Main Unit / Carton)</label>
+                      <input type="number" step="0.01" name="price_carton" id="prodPriceCarton" class="form-control" value="0.00" required />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Total Stock (Main Units / Cartons)</label>
+                      <input type="number" step="0.01" name="stock_cartons" id="prodStockCartons" class="form-control" value="0" required />
+                    </div>
+                  </div>
+
+                  <!-- Cost Price, Pack Price & Packs per Carton -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Cost Price (Per Main Unit / Carton)</label>
+                      <input type="number" step="0.01" name="cost_price_carton" id="prodCostCarton" class="form-control" value="0.00" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Price (Per Sub-Unit / Pack)</label>
+                      <input type="number" step="0.01" name="price_pack" id="prodPricePack" class="form-control" value="0.00" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Count of Sub-Units in 1 Main Unit</label>
+                      <input type="number" min="1" name="packs_per_carton" id="prodPacksPerCarton" class="form-control" value="1" />
+                    </div>
+                  </div>
+
+                  <!-- Shelf Location, Retail Price & Retail Units per Pack -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Shelf Location</label>
+                      <input type="text" name="shelf_location" id="prodShelfLocation" class="form-control" placeholder="e.g. Shelf A2" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Price (Per Retail Unit)</label>
+                      <input type="number" step="0.01" name="price_retail" id="prodPriceRetail" class="form-control" value="0.00" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Count of Retail Units in 1 Sub-Unit</label>
+                      <input type="number" min="1" name="retail_per_pack" id="prodRetailPerPack" class="form-control" value="1" />
+                    </div>
+                  </div>
+
+                  <!-- Expiry Date, Image URL & Video Link -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Expiry Date</label>
+                      <input type="date" name="expiry_date" id="prodExpiryDate" class="form-control" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Or Image URL</label>
+                      <input type="url" name="image_url" id="prodImageUrl" class="form-control" placeholder="https://..." />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">OR YouTube / Cloud Video Link</label>
+                      <input type="url" name="video_link" id="prodVideoLink" class="form-control" placeholder="https://..." />
+                    </div>
+                  </div>
+
+                  <!-- Product Description -->
+                  <div class="mb-3">
+                    <label class="form-label">Product Description</label>
+                    <textarea name="description" id="prodDescription" class="form-control" rows="3" placeholder="Product details, notes, or specifications..."></textarea>
+                  </div>
+
+                  <button type="submit" id="saveProductBtn" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Save Product Data
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Expanded Inventory Table -->
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="card-title mb-0"><i class="fa-solid fa-table me-2 text-secondary"></i>Saved Firestore Inventory</h5>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-products">
+                    <i class="fa-solid fa-rotate-right me-1"></i>Refresh
+                  </button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered table-hover align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Product &amp; Category</th>
+                        <th>Units Breakdown</th>
+                        <th>Carton / Cost</th>
+                        <th>Pack / Retail</th>
+                        <th>Stock</th>
+                        <th>Shelf &amp; Expiry</th>
+                        <th>Media</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminProductsTableBody">
+                      <tr><td colspan="8" class="text-muted">No inventory items loaded yet.</td></tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -358,7 +454,7 @@
                     <select id="posProductSelect" class="form-select"></select>
                   </div>
                   <div class="col-md-3">
-                    <label class="form-label">Quantity</label>
+                    <label class="form-label">Quantity (Main Units)</label>
                     <input type="number" id="posQty" class="form-control" value="1" min="1" />
                   </div>
                   <div class="col-md-3 d-flex align-items-end">
@@ -484,6 +580,14 @@
       return data;
     }
 
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
     function updateCartSummary() {
       const count = state.cart.reduce((sum, item) => sum + Number(item.qty || 1), 0);
       const total = state.cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
@@ -514,27 +618,53 @@
       `;
     }
 
-    function escapeHtml(str) {
-      return String(str || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
+    function toggleUpdateMode() {
+      const isUpdate = document.getElementById("actionUpdateExisting").checked;
+      document.getElementById("existingProductSelectorWrap").classList.toggle("d-none", !isUpdate);
     }
+
+    document.getElementById("actionAddNew").addEventListener("change", toggleUpdateMode);
+    document.getElementById("actionUpdateExisting").addEventListener("change", toggleUpdateMode);
+
+    document.getElementById("existingProductSelect").addEventListener("change", (e) => {
+      const prod = state.products.find((p) => String(p.id) === String(e.target.value));
+      if (!prod) return;
+      document.getElementById("prodName").value = prod.name || "";
+      document.getElementById("prodCategory").value = prod.category || "General";
+      document.getElementById("prodMainUnit").value = prod.main_unit || "Carton";
+      document.getElementById("prodSubUnit").value = prod.sub_unit || "Pack";
+      document.getElementById("prodRetailUnit").value = prod.retail_unit || "Piece";
+      document.getElementById("prodPriceCarton").value = prod.price_carton ?? prod.price ?? 0;
+      document.getElementById("prodCostCarton").value = prod.cost_price_carton ?? 0;
+      document.getElementById("prodPricePack").value = prod.price_pack ?? 0;
+      document.getElementById("prodPriceRetail").value = prod.price_retail ?? 0;
+      document.getElementById("prodPacksPerCarton").value = prod.packs_per_carton ?? 1;
+      document.getElementById("prodRetailPerPack").value = prod.retail_per_pack ?? 1;
+      document.getElementById("prodStockCartons").value = prod.stock_cartons ?? prod.stock ?? 0;
+      document.getElementById("prodShelfLocation").value = prod.shelf_location || "";
+      document.getElementById("prodExpiryDate").value = prod.expiry_date || "";
+      document.getElementById("prodImageUrl").value = prod.image_url || "";
+      document.getElementById("prodVideoLink").value = prod.video_link || prod.video_url || "";
+      document.getElementById("prodDescription").value = prod.description || "";
+    });
 
     function renderProducts() {
       const grid = document.getElementById("productsGrid");
       const tbody = document.getElementById("adminProductsTableBody");
       const posSelect = document.getElementById("posProductSelect");
+      const existingSelect = document.getElementById("existingProductSelect");
 
       if (!state.products.length) {
         grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products available yet. Log in as Staff/Admin to add products.</div></div>`;
-        tbody.innerHTML = `<tr><td colspan="4" class="text-muted">No products in Firestore yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="text-muted">No inventory records in Firestore yet.</td></tr>`;
         posSelect.innerHTML = `<option value="">No products available</option>`;
+        existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>`;
         return;
       }
 
       grid.innerHTML = state.products.map((p) => {
+        const displayPrice = Number(p.price ?? p.price_carton ?? p.price_pack ?? p.price_retail ?? 0);
+        const stockVal = Number(p.stock_cartons ?? p.stock ?? 0);
         const imgHtml = p.image_url
           ? `<img src="${escapeHtml(p.image_url)}" class="card-img-top" alt="${escapeHtml(p.name)}" />`
           : `<div class="bg-light d-flex align-items-center justify-content-center text-muted" style="height:170px;"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
@@ -545,8 +675,8 @@
               ${imgHtml}
               <div class="card-body d-flex flex-column">
                 <h6 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h6>
-                <div class="text-primary fw-semibold mb-1">${state.currency}${Number(p.price || 0).toFixed(2)}</div>
-                <div class="small text-muted mb-2">Stock: ${Number(p.stock ?? 0)} • ${escapeHtml(p.category || "General")}</div>
+                <div class="text-primary fw-semibold mb-1">${state.currency}${displayPrice.toFixed(2)} <span class="small text-muted">/ ${escapeHtml(p.main_unit || "Carton")}</span></div>
+                <div class="small text-muted mb-2">Stock: ${stockVal} ${escapeHtml(p.main_unit || "Carton")} • ${escapeHtml(p.category || "General")}</div>
                 <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
                 <button type="button" class="btn btn-primary btn-sm w-100" data-action="add-to-cart" data-id="${escapeHtml(p.id)}">
                   <i class="fa-solid fa-cart-plus me-1"></i>Add to Cart
@@ -557,25 +687,69 @@
         `;
       }).join("");
 
-      tbody.innerHTML = state.products.map((p) => `
-        <tr>
-          <td>
-            <div class="fw-semibold">${escapeHtml(p.name)}</div>
-            <div class="small text-muted">${escapeHtml(p.category || "General")}</div>
-          </td>
-          <td>${state.currency}${Number(p.price || 0).toFixed(2)}</td>
-          <td>${Number(p.stock ?? 0)}</td>
-          <td>
-            <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </td>
-        </tr>
-      `).join("");
+      tbody.innerHTML = state.products.map((p) => {
+        const mUnit = p.main_unit || "Carton";
+        const sUnit = p.sub_unit || "Pack";
+        const rUnit = p.retail_unit || "Piece";
+        const pCarton = Number(p.price_carton ?? p.price ?? 0);
+        const cCarton = Number(p.cost_price_carton ?? 0);
+        const pPack = Number(p.price_pack ?? 0);
+        const pRetail = Number(p.price_retail ?? 0);
+        const stockCartons = Number(p.stock_cartons ?? p.stock ?? 0);
+        const retailTotal = Number(p.total_retail_units ?? stockCartons * (p.packs_per_carton || 1) * (p.retail_per_pack || 1));
 
-      posSelect.innerHTML = state.products.map((p) => `
-        <option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${state.currency}${Number(p.price || 0).toFixed(2)} • Stock: ${Number(p.stock ?? 0)})</option>
-      `).join("");
+        return `
+          <tr>
+            <td>
+              <div class="fw-semibold">${escapeHtml(p.name)}</div>
+              <div class="small text-muted">${escapeHtml(p.category || "General")}</div>
+            </td>
+            <td class="small">
+              1 ${escapeHtml(mUnit)} = ${Number(p.packs_per_carton || 1)} ${escapeHtml(sUnit)}<br/>
+              1 ${escapeHtml(sUnit)} = ${Number(p.retail_per_pack || 1)} ${escapeHtml(rUnit)}
+            </td>
+            <td class="small">
+              Sell: ${state.currency}${pCarton.toFixed(2)}<br/>
+              Cost: ${state.currency}${cCarton.toFixed(2)}
+            </td>
+            <td class="small">
+              ${escapeHtml(sUnit)}: ${state.currency}${pPack.toFixed(2)}<br/>
+              ${escapeHtml(rUnit)}: ${state.currency}${pRetail.toFixed(2)}
+            </td>
+            <td class="small">
+              <strong>${stockCartons}</strong> ${escapeHtml(mUnit)}<br/>
+              <span class="text-muted">${retailTotal} ${escapeHtml(rUnit)}</span>
+            </td>
+            <td class="small">
+              Shelf: ${escapeHtml(p.shelf_location || "-")}<br/>
+              Exp: ${escapeHtml(p.expiry_date || "-")}
+            </td>
+            <td class="small">
+              ${p.image_url ? `<a href="${escapeHtml(p.image_url)}" target="_blank">Image</a>` : "-"}
+              ${(p.video_url || p.video_link) ? ` • <a href="${escapeHtml(p.video_url || p.video_link)}" target="_blank">Video</a>` : ""}
+            </td>
+            <td>
+              <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      posSelect.innerHTML = state.products.map((p) => {
+        const priceVal = Number(p.price ?? p.price_carton ?? 0);
+        const stockVal = Number(p.stock_cartons ?? p.stock ?? 0);
+        return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${state.currency}${priceVal.toFixed(2)} • Stock: ${stockVal})</option>`;
+      }).join("");
+
+      const currentSelected = existingSelect.value;
+      existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>` + state.products.map((p) =>
+        `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${escapeHtml(p.category || "General")})</option>`
+      ).join("");
+      if (currentSelected) {
+        existingSelect.value = currentSelected;
+      }
     }
 
     async function loadProducts() {
@@ -676,7 +850,7 @@
       });
     }
 
-    // Unified Click Handler
+    // Single Delegated Click Handler
     document.addEventListener("click", async (event) => {
       const target = event.target.closest("[data-action]");
       if (!target) return;
@@ -695,11 +869,12 @@
       } else if (action === "add-to-cart") {
         const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
         if (!prod) return;
+        const unitPrice = Number(prod.price ?? prod.price_carton ?? prod.price_pack ?? prod.price_retail ?? 0);
         const existing = state.cart.find((c) => String(c.id) === String(prod.id));
         if (existing) {
           existing.qty += 1;
         } else {
-          state.cart.push({ id: prod.id, name: prod.name, price: Number(prod.price || 0), qty: 1 });
+          state.cart.push({ id: prod.id, name: prod.name, price: unitPrice, qty: 1 });
         }
         updateCartSummary();
         showBanner(`Added "${prod.name}" to cart.`, "success");
@@ -766,7 +941,7 @@
       showBanner("Logged out.", "info");
     });
 
-    // Add Product (FormData -> Cloudinary + Firestore)
+    // Add / Update Product Form
     document.getElementById("addProductForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const formData = new FormData(e.target);
@@ -776,10 +951,21 @@
           body: formData,
         });
         e.target.reset();
-        document.getElementById("prodStock").value = "10";
+        document.getElementById("actionAddNew").checked = true;
+        toggleUpdateMode();
         document.getElementById("prodCategory").value = "General";
+        document.getElementById("prodMainUnit").value = "Carton";
+        document.getElementById("prodSubUnit").value = "Pack";
+        document.getElementById("prodRetailUnit").value = "Piece";
+        document.getElementById("prodPacksPerCarton").value = "1";
+        document.getElementById("prodRetailPerPack").value = "1";
+        document.getElementById("prodPriceCarton").value = "0.00";
+        document.getElementById("prodCostCarton").value = "0.00";
+        document.getElementById("prodPricePack").value = "0.00";
+        document.getElementById("prodPriceRetail").value = "0.00";
+        document.getElementById("prodStockCartons").value = "0";
         await loadProducts();
-        showBanner("Product saved to Firestore and synced across store!", "success");
+        showBanner("Product inventory saved to Firestore and synced!", "success");
       } catch (err) {
         showBanner(`Failed to save product: ${err.message}`, "danger");
       }
@@ -880,7 +1066,8 @@
         showBanner("Please select a valid product.", "warning");
         return;
       }
-      const totalAmount = Number(prod.price || 0) * qty;
+      const unitPrice = Number(prod.price ?? prod.price_carton ?? prod.price_pack ?? prod.price_retail ?? 0);
+      const totalAmount = unitPrice * qty;
       try {
         await apiRequest("/api/sales", {
           method: "POST",
@@ -890,7 +1077,7 @@
             phone: document.getElementById("posPhone").value.trim(),
             payment_method: document.getElementById("posPaymentMethod").value,
             total_amount: totalAmount,
-            items: [{ id: prod.id, name: prod.name, price: Number(prod.price || 0), qty }],
+            items: [{ id: prod.id, name: prod.name, price: unitPrice, qty }],
           }),
         });
         await loadProducts();

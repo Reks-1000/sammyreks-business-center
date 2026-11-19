@@ -8,7 +8,7 @@ import cloudinary
 import cloudinary.uploader
 import firebase_admin
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -25,13 +25,13 @@ if os.path.isdir("static"):
 templates = Jinja2Templates(directory="templates")
 
 # ---------------------------------------------------------------------------
-# Auth & Admin Credentials (reads from Railway Variables / .env)
+# Auth & Admin Credentials
 # ---------------------------------------------------------------------------
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
 # ---------------------------------------------------------------------------
-# Cloudinary Setup (reads from Railway Variables / .env)
+# Cloudinary Configuration
 # ---------------------------------------------------------------------------
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
 CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
@@ -46,13 +46,12 @@ if CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET:
     )
 
 # ---------------------------------------------------------------------------
-# Google Cloud Firestore Setup
+# Google Cloud Firestore Lazy Initialization
 # ---------------------------------------------------------------------------
 _db_client = None
 
 
 def get_db():
-    """Lazily initialize and return the Firestore client."""
     global _db_client
     if _db_client is not None:
         return _db_client
@@ -128,7 +127,7 @@ class SettingsPayload(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Health, Frontend & Universal Portal Login Routes
+# Health, Home & Universal Login
 # ---------------------------------------------------------------------------
 @app.get("/health")
 def health_check():
@@ -184,9 +183,8 @@ async def portal_login(request: Request):
     portal_mode = str(data.get("mode") or data.get("role") or "admin").strip()
 
     if not password:
-        raise HTTPException(status_code=400, detail="Please enter a password")
+        raise HTTPException(status_code=400, detail="Please enter a password.")
 
-    # 1. Check Admin credentials from Railway Variables (or allow first-time setup if unset)
     if username.lower() == ADMIN_USERNAME.lower():
         if not ADMIN_PASSWORD or password == ADMIN_PASSWORD:
             return {
@@ -200,7 +198,6 @@ async def portal_login(request: Request):
                 "token": f"admin-{uuid.uuid4().hex}",
             }
 
-    # 2. Check Staff/Worker records stored in Firestore
     try:
         db = get_db()
         for doc in db.collection("workers").stream():
@@ -212,7 +209,7 @@ async def portal_login(request: Request):
                     "status": "success",
                     "success": True,
                     "authenticated": True,
-                    "role": w.get("role", "staff").lower(),
+                    "role": str(w.get("role") or "staff").lower(),
                     "mode": portal_mode,
                     "username": w_user,
                     "name": w.get("name", w_user),
@@ -221,52 +218,76 @@ async def portal_login(request: Request):
     except Exception:
         pass
 
-    raise HTTPException(status_code=401, detail="Invalid username or password")
+    raise HTTPException(status_code=401, detail="Invalid username or password.")
 
 
 # ---------------------------------------------------------------------------
-# Products & Media Upload
+# Products (Firestore `products` + Cloudinary Media)
 # ---------------------------------------------------------------------------
 @app.get("/api/products")
+@app.get("/products")
+@app.get("/api/inventory")
+@app.get("/inventory")
 def list_products():
     try:
         db = get_db()
         docs = db.collection("products").stream()
         items = [serialize_doc(d) for d in docs]
-        return {"products": items, "data": items}
+        items.sort(key=lambda item: item.get("created_at", ""), reverse=True)
+        return {"products": items, "items": items, "data": items}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Firestore error: {exc}")
 
 
 @app.post("/api/products")
-async def create_product(
-    request: Request,
-    name: Optional[str] = Form(default=None),
-    price: Optional[float] = Form(default=None),
-    stock: Optional[int] = Form(default=None),
-    category: Optional[str] = Form(default=None),
-    description: Optional[str] = Form(default=None),
-    image_url: Optional[str] = Form(default=None),
-    file: Optional[UploadFile] = File(default=None),
-):
+@app.post("/products")
+@app.post("/api/inventory")
+@app.post("/inventory")
+async def create_product(request: Request):
     try:
-        if name is None and request.headers.get("content-type", "").startswith("application/json"):
+        content_type = request.headers.get("content-type", "")
+        if "application/json" in content_type:
             body = await request.json()
-            name = body.get("name")
-            price = body.get("price")
-            stock = body.get("stock", 0)
-            category = body.get("category", "General")
-            description = body.get("description", "")
-            image_url = body.get("image_url", "")
+            upload_file = None
+        else:
+            form = await request.form()
+            body = dict(form)
+            upload_file = (
+                form.get("file")
+                or form.get("image")
+                or form.get("photo")
+                or form.get("media")
+            )
 
-        if not name or price is None:
+        name = (
+            body.get("name")
+            or body.get("title")
+            or body.get("product_name")
+            or body.get("item_name")
+        )
+        raw_price = (
+            body.get("price")
+            or body.get("unit_price")
+            or body.get("selling_price")
+            or body.get("amount")
+        )
+        raw_stock = (
+            body.get("stock")
+            or body.get("quantity")
+            or body.get("qty")
+            or 0
+        )
+        category = body.get("category") or body.get("type") or "General"
+        description = body.get("description") or body.get("details") or ""
+        final_image_url = str(body.get("image_url") or body.get("url") or "").strip()
+
+        if not name or raw_price is None or str(raw_price).strip() == "":
             raise HTTPException(status_code=400, detail="Product name and price are required.")
 
-        final_image_url = image_url or ""
-        if file and file.filename:
+        if hasattr(upload_file, "filename") and upload_file.filename:
             if not (CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET):
                 raise HTTPException(status_code=400, detail="Cloudinary environment variables are not configured.")
-            content = await file.read()
+            content = await upload_file.read()
             upload_res = cloudinary.uploader.upload(
                 content,
                 folder="sammyreks_business_center/products",
@@ -278,17 +299,25 @@ async def create_product(
         record = {
             "id": doc_id,
             "name": str(name).strip(),
-            "price": float(price),
-            "stock": int(stock if stock is not None else 0),
-            "category": (category or "General").strip(),
-            "description": (description or "").strip(),
+            "title": str(name).strip(),
+            "price": float(raw_price),
+            "stock": int(float(raw_stock)),
+            "quantity": int(float(raw_stock)),
+            "category": str(category).strip(),
+            "description": str(description).strip(),
             "image_url": final_image_url,
             "created_at": utc_now_iso(),
         }
 
         db = get_db()
         db.collection("products").document(doc_id).set(record)
-        return {"status": "success", "product": record, "data": record}
+        return {
+            "status": "success",
+            "success": True,
+            "id": doc_id,
+            "product": record,
+            "data": record,
+        }
     except HTTPException:
         raise
     except Exception as exc:
@@ -296,26 +325,26 @@ async def create_product(
 
 
 @app.delete("/api/products/{product_id}")
+@app.delete("/products/{product_id}")
 def delete_product(product_id: str):
     try:
         db = get_db()
         db.collection("products").document(product_id).delete()
-        return {"status": "deleted", "id": product_id}
+        return {"status": "deleted", "success": True, "id": product_id}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to delete product: {exc}")
 
 
 # ---------------------------------------------------------------------------
-# Live Chat & Orders (/api/messages)
+# Live Chat & Orders (Firestore `messages`)
 # ---------------------------------------------------------------------------
 @app.get("/api/messages")
 def get_messages(phone: Optional[str] = None):
     try:
         db = get_db()
         query = db.collection("messages")
-        if phone:
-            clean_phone = phone.strip()
-            docs = query.where("phone", "==", clean_phone).stream()
+        if phone and phone.strip():
+            docs = query.where("phone", "==", phone.strip()).stream()
         else:
             docs = query.stream()
 
@@ -357,13 +386,13 @@ async def post_message(request: Request):
             "sender": sender,
             "text": text or "Submitted an order",
             "order_items": order_items,
-            "total_amount": float(total_amount) if total_amount is not None and total_amount != "" else None,
+            "total_amount": float(total_amount) if total_amount is not None and str(total_amount).strip() != "" else None,
             "created_at": utc_now_iso(),
         }
 
         db = get_db()
         db.collection("messages").document(doc_id).set(record)
-        return {"status": "success", "message": record, "data": record}
+        return {"status": "success", "success": True, "message": record, "data": record}
     except HTTPException:
         raise
     except Exception as exc:
@@ -371,7 +400,7 @@ async def post_message(request: Request):
 
 
 # ---------------------------------------------------------------------------
-# POS Sales, Debtors, Expenses, Workers & Settings
+# Sales, Debtors, Expenses, Workers & Settings
 # ---------------------------------------------------------------------------
 @app.get("/api/sales")
 def list_sales():
@@ -402,9 +431,12 @@ def create_sale(sale: SalePayload):
                 prod_snap = prod_ref.get()
                 if prod_snap.exists:
                     current_stock = int((prod_snap.to_dict() or {}).get("stock", 0))
-                    prod_ref.update({"stock": max(0, current_stock - qty)})
+                    prod_ref.update({
+                        "stock": max(0, current_stock - qty),
+                        "quantity": max(0, current_stock - qty),
+                    })
 
-        return {"status": "success", "sale": record, "data": record}
+        return {"status": "success", "success": True, "sale": record, "data": record}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to record sale: {exc}")
 
@@ -414,6 +446,7 @@ def list_debtors():
     try:
         db = get_db()
         records = [serialize_doc(d) for d in db.collection("debtors").stream()]
+        records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
         return {"debtors": records, "data": records}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to load debtors: {exc}")
@@ -428,7 +461,7 @@ def create_debtor(debtor: DebtorPayload):
         record["id"] = doc_id
         record["created_at"] = utc_now_iso()
         db.collection("debtors").document(doc_id).set(record)
-        return {"status": "success", "debtor": record, "data": record}
+        return {"status": "success", "success": True, "debtor": record, "data": record}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to save debtor: {exc}")
 
@@ -438,6 +471,7 @@ def list_expenses():
     try:
         db = get_db()
         records = [serialize_doc(d) for d in db.collection("expenses").stream()]
+        records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
         return {"expenses": records, "data": records}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to load expenses: {exc}")
@@ -452,7 +486,7 @@ def create_expense(expense: ExpensePayload):
         record["id"] = doc_id
         record["created_at"] = utc_now_iso()
         db.collection("expenses").document(doc_id).set(record)
-        return {"status": "success", "expense": record, "data": record}
+        return {"status": "success", "success": True, "expense": record, "data": record}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to save expense: {exc}")
 
@@ -462,6 +496,7 @@ def list_workers():
     try:
         db = get_db()
         records = [serialize_doc(d) for d in db.collection("workers").stream()]
+        records.sort(key=lambda r: r.get("created_at", ""), reverse=True)
         return {"workers": records, "data": records}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to load workers: {exc}")
@@ -476,7 +511,7 @@ def create_worker(worker: WorkerPayload):
         record["id"] = doc_id
         record["created_at"] = utc_now_iso()
         db.collection("workers").document(doc_id).set(record)
-        return {"status": "success", "worker": record, "data": record}
+        return {"status": "success", "success": True, "worker": record, "data": record}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to save worker: {exc}")
 
@@ -505,7 +540,7 @@ def save_settings(payload: SettingsPayload):
         data = payload.model_dump()
         data["updated_at"] = utc_now_iso()
         db.collection("settings").document("business_profile").set(data, merge=True)
-        return {"status": "success", "settings": data, "data": data}
+        return {"status": "success", "success": True, "settings": data, "data": data}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to save settings: {exc}")
 

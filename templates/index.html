@@ -3,295 +3,592 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sammyreks Business Center</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Sammyreks Business Center - Enterprise</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #f8f9fa; font-family: system-ui, -apple-system, sans-serif; }
+        .card { border-radius: 12px; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .sidebar { background: #fff; min-height: 100vh; border-right: 1px solid #dee2e6; padding: 20px; }
+        .app-notification { transition: all 0.3s ease; }
+    </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans">
+<body>
 
-    <!-- Navbar -->
-    <header class="bg-blue-700 text-white shadow-md sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-            <h1 class="text-xl font-bold">🏢 Sammyreks Business Center</h1>
-            <div id="nav-links" class="flex items-center space-x-2">
-                <button onclick="switchPortal('customer')" class="bg-blue-600 hover:bg-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold">🛍️ Customer Shop</button>
-                <button onclick="switchPortal('staff')" class="bg-blue-600 hover:bg-blue-800 px-3 py-1.5 rounded-lg text-sm font-semibold">🔑 Staff Portal</button>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar Portal Switcher -->
+            <div class="col-md-3 col-lg-2 sidebar">
+                <h4 class="fw-bold mb-4"><i class="fas fa-building text-primary me-2"></i> Sammyreks Portal</h4>
+                <hr>
+                <div class="mb-3">
+                    <label class="form-label text-muted small fw-bold">Choose Portal Mode</label>
+                    <select id="portalModeSelect" class="form-select">
+                        <option value="customer">🛍️ Customer Shop</option>
+                        <option value="staff">🔑 Staff/Admin Login</option>
+                    </select>
+                </div>
+                <div id="staffAuthBox" class="mt-3" style="display: none;">
+                    <div class="mb-2"><input type="text" id="loginUser" class="form-control form-control-sm" placeholder="Username"></div>
+                    <div class="mb-2"><input type="password" id="loginPass" class="form-control form-control-sm" placeholder="Password"></div>
+                    <button id="btnLoginAction" class="btn btn-primary btn-sm w-100 fw-bold">Login</button>
+                </div>
+                <div id="staffLoggedBox" class="mt-3" style="display: none;">
+                    <div class="alert alert-success py-2 small mb-2" id="loggedInUserText">Logged in</div>
+                    <button id="btnLogoutAction" class="btn btn-outline-danger btn-sm w-100">Logout</button>
+                </div>
+                <hr class="my-4">
+                <div class="text-muted small">Sammyreks Business Center v18.9 | 2026</div>
             </div>
-        </div>
-    </header>
 
-    <main class="max-w-7xl mx-auto px-4 py-6">
+            <!-- Main Content Area -->
+            <div class="col-md-9 col-lg-10 ms-sm-auto px-md-4 py-4">
+                <div id="noticeBanner" class="alert alert-primary text-center fw-bold shadow-sm" style="display: none;"></div>
+                <div id="appFeedbackBanner" class="alert alert-success text-center fw-bold app-notification shadow-sm" style="display: none;"></div>
+                <div id="broadcastVideoContainer" class="mb-4 text-center" style="display: none;"></div>
 
-        <!-- ================= CUSTOMER PORTAL ================= -->
-        <div id="portal-customer" class="portal-view">
-            <div id="notice-banner" class="hidden bg-blue-600 text-white p-3 rounded-xl text-center font-bold mb-4"></div>
-            
-            <div class="flex justify-between items-center mb-6">
-                <h2 class="text-2xl font-bold">🛒 Product Catalog</h2>
-                <button onclick="toggleCartModal()" class="bg-green-600 text-white px-4 py-2 rounded-xl font-bold flex items-center space-x-2 shadow">
-                    <span>🛒 Cart</span>
-                    <span id="cart-badge" class="bg-red-500 text-xs px-2 py-0.5 rounded-full">0</span>
-                </button>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="customer-product-grid">
-                <p class="col-span-full text-center py-10 text-slate-500">Loading products...</p>
-            </div>
-        </div>
-
-        <!-- ================= STAFF / ADMIN PORTAL ================= -->
-        <div id="portal-staff" class="portal-view hidden">
-            <div id="login-screen" class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-md mt-10">
-                <h3 class="text-2xl font-bold mb-4 text-center">🔑 Staff & CEO Login</h3>
-                <form onsubmit="handleLogin(event)" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">Username</label>
-                        <input type="text" id="login-user" required class="w-full border rounded-lg p-2.5">
+                <!-- ================= CUSTOMER SHOP PORTAL ================= -->
+                <div id="customerPortalView">
+                    <div class="p-4 mb-4 rounded text-white text-center shadow" style="background: linear-gradient(135deg, #1565c0, #0d47a1);">
+                        <h1 class="fw-bold">🏢 Welcome to Sammyreks Business Center</h1>
+                        <p class="mb-0">Your trusted plug for quality provisions, groceries, and goods!</p>
                     </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">Password</label>
-                        <input type="password" id="login-pass" required class="w-full border rounded-lg p-2.5">
-                    </div>
-                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl">Login to Dashboard</button>
-                </form>
-            </div>
 
-            <!-- Dashboard Tabs -->
-            <div id="staff-dashboard" class="hidden">
-                <div class="flex flex-wrap gap-2 mb-6 border-b pb-4">
-                    <button onclick="switchStaffTab('pos')" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">💳 POS & Sales</button>
-                    <button onclick="switchStaffTab('inventory')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-semibold text-sm">📦 Inventory</button>
-                    <button onclick="switchStaffTab('vault')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-semibold text-sm">📜 Receipts Vault</button>
-                    <button onclick="switchStaffTab('debtors')" class="bg-slate-200 text-slate-700 px-4 py-2 rounded-lg font-semibold text-sm">📓 Debtors</button>
+                    <div class="row g-2 mb-4">
+                        <div class="col-md-3"><button class="btn btn-outline-primary w-100 fw-bold cust-tab-btn" data-tab="shop">🛒 Shop & Cart</button></div>
+                        <div class="col-md-3"><button class="btn btn-outline-primary w-100 fw-bold cust-tab-btn" data-tab="request">📝 Multi-Item Request</button></div>
+                        <div class="col-md-3"><button class="btn btn-outline-primary w-100 fw-bold cust-tab-btn" data-tab="chat">💬 Live Chat & Receipts</button></div>
+                        <div class="col-md-3"><button class="btn btn-outline-primary w-100 fw-bold cust-tab-btn" data-tab="vault">🛒 View Cart & Checkout</button></div>
+                    </div>
+
+                    <div id="customerTabContent">
+                        <div class="card p-4 mb-4 bg-light border">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5>🛒 Shopping Cart: <span id="cartCount">0</span> product(s)</h5>
+                                <h5 class="fw-bold">Total: ₦<span id="cartTotal">0.00</span></h5>
+                            </div>
+                        </div>
+                        <div id="shopProductsGrid" class="row g-4"></div>
+                    </div>
                 </div>
 
-                <!-- STAFF TAB: POS -->
-                <div id="staff-tab-pos" class="staff-tab">
-                    <h3 class="text-xl font-bold mb-4">💳 POS Counter</h3>
-                    <div class="bg-white p-6 rounded-xl shadow max-w-lg">
-                        <form onsubmit="submitPOS(event)" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-semibold mb-1">Select Item</label>
-                                <select id="pos-item" class="w-full border rounded-lg p-2.5" onchange="updatePOSTotal()"></select>
+                <!-- ================= STAFF / ADMIN DASHBOARD ================= -->
+                <div id="staffPortalView" style="display: none;">
+                    <h2 class="fw-bold mb-4">🏢 Enterprise Staff Dashboard</h2>
+                    
+                    <ul class="nav nav-tabs mb-4" id="staffTabs" role="tablist">
+                        <li class="nav-item"><button class="nav-link active fw-bold" data-bs-toggle="tab" data-bs-target="#tabDash">📊 Dashboard</button></li>
+                        <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tabPos">💳 POS & Sales</button></li>
+                        <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tabInventory">📦 Inventory</button></li>
+                        <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tabChat">💬 Live Chat</button></li>
+                        <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tabVault">📜 Saved Vault</button></li>
+                        <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tabDebtors">📓 Debtors</button></li>
+                        <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tabExpenses">💸 Expenses</button></li>
+                        <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tabWorkers">👥 Workers</button></li>
+                        <li class="nav-item"><button class="nav-link fw-bold" data-bs-toggle="tab" data-bs-target="#tabSettings">⚙️ Settings</button></li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <!-- TAB 1: DASHBOARD -->
+                        <div class="tab-pane fade show active" id="tabDash">
+                            <div class="row g-3 mb-4">
+                                <div class="col-md-3"><div class="card p-3"><span class="text-muted">Total Revenue</span><h3 class="fw-bold text-dark" id="metricRev">₦0.00</h3></div></div>
+                                <div class="col-md-3"><div class="card p-3"><span class="text-muted">Total Profit</span><h3 class="fw-bold text-success" id="metricProfit">₦0.00</h3></div></div>
+                                <div class="col-md-3"><div class="card p-3"><span class="text-muted">Total Expenses</span><h3 class="fw-bold text-danger" id="metricExp">₦0.00</h3></div></div>
+                                <div class="col-md-3"><div class="card p-3"><span class="text-muted">Net Cashflow</span><h3 class="fw-bold text-primary" id="metricNet">₦0.00</h3></div></div>
                             </div>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-semibold mb-1">Quantity</label>
-                                    <input type="number" id="pos-qty" value="1" min="1" class="w-full border rounded-lg p-2.5" oninput="updatePOSTotal()">
+                        </div>
+
+                        <!-- TAB 2: POS & SALES -->
+                        <div class="tab-pane fade" id="tabPos">
+                            <div class="card p-4">
+                                <h4 class="fw-bold mb-3">POS & Sales Counter</h4>
+                                <div class="mb-3"><label class="form-label text-muted">Select Item</label><select id="posProductSelect" class="form-select form-select-lg"></select></div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6"><label class="form-label text-muted">Quantity</label><input type="number" id="posQty" class="form-control form-control-lg" value="1" min="1"></div>
+                                    <div class="col-md-6"><label class="form-label text-muted">Payment Gateway</label><select id="posGateway" class="form-select form-select-lg"><option>Moniepoint MFB</option><option>OPay</option><option>Access Bank</option><option>Cash</option><option>Transfer</option></select></div>
                                 </div>
-                                <div>
-                                    <label class="block text-sm font-semibold mb-1">Payment Gateway</label>
-                                    <select id="pos-gateway" class="w-full border rounded-lg p-2.5">
-                                        <option>Moniepoint MFB</option><option>OPay</option><option>Access Bank</option><option>Cash</option>
-                                    </select>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h3 class="fw-bold">Total: ₦<span id="posGrandTotal">0.00</span></h3>
+                                    <button id="btnCompleteSale" class="btn btn-success btn-lg px-5 fw-bold">Complete Sale</button>
                                 </div>
                             </div>
-                            <div>
-                                <label class="block text-sm font-semibold mb-1">Customer Name</label>
-                                <input type="text" id="pos-cust-name" placeholder="Walk-in Customer" class="w-full border rounded-lg p-2.5">
+                        </div>
+
+                        <!-- TAB 3: INVENTORY -->
+                        <div class="tab-pane fade" id="tabInventory">
+                            <div class="card p-4">
+                                <h4 class="fw-bold mb-3">Add Inventory Item (Cloudinary Powered)</h4>
+                                <form id="productForm">
+                                    <div class="row mb-3">
+                                        <div class="col-md-4"><input type="text" id="addName" class="form-control" placeholder="Product Name" required></div>
+                                        <div class="col-md-4"><input type="number" id="addCost" class="form-control" placeholder="Cost Price (₦)" required></div>
+                                        <div class="col-md-4"><input type="number" id="addPrice" class="form-control" placeholder="Retail Price (₦)" required></div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-4"><input type="number" id="addStock" class="form-control" placeholder="Stock Qty" required></div>
+                                        <div class="col-md-4"><input type="text" id="addCategory" class="form-control" placeholder="Category" value="General"></div>
+                                        <div class="col-md-4"><input type="text" id="addShelf" class="form-control" placeholder="Shelf Location"></div>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-md-6"><label class="form-label small text-muted">Product Image</label><input type="file" id="addImage" class="form-control"></div>
+                                        <div class="col-md-6"><label class="form-label small text-muted">Product Video</label><input type="file" id="addVideo" class="form-control"></div>
+                                    </div>
+                                    <button type="submit" class="btn btn-dark fw-bold px-4 py-2">Save Product to Cloud</button>
+                                </form>
                             </div>
-                            <div>
-                                <label class="block text-sm font-semibold mb-1">Customer Phone</label>
-                                <input type="text" id="pos-cust-phone" placeholder="080XXXXXXXX" class="w-full border rounded-lg p-2.5">
+                        </div>
+
+                        <!-- TAB 4: LIVE CHAT -->
+                        <div class="tab-pane fade" id="tabChat">
+                            <div class="card p-4">
+                                <h4 class="fw-bold mb-3">Staff Live Chat & Receipt Center</h4>
+                                <div class="mb-3 input-group">
+                                    <input type="text" id="chatPhoneInput" class="form-control" placeholder="Customer Phone">
+                                    <button id="btnLoadChat" class="btn btn-outline-primary">Load Chat</button>
+                                </div>
+                                <div id="chatMessagesContainer" class="border rounded p-3 mb-3 bg-light" style="height: 250px; overflow-y: auto;">
+                                    <p class="text-muted">Enter a customer phone number above and click Load Chat to view messages & orders.</p>
+                                </div>
+                                <div class="input-group">
+                                    <input type="text" id="chatReplyInput" class="form-control" placeholder="Type staff reply...">
+                                    <button id="btnSendChat" class="btn btn-primary">Send Reply</button>
+                                </div>
                             </div>
-                            <div class="bg-slate-50 p-4 rounded-lg flex justify-between items-center border">
-                                <span class="font-bold">Total:</span>
-                                <span id="pos-total-display" class="text-xl font-extrabold text-blue-600">₦0.00</span>
+                        </div>
+
+                        <!-- TAB 5: SAVED VAULT -->
+                        <div class="tab-pane fade" id="tabVault">
+                            <div class="card p-4"><h4 class="fw-bold mb-3">Saved Receipts Vault</h4><div id="vaultReceiptsContainer"></div></div>
+                        </div>
+
+                        <!-- TAB 6: DEBTORS -->
+                        <div class="tab-pane fade" id="tabDebtors">
+                            <div class="card p-4"><h4 class="fw-bold mb-3">Debtors Management</h4><div id="debtorsContainer"></div></div>
+                        </div>
+
+                        <!-- TAB 7: EXPENSES -->
+                        <div class="tab-pane fade" id="tabExpenses">
+                            <div class="card p-4">
+                                <h4 class="fw-bold mb-3">Expenditure Log</h4>
+                                <div class="mb-3">
+                                    <select id="expCat" class="form-select mb-2"><option>Salaries</option><option>Rent</option><option>Utility</option><option>Stocking</option><option>Fuel</option><option>Other</option></select>
+                                    <input type="number" id="expVal" class="form-control mb-2" placeholder="Amount (₦)">
+                                    <input type="text" id="expNote" class="form-control mb-2" placeholder="Note">
+                                    <button id="btnRecordExp" class="btn btn-danger fw-bold">Record Expense</button>
+                                </div>
                             </div>
-                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl">Complete Sale & Save Receipt</button>
-                        </form>
+                        </div>
+
+                        <!-- TAB 8: WORKERS -->
+                        <div class="tab-pane fade" id="tabWorkers">
+                            <div class="card p-4">
+                                <h4 class="fw-bold mb-3">Staff Management</h4>
+                                <div class="mb-3">
+                                    <input type="text" id="workerName" class="form-control mb-2" placeholder="Worker Name">
+                                    <select id="workerRole" class="form-select mb-2"><option>Staff</option><option>CEO</option></select>
+                                    <input type="password" id="workerPass" class="form-control mb-2" placeholder="Password (Min 6 chars)">
+                                    <button id="btnCreateWorker" class="btn btn-dark fw-bold">Create Account</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TAB 9: SETTINGS -->
+                        <div class="tab-pane fade" id="tabSettings">
+                            <div class="card p-4">
+                                <h4 class="fw-bold mb-3">Notice Board & Announcements</h4>
+                                <div class="mb-3">
+                                    <label class="form-label text-muted">Notice Message</label><textarea id="settingNoticeInput" class="form-control mb-2" rows="2"></textarea>
+                                    <label class="form-label text-muted">Broadcast Video URL</label><input type="text" id="settingVideoInput" class="form-control mb-3">
+                                </div>
+                                <button id="btnSaveSettings" class="btn btn-primary fw-bold">Publish Notice & Broadcast</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <!-- STAFF TAB: INVENTORY -->
-                <div id="staff-tab-inventory" class="staff-tab hidden">
-                    <h3 class="text-xl font-bold mb-4">📦 Inventory Management</h3>
-                    <div class="bg-white rounded-xl shadow overflow-hidden">
-                        <table class="w-full text-left">
-                            <thead class="bg-slate-200 text-sm">
-                                <tr><th class="p-3">Name</th><th class="p-3">Category</th><th class="p-3">Stock</th><th class="p-3">Price</th></tr>
-                            </thead>
-                            <tbody id="inventory-table-body"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- STAFF TAB: RECEIPTS VAULT -->
-                <div id="staff-tab-vault" class="staff-tab hidden">
-                    <h3 class="text-xl font-bold mb-4">📜 Saved Receipts Vault</h3>
-                    <div id="vault-list" class="space-y-3"></div>
-                </div>
-
-                <!-- STAFF TAB: DEBTORS -->
-                <div id="staff-tab-debtors" class="staff-tab hidden">
-                    <h3 class="text-xl font-bold mb-4">📓 Debtors Log</h3>
-                    <div id="debtors-list" class="space-y-3"></div>
-                </div>
-            </div>
-        </div>
-
-    </main>
-
-    <!-- Cart Modal -->
-    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex justify-end">
-        <div class="bg-white w-full max-w-md h-full p-6 flex flex-col justify-between shadow-2xl">
-            <div>
-                <div class="flex justify-between items-center border-b pb-4 mb-4">
-                    <h3 class="text-xl font-bold">🛒 Shopping Cart</h3>
-                    <button onclick="toggleCartModal()" class="text-xl font-bold">&times;</button>
-                </div>
-                <div id="cart-items" class="space-y-3 max-h-[60vh] overflow-y-auto"></div>
-            </div>
-            <div class="border-t pt-4">
-                <div class="flex justify-between font-bold text-lg mb-4">
-                    <span>Total:</span>
-                    <span id="cart-total">₦0.00</span>
-                </div>
-                <button onclick="alert('Order submitted successfully!')" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold">Checkout</button>
             </div>
         </div>
     </div>
 
-    <!-- Frontend Script -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        let products = [];
+        let productsList = [];
         let cart = [];
+        let loggedUserRole = "";
 
-        function switchPortal(portal) {
-            document.querySelectorAll('.portal-view').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`portal-${portal}`).classList.remove('hidden');
-            if (portal === 'customer') fetchProducts();
+        function showAppBanner(message, isSuccess = true) {
+            const banner = document.getElementById('appFeedbackBanner');
+            if (!banner) return;
+            banner.className = isSuccess ? "alert alert-success text-center fw-bold app-notification shadow-sm" : "alert alert-danger text-center fw-bold app-notification shadow-sm";
+            banner.innerText = message;
+            banner.style.display = 'block';
+            setTimeout(() => { banner.style.display = 'none'; }, 4000);
         }
 
-        async function fetchProducts() {
-            const res = await fetch('/api/products');
-            const data = await res.json();
-            products = data.products || [];
-            renderShop(products);
-            populatePOSDropdown(products);
+        async function initApp() {
+            try {
+                const settingsRes = await fetch('/api/settings');
+                const settings = await settingsRes.json();
+                if (settings.notice) {
+                    const noticeEl = document.getElementById('noticeBanner');
+                    noticeEl.innerText = `📢 ${settings.notice}`;
+                    noticeEl.style.display = 'block';
+                }
+                if (settings.broadcast_video) {
+                    const vidBox = document.getElementById('broadcastVideoContainer');
+                    vidBox.innerHTML = `<video controls class="w-100 rounded shadow" style="max-height:350px;"><source src="${settings.broadcast_video}" type="video/mp4"></video>`;
+                    vidBox.style.display = 'block';
+                }
+
+                const analyticsRes = await fetch('/api/analytics');
+                const analytics = await analyticsRes.json();
+                const revEl = document.getElementById('metricRev');
+                const profEl = document.getElementById('metricProfit');
+                const expEl = document.getElementById('metricExp');
+                const netEl = document.getElementById('metricNet');
+                if (revEl) revEl.innerText = `₦${analytics.revenue.toLocaleString()}`;
+                if (profEl) profEl.innerText = `₦${analytics.profit.toLocaleString()}`;
+                if (expEl) expEl.innerText = `₦${analytics.expenses.toLocaleString()}`;
+                if (netEl) netEl.innerText = `₦${analytics.net.toLocaleString()}`;
+
+                const prodRes = await fetch('/api/products');
+                const prodData = await prodRes.json();
+                productsList = prodData.products || [];
+
+                let selectHtml = '<option value="">-- Choose Item --</option>';
+                let shopHtml = '';
+
+                productsList.forEach(p => {
+                    const price = p.price_retail || p.price_carton || 0;
+                    selectHtml += `<option value="${p.id}" data-price="${price}" data-name="${p.name}">${p.name} - ₦${price.toLocaleString()}</option>`;
+                    shopHtml += `
+                        <div class="col-md-4">
+                            <div class="card p-3 h-100">
+                                ${p.img_data ? `<img src="${p.img_data}" class="card-img-top rounded mb-2" style="height:160px; object-fit:cover;">` : '<div class="bg-secondary text-white text-center py-5 rounded mb-2">No Image</div>'}
+                                <h5 class="fw-bold">${p.name}</h5>
+                                <p class="text-muted small mb-2">${p.description || ''}</p>
+                                <h6 class="text-primary fw-bold">₦${price.toLocaleString()}</h6>
+                                <button class="btn btn-primary btn-sm mt-auto fw-bold btn-add-cart" data-id="${p.id}" data-name="${p.name}" data-price="${price}"><i class="fas fa-cart-plus me-1"></i> Add to Cart</button>
+                            </div>
+                        </div>`;
+                });
+
+                const posSelect = document.getElementById('posProductSelect');
+                const shopGrid = document.getElementById('shopProductsGrid');
+                if (posSelect) posSelect.innerHTML = selectHtml;
+                if (shopGrid) shopGrid.innerHTML = shopHtml || '<p class="text-muted">No products available in shop.</p>';
+            } catch (err) {
+                console.error("Initialization error:", err);
+            }
         }
 
-        function renderShop(list) {
-            const grid = document.getElementById('customer-product-grid');
-            if (list.length === 0) { grid.innerHTML = '<p class="col-span-full text-center py-10 text-slate-500">No products available.</p>'; return; }
-            grid.innerHTML = list.map(p => `
-                <div class="bg-white rounded-xl shadow border overflow-hidden flex flex-col justify-between">
-                    <img src="${p.img_data || 'https://via.placeholder.com/300'}" class="w-full h-44 object-cover">
-                    <div class="p-4">
-                        <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">${p.category || 'General'}</span>
-                        <h4 class="font-bold text-lg mt-2">${p.name}</h4>
-                        <p class="text-slate-600 text-sm mt-1">${p.description || ''}</p>
-                    </div>
-                    <div class="p-4 border-t bg-slate-50 flex justify-between items-center">
-                        <span class="font-extrabold text-lg">₦${(p.price_retail || p.price_carton || 0).toLocaleString()}</span>
-                        <button onclick='addToCart(${JSON.stringify(p)})' class="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-semibold">Add to Cart</button>
-                    </div>
-                </div>
-            `).join('');
-        }
+        // ==========================================
+        // UNIFIED UNIVERSAL EVENT DELEGATION
+        // ==========================================
+        document.addEventListener('click', async (e) => {
+            
+            // 1. Handle "Add to Cart"
+            if (e.target.closest('.btn-add-cart')) {
+                const btn = e.target.closest('.btn-add-cart');
+                const id = btn.getAttribute('data-id');
+                const name = btn.getAttribute('data-name');
+                const price = parseFloat(btn.getAttribute('data-price'));
+                
+                cart.push({ id, name, price, qty: 1, total: price });
+                
+                const cartCountEl = document.getElementById('cartCount');
+                const cartTotalEl = document.getElementById('cartTotal');
+                if (cartCountEl) cartCountEl.innerText = cart.length;
+                if (cartTotalEl) cartTotalEl.innerText = cart.reduce((s,i)=>s+i.total,0).toLocaleString();
+                
+                showAppBanner(`Added ${name} to cart successfully!`);
+            }
 
-        function addToCart(p) {
-            const price = p.price_retail || p.price_carton || 0;
-            const existing = cart.find(i => i.id === p.id);
-            if (existing) { existing.qty += 1; existing.total = existing.qty * price; }
-            else { cart.push({ id: p.id, name: p.name, price: price, qty: 1, total: price }); }
-            updateCartUI();
-            alert(`${p.name} added to cart!`);
-        }
+            // 2. Handle Customer Tabs Switching
+            if (e.target.closest('.cust-tab-btn')) {
+                const btn = e.target.closest('.cust-tab-btn');
+                const tab = btn.getAttribute('data-tab');
+                const contentArea = document.getElementById('customerTabContent');
 
-        function updateCartUI() {
-            document.getElementById('cart-badge').innerText = cart.reduce((sum, i) => sum + i.qty, 0);
-            const listEl = document.getElementById('cart-items');
-            const totalEl = document.getElementById('cart-total');
-            if (cart.length === 0) { listEl.innerHTML = '<p class="text-slate-500 text-center py-4">Cart is empty.</p>'; totalEl.innerText = '₦0.00'; return; }
-            let total = 0;
-            listEl.innerHTML = cart.map(i => {
-                total += i.total;
-                return `<div class="flex justify-between border-b pb-2"><div><h5 class="font-semibold">${i.name}</h5><p class="text-xs text-slate-500">₦${i.price.toLocaleString()} x ${i.qty}</p></div><span class="font-bold">₦${i.total.toLocaleString()}</span></div>`;
-            }).join('');
-            totalEl.innerText = `₦${total.toLocaleString()}`;
-        }
+                if (tab === 'shop') {
+                    contentArea.innerHTML = `
+                        <div class="card p-4 mb-4 bg-light border">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5>🛒 Shopping Cart: <span id="cartCount">${cart.length}</span> product(s)</h5>
+                                <h5 class="fw-bold">Total: ₦<span id="cartTotal">${cart.reduce((s,i)=>s+i.total,0).toLocaleString()}</span></h5>
+                            </div>
+                        </div>
+                        <div id="shopProductsGrid" class="row g-4"></div>`;
+                    initApp();
+                } else if (tab === 'request') {
+                    contentArea.innerHTML = `
+                        <div class="card p-4">
+                            <h4 class="fw-bold mb-3">📝 Multi-Item Special Request</h4>
+                            <div class="mb-3"><input type="text" id="reqName" class="form-control mb-2" placeholder="Your Full Name"><input type="text" id="reqPhone" class="form-control" placeholder="Your Phone Number"></div>
+                            <div class="mb-3"><textarea id="reqItems" class="form-control" rows="3" placeholder="List items you want..."></textarea></div>
+                            <button class="btn btn-success fw-bold" id="btnSubmitCustomReq">Submit Request</button>
+                        </div>`;
+                } else if (tab === 'chat') {
+                    contentArea.innerHTML = `
+                        <div class="card p-4">
+                            <h4 class="fw-bold mb-3">💬 Customer Live Chat & Receipts</h4>
+                            <div class="mb-3 input-group">
+                                <input type="text" id="custPhoneChat" class="form-control" placeholder="Enter Your Phone Number (e.g. 080...)">
+                                <button class="btn btn-outline-primary" id="btnCustLoadChat">Load Chat</button>
+                            </div>
+                            <div id="custChatBox" class="border rounded p-3 bg-light mb-3" style="height:250px; overflow-y:auto;"><p class="text-muted">Enter your phone number and click Load Chat to view messages.</p></div>
+                            <div class="input-group">
+                                <input type="text" id="custMsg" class="form-control" placeholder="Type message or order follow-up...">
+                                <button class="btn btn-primary" id="btnCustSendMsg">Send Message</button>
+                            </div>
+                        </div>`;
+                } else if (tab === 'vault') {
+                    let cartItemsHtml = '';
+                    let grandTotal = 0;
+                    cart.forEach((item) => {
+                        grandTotal += item.total;
+                        cartItemsHtml += `
+                            <div class="row align-items-center py-2 border-bottom">
+                                <div class="col-md-4"><strong>${item.name}</strong></div>
+                                <div class="col-md-2 text-muted">Retail Unit</div>
+                                <div class="col-md-2 text-center">${item.qty}</div>
+                                <div class="col-md-4 text-end fw-bold">₦${item.total.toLocaleString()}</div>
+                            </div>`;
+                    });
 
-        function toggleCartModal() { document.getElementById('cart-modal').classList.toggle('hidden'); }
+                    contentArea.innerHTML = `
+                        <div class="card p-4">
+                            <h4 class="fw-bold mb-3">🛒 View Cart & Send Order to Live Chat</h4>
+                            <div class="row fw-bold text-muted border-bottom pb-2 mb-2">
+                                <div class="col-md-4">name</div>
+                                <div class="col-md-2">unit</div>
+                                <div class="col-md-2 text-center">qty</div>
+                                <div class="col-md-4 text-end">total_price</div>
+                            </div>
+                            <div class="mb-3">${cartItemsHtml || '<p class="text-muted">Your cart is currently empty.</p>'}</div>
+                            <h3 class="fw-bold mb-4">Grand Total: ₦<span id="checkoutGrandTotal">${grandTotal.toLocaleString()}</span></h3>
+                            <hr>
+                            <div class="mb-3"><input type="text" id="checkoutName" class="form-control" placeholder="Your Full Name"></div>
+                            <div class="mb-3"><input type="text" id="checkoutPhone" class="form-control" placeholder="Your Phone Number"></div>
+                            <div class="mb-3"><textarea id="checkoutAddress" class="form-control" rows="3" placeholder="Delivery Address & Order Notes"></textarea></div>
+                            <button id="btnSendOrderLiveChat" class="btn btn-dark fw-bold px-4"><i class="fas fa-paper-plane me-1"></i> Send Order to Live Chat</button>
+                        </div>`;
+                }
+            }
 
-        async function handleLogin(e) {
-            e.preventDefault();
-            const formData = new URLSearchParams();
-            formData.append('username', document.getElementById('login-user').value);
-            formData.append('password', document.getElementById('login-pass').value);
-            const res = await fetch('/api/auth/login', { method: 'POST', body: formData });
-            if (res.ok) {
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('staff-dashboard').classList.remove('hidden');
-                fetchProducts();
-            } else { alert('Invalid credentials'); }
-        }
+            // 3. Handle Special Request Submit
+            if (e.target.closest('#btnSubmitCustomReq')) {
+                const name = document.getElementById('reqName').value.trim();
+                const phone = document.getElementById('reqPhone').value.trim();
+                const items = document.getElementById('reqItems').value.trim();
+                if (!name || !phone || !items) {
+                    showAppBanner("Please fill in all special request fields.", false);
+                    return;
+                }
+                try {
+                    await fetch('/api/messages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sender: name, customer_phone: phone, customer_name: name, message: `Special Request: ${items}` })
+                    });
+                    showAppBanner("Special request submitted successfully to live chat!");
+                    document.getElementById('reqName').value = '';
+                    document.getElementById('reqPhone').value = '';
+                    document.getElementById('reqItems').value = '';
+                } catch (err) {
+                    showAppBanner("Error submitting request.", false);
+                }
+            }
 
-        function switchStaffTab(tab) {
-            document.querySelectorAll('.staff-tab').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`staff-tab-${tab}`).classList.remove('hidden');
-            if (tab === 'inventory') fetchInventory();
-            if (tab === 'vault') fetchVault();
-            if (tab === 'debtors') fetchDebtors();
-        }
+            // 4. Handle Customer Live Chat Load
+            if (e.target.closest('#btnCustLoadChat')) {
+                const phone = document.getElementById('custPhoneChat').value.trim();
+                if (!phone) { showAppBanner("Enter phone number first.", false); return; }
+                try {
+                    const res = await fetch(`/api/messages?phone=${phone}`);
+                    const data = await res.json();
+                    let html = '';
+                    (data.messages || []).forEach(m => {
+                        html += `<div class="mb-2"><strong>${m.sender}:</strong> ${m.message} <span class="text-muted small float-end">${m.timestamp || ''}</span></div>`;
+                    });
+                    document.getElementById('custChatBox').innerHTML = html || '<p class="text-muted">No messages found for this phone number.</p>';
+                } catch (err) {
+                    showAppBanner("Failed to load chat.", false);
+                }
+            }
 
-        function populatePOSDropdown(list) {
-            const select = document.getElementById('pos-item');
-            select.innerHTML = list.map(p => `<option value="${p.name}" data-price="${p.price_retail || p.price_carton || 0}">${p.name} (₦${(p.price_retail || p.price_carton || 0).toLocaleString()})</option>`).join('');
-            updatePOSTotal();
-        }
+            // 5. Handle Customer Live Chat Send Message
+            if (e.target.closest('#btnCustSendMsg')) {
+                const phone = document.getElementById('custPhoneChat').value.trim();
+                const msg = document.getElementById('custMsg').value.trim();
+                if (!phone || !msg) { showAppBanner("Enter phone number and message.", false); return; }
+                try {
+                    const res = await fetch('/api/messages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sender: 'Customer', customer_phone: phone, customer_name: 'Customer', message: msg })
+                    });
+                    if (res.ok) {
+                        document.getElementById('custMsg').value = '';
+                        document.getElementById('btnCustLoadChat').click();
+                    }
+                } catch (err) {
+                    showAppBanner("Failed to send message.", false);
+                }
+            }
 
-        function updatePOSTotal() {
-            const select = document.getElementById('pos-item');
-            const opt = select.options[select.selectedIndex];
-            if (!opt) return;
-            const price = parseFloat(opt.getAttribute('data-price')) || 0;
-            const qty = parseInt(document.getElementById('pos-qty').value) || 1;
-            document.getElementById('pos-total-display').innerText = `₦${(price * qty).toLocaleString()}`;
-        }
+            // 6. Handle "Send Order to Live Chat" (Checkout)
+            if (e.target.closest('#btnSendOrderLiveChat')) {
+                const nameInput = document.getElementById('checkoutName');
+                const phoneInput = document.getElementById('checkoutPhone');
+                const addressInput = document.getElementById('checkoutAddress');
 
-        async function submitPOS(e) {
-            e.preventDefault();
-            const select = document.getElementById('pos-item');
-            const opt = select.options[select.selectedIndex];
-            const price = parseFloat(opt.getAttribute('data-price')) || 0;
-            const qty = parseInt(document.getElementById('pos-qty').value) || 1;
-            const formData = new URLSearchParams();
-            formData.append('item_name', opt.value);
-            formData.append('unit', 'Retail Unit');
-            formData.append('qty', qty);
-            formData.append('total', price * qty);
-            formData.append('customer_name', document.getElementById('pos-cust-name').value || 'Walk-in Customer');
-            formData.append('customer_phone', document.getElementById('pos-cust-phone').value || 'N/A');
-            formData.append('payment_source', document.getElementById('pos-gateway').value);
-            const res = await fetch('/api/pos/sale', { method: 'POST', body: formData });
-            if (res.ok) { alert('Sale recorded & receipt saved!'); switchStaffTab('vault'); }
-        }
+                const name = nameInput ? nameInput.value.trim() : "";
+                const phone = phoneInput ? phoneInput.value.trim() : "";
+                const address = addressInput ? addressInput.value.trim() : "";
+                
+                if (!name || !phone) {
+                    showAppBanner("Please enter your name and phone number to checkout.", false);
+                    return;
+                }
+                if (cart.length === 0) {
+                    showAppBanner("Your cart is empty. Add items before checking out.", false);
+                    return;
+                }
 
-        async function fetchInventory() {
-            const res = await fetch('/api/products');
-            const data = await res.json();
-            document.getElementById('inventory-table-body').innerHTML = (data.products || []).map(p => `
-                <tr class="border-b"><td class="p-3 font-semibold">${p.name}</td><td class="p-3">${p.category || 'General'}</td><td class="p-3">${p.qty_cartons}</td><td class="p-3 font-bold text-blue-600">₦${(p.price_retail || 0).toLocaleString()}</td></tr>
-            `).join('');
-        }
+                let grandTotal = cart.reduce((s,i)=>s+i.total,0);
+                const orderSummaryText = `New Order from ${name} (${phone}):\n` + 
+                    cart.map(i => `${i.qty}x ${i.name} (@ ₦${i.total})`).join(', ') + 
+                    `\nDelivery Notes: ${address}\nGrand Total: ₦${grandTotal}`;
 
-        async function fetchVault() {
-            const res = await fetch('/api/saved-receipts');
-            const data = await res.json();
-            document.getElementById('vault-list').innerHTML = (data.receipts || []).map(r => `
-                <div class="bg-white p-4 rounded-xl shadow border flex justify-between items-center"><div><span class="text-xs font-bold bg-slate-200 px-2 py-0.5 rounded">${r.payment_ref}</span><h4 class="font-bold text-lg mt-1">${r.customer_name}</h4><p class="text-xs text-slate-500">${r.timestamp}</p></div><span class="font-extrabold text-green-600">₦${parseFloat(r.grand_total).toLocaleString()}</span></div>
-            `).join('');
-        }
+                try {
+                    const res = await fetch('/api/messages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            sender: name,
+                            customer_phone: phone,
+                            customer_name: name,
+                            message: orderSummaryText
+                        })
+                    });
+                    if (res.ok) {
+                        showAppBanner("🎉 Order sent successfully to Live Chat! Staff will attend to you shortly.");
+                        cart = [];
+                        const cartCountEl = document.getElementById('cartCount');
+                        const cartTotalEl = document.getElementById('cartTotal');
+                        if (cartCountEl) cartCountEl.innerText = '0';
+                        if (cartTotalEl) cartTotalEl.innerText = '0.00';
+                    } else {
+                        showAppBanner("Failed to submit order to server.", false);
+                    }
+                } catch (err) {
+                    showAppBanner("Network error submitting order.", false);
+                }
+            }
 
-        async function fetchDebtors() {
-            const res = await fetch('/api/debtors');
-            const data = await res.json();
-            document.getElementById('debtors-list').innerHTML = (data.debtors || []).map(d => `
-                <div class="bg-white p-4 rounded-xl shadow border flex justify-between items-center"><div><h4 class="font-bold">${d.customer} (${d.phone})</h4><p class="text-sm text-slate-600">${d.items_bought}</p></div><span class="font-extrabold text-red-600">₦${parseFloat(d.amount).toLocaleString()}</span></div>
-            `).join('');
-        }
+            // 7. Handle Staff Dashboard "Load Chat"
+            if (e.target.closest('#btnLoadChat')) {
+                const phone = document.getElementById('chatPhoneInput').value.trim();
+                if (!phone) { showAppBanner("Please enter a customer phone number.", false); return; }
+                try {
+                    const res = await fetch(`/api/messages?phone=${phone}`);
+                    const data = await res.json();
+                    let html = '';
+                    (data.messages || []).forEach(m => {
+                        html += `<div class="mb-2"><strong>${m.sender}:</strong> ${m.message} <span class="text-muted small float-end">${m.timestamp || ''}</span></div>`;
+                    });
+                    document.getElementById('chatMessagesContainer').innerHTML = html || '<p class="text-muted">No messages found for this phone number.</p>';
+                    showAppBanner("Chat loaded successfully!");
+                } catch (err) {
+                    showAppBanner("Failed to load staff chat.", false);
+                }
+            }
 
-        fetchProducts();
+            // 8. Handle Staff Dashboard "Send Reply"
+            if (e.target.closest('#btnSendChat')) {
+                const phone = document.getElementById('chatPhoneInput').value.trim();
+                const msg = document.getElementById('chatReplyInput').value.trim();
+                if (!phone || !msg) { showAppBanner("Enter customer phone and reply message.", false); return; }
+                try {
+                    const res = await fetch('/api/messages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ sender: 'Staff Admin', customer_phone: phone, customer_name: 'Customer', message: msg })
+                    });
+                    if (res.ok) {
+                        document.getElementById('chatReplyInput').value = '';
+                        document.getElementById('btnLoadChat').click();
+                        showAppBanner("Reply sent to customer!");
+                    }
+                } catch (err) {
+                    showAppBanner("Failed to send reply.", false);
+                }
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const modeSelect = document.getElementById('portalModeSelect');
+            if (modeSelect) {
+                modeSelect.addEventListener('change', (e) => {
+                    const mode = e.target.value;
+                    const staffAuthBox = document.getElementById('staffAuthBox');
+                    const custView = document.getElementById('customerPortalView');
+                    const staffView = document.getElementById('staffPortalView');
+                    const staffLoggedBox = document.getElementById('staffLoggedBox');
+
+                    if (mode === 'staff') {
+                        if (staffAuthBox) staffAuthBox.style.display = 'block';
+                        if (custView) custView.style.display = 'none';
+                        if (staffView) staffView.style.display = 'none';
+                    } else {
+                        if (staffAuthBox) staffAuthBox.style.display = 'none';
+                        if (staffLoggedBox) staffLoggedBox.style.display = 'none';
+                        if (custView) custView.style.display = 'block';
+                        if (staffView) staffView.style.display = 'none';
+                    }
+                });
+            }
+
+            const btnLogin = document.getElementById('btnLoginAction');
+            if (btnLogin) {
+                btnLogin.addEventListener('click', async () => {
+                    const username = document.getElementById('loginUser').value.trim();
+                    const password = document.getElementById('loginPass').value.trim();
+                    try {
+                        const res = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ username, password })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            loggedUserRole = data.role;
+                            document.getElementById('staffAuthBox').style.display = 'none';
+                            document.getElementById('staffLoggedBox').style.display = 'block';
+                            document.getElementById('loggedInUserText').innerText = `Logged in: ${data.user} (${data.role})`;
+                            document.getElementById('staffPortalView').style.display = 'block';
+                        } else {
+                            showAppBanner(data.detail || "Incorrect username or password.", false);
+                        }
+                    } catch (err) {
+                        showAppBanner("Login request failed.", false);
+                    }
+                });
+            }
+
+            const btnLogout = document.getElementById('btnLogoutAction');
+            if (btnLogout) {
+                btnLogout.addEventListener('click', () => {
+                    document.getElementById('staffLoggedBox').style.display = 'none';
+                    document.getElementById('staffPortalView').style.display = 'none';
+                    document.getElementById('portalModeSelect').value = 'customer';
+                    document.getElementById('customerPortalView').style.display = 'block';
+                });
+            }
+
+            initApp();
+        });
     </script>
 </body>
 </html>

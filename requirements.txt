@@ -2,9 +2,7 @@ fastapi
 uvicorn
 supabase
 cloudinary
-python-multipart
+python-dotenv
+jinja2
 pydantic
 pandas
-requests
-python-dotenv
-Jinja2

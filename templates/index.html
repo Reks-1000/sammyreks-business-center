@@ -35,6 +35,12 @@
       background: #000000;
       border-radius: 6px;
     }
+    .product-ad-player {
+      max-height: 420px;
+      width: 100%;
+      background: #000000;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
@@ -601,6 +607,19 @@
     </div>
   </div>
 
+  <!-- Product Advert Modal -->
+  <div class="modal fade" id="productAdModal" tabindex="-1" aria-labelledby="productAdModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="productAdModalLabel">Product Advert</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="productAdModalBody"></div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     const state = {
@@ -610,6 +629,13 @@
       user: null,
       currency: "₦",
     };
+
+    const productAdModalEl = document.getElementById("productAdModal");
+    const productAdModal = new bootstrap.Modal(productAdModalEl);
+
+    productAdModalEl.addEventListener("hidden.bs.modal", () => {
+      document.getElementById("productAdModalBody").innerHTML = "";
+    });
 
     function showBanner(message, type = "info") {
       const banner = document.getElementById("appFeedbackBanner");
@@ -636,6 +662,11 @@
         .replace(/"/g, "&quot;");
     }
 
+    function hasValidVideoUrl(videoUrl) {
+      const clean = String(videoUrl || "").trim();
+      return Boolean(clean && !["none", "nan", "null"].includes(clean.toLowerCase()));
+    }
+
     function getYouTubeEmbedUrl(url) {
       const raw = String(url || "").trim();
       const watchMatch = raw.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{6,})/);
@@ -645,12 +676,31 @@
       return null;
     }
 
+    function openProductAd(prod) {
+      const cleanUrl = String(prod.video_url || "").trim();
+      document.getElementById("productAdModalLabel").textContent = `${prod.name || "Product"} — Advert`;
+      const ytEmbed = getYouTubeEmbedUrl(cleanUrl);
+      document.getElementById("productAdModalBody").innerHTML = ytEmbed
+        ? `
+          <div class="ratio ratio-16x9">
+            <iframe src="${escapeHtml(ytEmbed)}" title="${escapeHtml(prod.name || "Product Ad")}" allowfullscreen></iframe>
+          </div>
+        `
+        : `
+          <video class="product-ad-player" controls autoplay preload="metadata" playsinline>
+            <source src="${escapeHtml(cleanUrl)}" />
+            Your browser does not support video playback.
+          </video>
+        `;
+      productAdModal.show();
+    }
+
     function renderBroadcastVideo(videoUrl) {
       const card = document.getElementById("customerBroadcastCard");
       const wrap = document.getElementById("customerBroadcastPlayerWrap");
       const cleanUrl = String(videoUrl || "").trim();
 
-      if (!cleanUrl || ["none", "nan"].includes(cleanUrl.toLowerCase())) {
+      if (!hasValidVideoUrl(cleanUrl)) {
         card.classList.add("d-none");
         wrap.innerHTML = "";
         return;
@@ -795,6 +845,7 @@
           const rLbl = p.unit_retail_label || "Retail Unit";
           const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
           const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+          const hasAd = hasValidVideoUrl(p.video_url);
           const imgHtml = imgSrc
             ? `<img src="${escapeHtml(imgSrc)}" class="card-img-top" alt="${escapeHtml(p.name)}" />`
             : `<div class="bg-light d-flex align-items-center justify-content-center text-muted" style="height:170px;"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
@@ -808,6 +859,11 @@
                   <div class="text-primary fw-semibold mb-1">${state.currency}${displayPrice.toFixed(2)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
                   <div class="small text-muted mb-2">Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} • ${escapeHtml(p.category || "General")}</div>
                   <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
+                  ${hasAd ? `
+                    <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" data-action="watch-ad" data-id="${escapeHtml(p.id)}">
+                      <i class="fa-solid fa-play me-1"></i>Watch Ad
+                    </button>
+                  ` : ""}
                   <div class="row g-1 mb-2">
                     <div class="col-7">
                       <select class="form-select form-select-sm card-unit-sel">
@@ -1011,6 +1067,13 @@
         switchCustomerTab(target.dataset.tab);
       } else if (action === "switch-staff-tab") {
         switchStaffTab(target.dataset.tab);
+      } else if (action === "watch-ad") {
+        const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
+        if (prod && hasValidVideoUrl(prod.video_url)) {
+          openProductAd(prod);
+        } else {
+          showBanner("No video advert is attached to this product yet.", "warning");
+        }
       } else if (action === "add-to-cart") {
         const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
         if (!prod) return;

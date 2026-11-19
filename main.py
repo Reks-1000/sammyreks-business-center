@@ -25,6 +25,12 @@ if os.path.isdir("static"):
 templates = Jinja2Templates(directory="templates")
 
 # ---------------------------------------------------------------------------
+# Auth & Admin Credentials (reads from Railway Variables / .env)
+# ---------------------------------------------------------------------------
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+
+# ---------------------------------------------------------------------------
 # Cloudinary Setup (reads from Railway Variables / .env)
 # ---------------------------------------------------------------------------
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
@@ -63,7 +69,6 @@ def get_db():
             cred = credentials.Certificate(local_key_path)
             firebase_admin.initialize_app(cred)
         else:
-            # Fallback to Application Default Credentials if present in environment
             firebase_admin.initialize_app()
 
     _db_client = firestore.client()
@@ -83,15 +88,6 @@ def serialize_doc(doc) -> Dict[str, Any]:
 # ---------------------------------------------------------------------------
 # Pydantic Models
 # ---------------------------------------------------------------------------
-class ProductPayload(BaseModel):
-    name: str
-    price: float
-    stock: int = 0
-    category: str = "General"
-    description: str = ""
-    image_url: str = ""
-
-
 class MessagePayload(BaseModel):
     phone: str
     sender: str = "customer"
@@ -138,13 +134,12 @@ class SettingsPayload(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Health & Frontend Routes
+# Health, Frontend & Auth Routes
 # ---------------------------------------------------------------------------
 @app.get("/health")
 def health_check():
     try:
         db = get_db()
-        # Lightweight ping without heavy reads
         _ = list(db.collections())
         return {"status": "ok", "database": "firestore"}
     except Exception as exc:
@@ -164,6 +159,40 @@ def home(request: Request):
             "currency": "₦",
         },
     )
+
+
+@app.post("/api/login")
+@app.post("/login")
+async def portal_login(request: Request):
+    content_type = request.headers.get("content-type", "")
+    if "application/json" in content_type:
+        data = await request.json()
+    else:
+        data = dict(await request.form())
+
+    username = str(data.get("username") or data.get("user") or "admin").strip()
+    password = str(data.get("password") or "").strip()
+
+    if ADMIN_PASSWORD:
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            return {
+                "status": "success",
+                "authenticated": True,
+                "role": "admin",
+                "username": username,
+            }
+        raise HTTPException(status_code=401, detail="Invalid username or password")
+
+    # Fallback when ADMIN_PASSWORD is not yet set in Railway Variables
+    if username and password:
+        return {
+            "status": "success",
+            "authenticated": True,
+            "role": "admin",
+            "username": username,
+        }
+
+    raise HTTPException(status_code=400, detail="Please enter a username and password")
 
 
 # ---------------------------------------------------------------------------
@@ -336,7 +365,6 @@ def create_sale(sale: SalePayload):
         record["created_at"] = utc_now_iso()
         db.collection("sales").document(doc_id).set(record)
 
-        # Decrement product stock when item IDs are present
         for item in sale.items:
             prod_id = item.get("id") or item.get("product_id")
             qty = int(item.get("qty") or item.get("quantity") or 0)

@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 python-multipart
-supabase
+firebase-admin
 cloudinary
 python-dotenv
 jinja2

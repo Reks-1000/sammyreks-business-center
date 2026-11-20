@@ -138,7 +138,7 @@
         <hr />
         <div class="small text-muted">
           <div id="sidebarBusinessName">Sammyreks Business Center</div>
-          <div>v21.0 | 2026</div>
+          <div>v21.1 | 2026</div>
         </div>
       </aside>
 
@@ -763,6 +763,8 @@
       user: null,
       currency: "\u20a6",
       businessName: "Sammyreks Business Center",
+      busyKeys: new Set(),
+      lastSubmitAt: new Map(),
     };
 
     const productAdModalEl = document.getElementById("productAdModal");
@@ -782,12 +784,46 @@
     }
 
     async function apiRequest(url, options = {}) {
-      const response = await fetch(url, options);
+      let response;
+      try {
+        response = await fetch(url, options);
+      } catch (_) {
+        throw new Error("Network issue while reaching the server. Please check your connection and try again.");
+      }
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(data.detail || data.message || `Request failed (${response.status})`);
       }
       return data;
+    }
+
+    function setButtonBusy(btn, busy, busyLabel = "Working...") {
+      if (!btn) return;
+      if (busy) {
+        if (!btn.dataset.origHtml) btn.dataset.origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i>${escapeHtml(busyLabel)}`;
+      } else {
+        btn.disabled = false;
+        if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+      }
+    }
+
+    async function runGuardedAction(lockKey, cooldownMs, submitBtn, busyLabel, fn) {
+      const now = Date.now();
+      const prevTime = state.lastSubmitAt.get(lockKey) || 0;
+      if (state.busyKeys.has(lockKey) || (cooldownMs > 0 && now - prevTime < cooldownMs)) {
+        return;
+      }
+      state.busyKeys.add(lockKey);
+      state.lastSubmitAt.set(lockKey, now);
+      setButtonBusy(submitBtn, true, busyLabel);
+      try {
+        await fn();
+      } finally {
+        state.busyKeys.delete(lockKey);
+        setButtonBusy(submitBtn, false);
+      }
     }
 
     function escapeHtml(str) {
@@ -796,6 +832,81 @@
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    }
+
+    function decodeHtmlEntities(str) {
+      const txt = document.createElement("textarea");
+      txt.innerHTML = String(str ?? "");
+      return txt.value;
+    }
+
+    function normalizeProductClient(p) {
+      const item = p || {};
+      const priceCarton = Number(item.price_carton ?? item.price ?? 0);
+      const stockCartons = Number(item.qty_cartons ?? item.stock ?? 0);
+      return {
+        ...item,
+        id: String(item.id ?? ""),
+        name: String(item.name ?? "Unnamed Product"),
+        category: String(item.category ?? "General"),
+        unit_main_label: String(item.unit_main_label ?? "Carton"),
+        unit_pack_label: String(item.unit_pack_label ?? "Pack"),
+        unit_retail_label: String(item.unit_retail_label ?? "Retail Unit"),
+        price_carton: priceCarton,
+        price: priceCarton,
+        qty_cartons: stockCartons,
+        stock: stockCartons,
+        cost: Number(item.cost ?? 0),
+        price_pack: Number(item.price_pack ?? 0),
+        price_retail: Number(item.price_retail ?? priceCarton),
+        packs_per_carton: Math.max(1, Number(item.packs_per_carton ?? 1)),
+        units_per_pack: Math.max(1, Number(item.units_per_pack ?? 1)),
+        image_url: String(item.image_url ?? item.img_data ?? ""),
+        video_url: String(item.video_url ?? ""),
+        description: String(item.description ?? ""),
+        shelf: String(item.shelf ?? ""),
+        expiry: String(item.expiry ?? ""),
+      };
+    }
+
+    function normalizeOrderClient(o) {
+      const item = o || {};
+      const phone = String(item.contact_phone ?? item.phone ?? "").trim();
+      const customer = String(item.customer ?? item.customer_name ?? "Customer").trim();
+      const items = Array.isArray(item.items) ? item.items : [];
+      const specialItems = Array.isArray(item.special_items) ? item.special_items : [];
+      return {
+        ...item,
+        id: String(item.id ?? ""),
+        customer,
+        customer_name: customer,
+        contact_phone: phone,
+        phone,
+        notes: String(item.notes ?? "").trim(),
+        items,
+        special_items: specialItems,
+        order_type: String(item.order_type ?? (specialItems.length ? "Multi-Item Request" : "Cart Order")),
+        payment_ref: String(item.payment_ref ?? "").trim(),
+        status: String(item.status ?? "Pending").trim(),
+        timestamp: String(item.timestamp ?? "").trim(),
+      };
+    }
+
+    function normalizeMessageClient(m) {
+      const item = m || {};
+      const phone = String(item.customer_phone ?? item.phone ?? "").trim();
+      const body = String(item.message ?? item.text ?? "").trim();
+      return {
+        ...item,
+        id: String(item.id ?? ""),
+        sender: String(item.sender ?? "Customer").trim(),
+        customer_phone: phone,
+        phone,
+        message: body,
+        text: body,
+        proof_url: String(item.proof_url ?? "").trim(),
+        timestamp: String(item.timestamp ?? "").trim(),
+      };
     }
 
     function openThermalReceipt({ title = "RECEIPT", ref = "", customer = "Customer", phone = "", timestamp = "", lines = [], total = "" }) {
@@ -996,7 +1107,7 @@
         grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products available yet. Log in as Staff/Admin to add products.</div></div>`;
       } else {
         grid.innerHTML = filtered.map((p) => {
-          const imgSrc = p.img_data || p.image_url || "";
+          const imgSrc = p.image_url || "";
           const mLbl = p.unit_main_label || "Carton";
           const pLbl = p.unit_pack_label || "Pack";
           const rLbl = p.unit_retail_label || "Retail Unit";
@@ -1105,7 +1216,8 @@
     async function loadProducts() {
       try {
         const res = await apiRequest("/api/products");
-        state.products = res.products || res.data || [];
+        const rawList = res.products || res.data || [];
+        state.products = rawList.map(normalizeProductClient);
         renderProducts();
         showBanner(`Loaded ${state.products.length} product(s) from Firestore.`, "success");
       } catch (err) {
@@ -1151,13 +1263,17 @@
         return;
       }
 
-      container.innerHTML = msgs.map((m) => {
+      container.innerHTML = msgs.map((rawMsg) => {
+        const m = normalizeMessageClient(rawMsg);
         const proofImg = m.proof_url && String(m.proof_url).startsWith("http")
           ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
           : "";
         const rawText = m.message || m.text || "";
-        const isSystemReceipt = m.sender === "System" && rawText.trim().startsWith("<");
-        const bodyHtml = isSystemReceipt ? rawText : escapeHtml(rawText);
+        const decodedText = decodeHtmlEntities(rawText).trim();
+        const isSystemReceipt =
+          m.sender === "System" &&
+          (decodedText.startsWith("<") || rawText.trim().startsWith("<"));
+        const bodyHtml = isSystemReceipt ? decodedText : escapeHtml(rawText);
 
         return `
           <div class="border-bottom pb-2 mb-2">
@@ -1178,7 +1294,7 @@
       try {
         const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
         const res = await apiRequest(`/api/messages${query}`);
-        const msgs = res.messages || res.data || [];
+        const msgs = (res.messages || res.data || []).map(normalizeMessageClient);
         renderChatList(
           box,
           msgs,
@@ -1194,7 +1310,7 @@
       const box = document.getElementById("staffOrdersBox");
       try {
         const res = await apiRequest("/api/orders");
-        const rawOrders = res.orders || res.data || [];
+        const rawOrders = (res.orders || res.data || []).map(normalizeOrderClient);
 
         const seenKeys = new Set();
         const orders = rawOrders.filter((o) => {
@@ -1273,7 +1389,7 @@
       try {
         const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
         const res = await apiRequest(`/api/messages${query}`);
-        const msgs = res.messages || res.data || [];
+        const msgs = (res.messages || res.data || []).map(normalizeMessageClient);
         renderChatList(box, msgs, "No chat messages or receipts found.");
       } catch (err) {
         box.innerHTML = `<div class="text-danger small">Failed to load chat: ${escapeHtml(err.message)}</div>`;
@@ -1331,8 +1447,10 @@
       } else if (action === "switch-staff-tab") {
         switchStaffTab(target.dataset.tab);
       } else if (action === "load-staff-chat" || action === "refresh-staff-orders-chat") {
-        await loadStaffOrders();
-        await loadStaffChatMessages();
+        await runGuardedAction("refresh-orders-chat", 600, target, "Refreshing...", async () => {
+          await loadStaffOrders();
+          await loadStaffChatMessages();
+        });
       } else if (action === "select-order-phone") {
         const phone = (target.dataset.phone || "").trim();
         if (phone) {
@@ -1375,33 +1493,37 @@
         const orderId = target.dataset.orderId;
         const phone = (target.dataset.phone || "").trim();
         if (!orderId) return;
-        try {
-          await apiRequest(`/api/orders/${encodeURIComponent(orderId)}/verify`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ verified_by: state.user?.username || "admin" }),
-          });
-          if (phone) {
-            document.getElementById("staffChatPhoneFilter").value = phone;
-            document.getElementById("staffChatSendPhone").value = phone;
+        await runGuardedAction(`verify-${orderId}`, 1500, target, "Verifying...", async () => {
+          try {
+            await apiRequest(`/api/orders/${encodeURIComponent(orderId)}/verify`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ verified_by: state.user?.username || "admin" }),
+            });
+            if (phone) {
+              document.getElementById("staffChatPhoneFilter").value = phone;
+              document.getElementById("staffChatSendPhone").value = phone;
+            }
+            await loadStaffOrders();
+            await loadStaffChatMessages();
+            showBanner("Order verified and official receipt sent to customer Live Chat!", "success");
+          } catch (err) {
+            showBanner(`Failed to verify order: ${err.message}`, "danger");
           }
-          await loadStaffOrders();
-          await loadStaffChatMessages();
-          showBanner("Order verified and official receipt sent to customer Live Chat!", "success");
-        } catch (err) {
-          showBanner(`Failed to verify order: ${err.message}`, "danger");
-        }
+        });
       } else if (action === "delete-order") {
         event.stopPropagation();
         const orderId = target.dataset.orderId;
         if (!orderId) return;
-        try {
-          await apiRequest(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE" });
-          await loadStaffOrders();
-          showBanner("Order removed from Firestore.", "success");
-        } catch (err) {
-          showBanner(`Failed to delete order: ${err.message}`, "danger");
-        }
+        await runGuardedAction(`del-order-${orderId}`, 1000, target, "Deleting...", async () => {
+          try {
+            await apiRequest(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE" });
+            await loadStaffOrders();
+            showBanner("Order removed from Firestore.", "success");
+          } catch (err) {
+            showBanner(`Failed to delete order: ${err.message}`, "danger");
+          }
+        });
       } else if (action === "open-pos-receipt") {
         openThermalReceipt({
           title: "POS SALES RECEIPT",
@@ -1448,17 +1570,24 @@
         updateCartSummary();
         showBanner("Cart cleared.", "info");
       } else if (action === "load-chat") {
-        await loadChatMessages();
+        await runGuardedAction("load-chat", 500, target, "Loading...", async () => {
+          await loadChatMessages();
+        });
       } else if (action === "refresh-products") {
-        await loadProducts();
-      } else if (action === "delete-product") {
-        try {
-          await apiRequest(`/api/products/${encodeURIComponent(target.dataset.id)}`, { method: "DELETE" });
+        await runGuardedAction("refresh-products", 500, target, "Refreshing...", async () => {
           await loadProducts();
-          showBanner("Product deleted from Firestore.", "success");
-        } catch (err) {
-          showBanner(`Failed to delete product: ${err.message}`, "danger");
-        }
+        });
+      } else if (action === "delete-product") {
+        const prodId = target.dataset.id;
+        await runGuardedAction(`del-prod-${prodId}`, 1000, target, "Deleting...", async () => {
+          try {
+            await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, { method: "DELETE" });
+            await loadProducts();
+            showBanner("Product deleted from Firestore.", "success");
+          } catch (err) {
+            showBanner(`Failed to delete product: ${err.message}`, "danger");
+          }
+        });
       } else if (action === "pos-debt") {
         const prodId = document.getElementById("posProductSelect").value;
         const prod = state.products.find((p) => String(p.id) === String(prodId));
@@ -1470,73 +1599,81 @@
           showBanner("Enter the customer's name to record a debt.", "warning");
           return;
         }
-        try {
-          await apiRequest("/api/sales", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              product_id: prodId,
-              item_name: prod ? prod.name : "Item",
-              unit_type: unitType,
-              qty,
-              customer_name: custName,
-              customer_phone: phone,
-              worker: state.user?.username || "admin",
-              record_debt: true,
-            }),
-          });
-          await loadProducts();
-          showBanner(`Debt logged for ${custName}!`, "warning");
-        } catch (err) {
-          showBanner(`Failed to log debt: ${err.message}`, "danger");
-        }
+        await runGuardedAction("pos-debt", 1200, target, "Saving...", async () => {
+          try {
+            await apiRequest("/api/sales", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                product_id: prodId,
+                item_name: prod ? prod.name : "Item",
+                unit_type: unitType,
+                qty,
+                customer_name: custName,
+                customer_phone: phone,
+                worker: state.user?.username || "admin",
+                record_debt: true,
+              }),
+            });
+            await loadProducts();
+            showBanner(`Debt logged for ${custName}!`, "warning");
+          } catch (err) {
+            showBanner(`Failed to log debt: ${err.message}`, "danger");
+          }
+        });
       }
     });
 
     document.getElementById("staffChatSendForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const phone = document.getElementById("staffChatSendPhone").value.trim();
-      const text = document.getElementById("staffChatSendText").value.trim();
-      const fd = new FormData();
-      fd.append("phone", phone);
-      fd.append("sender", "Staff");
-      fd.append("text", text);
-      try {
-        await apiRequest("/api/messages", { method: "POST", body: fd });
-        document.getElementById("staffChatSendText").value = "";
-        document.getElementById("staffChatPhoneFilter").value = phone;
-        await loadStaffChatMessages();
-        showBanner("Reply sent to customer chat!", "success");
-      } catch (err) {
-        showBanner(`Failed to send reply: ${err.message}`, "danger");
-      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("staff-chat-send", 1200, btn, "Sending...", async () => {
+        const phone = document.getElementById("staffChatSendPhone").value.trim();
+        const text = document.getElementById("staffChatSendText").value.trim();
+        const fd = new FormData();
+        fd.append("phone", phone);
+        fd.append("sender", "Staff");
+        fd.append("text", text);
+        try {
+          await apiRequest("/api/messages", { method: "POST", body: fd });
+          document.getElementById("staffChatSendText").value = "";
+          document.getElementById("staffChatPhoneFilter").value = phone;
+          await loadStaffChatMessages();
+          showBanner("Reply sent to customer chat!", "success");
+        } catch (err) {
+          showBanner(`Failed to send reply: ${err.message}`, "danger");
+        }
+      });
     });
 
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const username = document.getElementById("loginUsername").value.trim();
-      const password = document.getElementById("loginPassword").value;
-      const mode = document.getElementById("loginMode").value;
+      const btn = document.getElementById("loginBtn");
+      await runGuardedAction("login-submit", 1000, btn, "Logging in...", async () => {
+        const username = document.getElementById("loginUsername").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        const mode = document.getElementById("loginMode").value;
 
-      try {
-        const res = await apiRequest("/api/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password, mode }),
-        });
-        state.isLoggedIn = true;
-        state.user = res;
-        document.getElementById("authBadge").className = "badge bg-success";
-        document.getElementById("authBadge").textContent = `${res.role || "CEO"}: ${res.username || username}`;
-        document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username}`;
-        document.getElementById("logoutBtn").classList.remove("d-none");
-        document.getElementById("loginPassword").value = "";
-        switchSection("staffSection");
-        await loadProducts();
-        showBanner(`Logged in as ${res.username || username}.`, "success");
-      } catch (err) {
-        showBanner(`Login failed: ${err.message}`, "danger");
-      }
+        try {
+          const res = await apiRequest("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password, mode }),
+          });
+          state.isLoggedIn = true;
+          state.user = res;
+          document.getElementById("authBadge").className = "badge bg-success";
+          document.getElementById("authBadge").textContent = `${res.role || "CEO"}: ${res.username || username}`;
+          document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username}`;
+          document.getElementById("logoutBtn").classList.remove("d-none");
+          document.getElementById("loginPassword").value = "";
+          switchSection("staffSection");
+          await loadProducts();
+          showBanner(`Logged in as ${res.username || username}.`, "success");
+        } catch (err) {
+          showBanner(`Login failed: ${err.message}`, "danger");
+        }
+      });
     });
 
     document.getElementById("logoutBtn").addEventListener("click", () => {
@@ -1551,28 +1688,31 @@
 
     document.getElementById("addProductForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const formData = new FormData(e.target);
-      try {
-        await apiRequest("/api/products", { method: "POST", body: formData });
-        e.target.reset();
-        document.getElementById("actionAddNew").checked = true;
-        toggleUpdateMode();
-        document.getElementById("prodCategory").value = "General";
-        document.getElementById("prodMainUnit").value = "Carton";
-        document.getElementById("prodSubUnit").value = "Pack";
-        document.getElementById("prodRetailUnit").value = "Retail Unit";
-        document.getElementById("prodPriceCarton").value = "0.00";
-        document.getElementById("prodStockCartons").value = "0.00";
-        document.getElementById("prodCostCarton").value = "0.00";
-        document.getElementById("prodPricePack").value = "0.00";
-        document.getElementById("prodPacksPerCarton").value = "1";
-        document.getElementById("prodPriceRetail").value = "0.00";
-        document.getElementById("prodRetailPerPack").value = "1";
-        await loadProducts();
-        showBanner("Product inventory saved to Firestore and synced!", "success");
-      } catch (err) {
-        showBanner(`Failed to save product: ${err.message}`, "danger");
-      }
+      const btn = document.getElementById("saveProductBtn");
+      await runGuardedAction("save-product", 1500, btn, "Saving...", async () => {
+        const formData = new FormData(e.target);
+        try {
+          await apiRequest("/api/products", { method: "POST", body: formData });
+          e.target.reset();
+          document.getElementById("actionAddNew").checked = true;
+          toggleUpdateMode();
+          document.getElementById("prodCategory").value = "General";
+          document.getElementById("prodMainUnit").value = "Carton";
+          document.getElementById("prodSubUnit").value = "Pack";
+          document.getElementById("prodRetailUnit").value = "Retail Unit";
+          document.getElementById("prodPriceCarton").value = "0.00";
+          document.getElementById("prodStockCartons").value = "0.00";
+          document.getElementById("prodCostCarton").value = "0.00";
+          document.getElementById("prodPricePack").value = "0.00";
+          document.getElementById("prodPacksPerCarton").value = "1";
+          document.getElementById("prodPriceRetail").value = "0.00";
+          document.getElementById("prodRetailPerPack").value = "1";
+          await loadProducts();
+          showBanner("Product inventory saved to Firestore and synced!", "success");
+        } catch (err) {
+          showBanner(`Failed to save product: ${err.message}`, "danger");
+        }
+      });
     });
 
     document.getElementById("customerOrderForm").addEventListener("submit", async (e) => {
@@ -1581,213 +1721,237 @@
         showBanner("Add at least one product to your cart before submitting an order.", "warning");
         return;
       }
-      const customerName = document.getElementById("orderCustomerName").value.trim();
-      const phone = document.getElementById("orderPhone").value.trim();
-      const note = document.getElementById("orderNote").value.trim();
-      const mappedItems = state.cart.map((i) => ({
-        name: i.name,
-        unit: i.unit || "Unit",
-        qty: i.qty,
-        total_price: Number(i.price || 0) * Number(i.qty || 1),
-      }));
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("submit-order", 2000, btn, "Submitting...", async () => {
+        const customerName = document.getElementById("orderCustomerName").value.trim();
+        const phone = document.getElementById("orderPhone").value.trim();
+        const note = document.getElementById("orderNote").value.trim();
+        const mappedItems = state.cart.map((i) => ({
+          name: i.name,
+          unit: i.unit || "Unit",
+          qty: i.qty,
+          total_price: Number(i.price || 0) * Number(i.qty || 1),
+        }));
 
-      try {
-        const res = await apiRequest("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customer: customerName,
-            contact_phone: phone,
-            notes: note,
-            items: mappedItems,
-          }),
-        });
-        state.cart = [];
-        updateCartSummary();
-        document.getElementById("chatPhoneFilter").value = phone;
-        document.getElementById("chatSendPhone").value = phone;
-        switchCustomerTab("chatTab");
-        await loadChatMessages();
-        showBanner(`Order sent to Live Chat! Ref: ${res.payment_ref || ""}`, "success");
-      } catch (err) {
-        showBanner(`Failed to send order: ${err.message}`, "danger");
-      }
+        try {
+          const res = await apiRequest("/api/orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customer: customerName,
+              contact_phone: phone,
+              notes: note,
+              items: mappedItems,
+            }),
+          });
+          state.cart = [];
+          updateCartSummary();
+          document.getElementById("chatPhoneFilter").value = phone;
+          document.getElementById("chatSendPhone").value = phone;
+          switchCustomerTab("chatTab");
+          await loadChatMessages();
+          showBanner(`Order sent to Live Chat! Ref: ${res.payment_ref || ""}`, "success");
+        } catch (err) {
+          showBanner(`Failed to send order: ${err.message}`, "danger");
+        }
+      });
     });
 
     document.getElementById("multiRequestForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const customerName = document.getElementById("reqName").value.trim();
-      const phone = document.getElementById("reqPhone").value.trim();
-      const itemsText = document.getElementById("reqItemsText").value.trim();
-      try {
-        await apiRequest("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customer: customerName,
-            contact_phone: phone,
-            special_items: [{ item: itemsText, qty: 1 }],
-          }),
-        });
-        e.target.reset();
-        document.getElementById("chatPhoneFilter").value = phone;
-        document.getElementById("chatSendPhone").value = phone;
-        switchCustomerTab("chatTab");
-        await loadChatMessages();
-        showBanner("Multi-item request sent to Live Chat!", "success");
-      } catch (err) {
-        showBanner(`Failed to send request: ${err.message}`, "danger");
-      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("multi-request", 2000, btn, "Sending...", async () => {
+        const customerName = document.getElementById("reqName").value.trim();
+        const phone = document.getElementById("reqPhone").value.trim();
+        const itemsText = document.getElementById("reqItemsText").value.trim();
+        try {
+          await apiRequest("/api/orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customer: customerName,
+              contact_phone: phone,
+              special_items: [{ item: itemsText, qty: 1 }],
+            }),
+          });
+          e.target.reset();
+          document.getElementById("chatPhoneFilter").value = phone;
+          document.getElementById("chatSendPhone").value = phone;
+          switchCustomerTab("chatTab");
+          await loadChatMessages();
+          showBanner("Multi-item request sent to Live Chat!", "success");
+        } catch (err) {
+          showBanner(`Failed to send request: ${err.message}`, "danger");
+        }
+      });
     });
 
     document.getElementById("chatSendForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const phone = document.getElementById("chatSendPhone").value.trim();
-      const text = document.getElementById("chatSendText").value.trim();
-      const proofFile = document.getElementById("chatProofFile").files[0];
-      const fd = new FormData();
-      fd.append("phone", phone);
-      fd.append("sender", state.isLoggedIn ? "Staff" : "Customer");
-      fd.append("text", text);
-      if (proofFile) fd.append("proof_file", proofFile);
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("customer-chat-send", 1200, btn, "Sending...", async () => {
+        const phone = document.getElementById("chatSendPhone").value.trim();
+        const text = document.getElementById("chatSendText").value.trim();
+        const proofFile = document.getElementById("chatProofFile").files[0];
+        const fd = new FormData();
+        fd.append("phone", phone);
+        fd.append("sender", state.isLoggedIn ? "Staff" : "Customer");
+        fd.append("text", text);
+        if (proofFile) fd.append("proof_file", proofFile);
 
-      try {
-        await apiRequest("/api/messages", { method: "POST", body: fd });
-        document.getElementById("chatSendText").value = "";
-        document.getElementById("chatProofFile").value = "";
-        document.getElementById("chatPhoneFilter").value = phone;
-        await loadChatMessages();
-        showBanner("Message sent!", "success");
-      } catch (err) {
-        showBanner(`Failed to send message: ${err.message}`, "danger");
-      }
+        try {
+          await apiRequest("/api/messages", { method: "POST", body: fd });
+          document.getElementById("chatSendText").value = "";
+          document.getElementById("chatProofFile").value = "";
+          document.getElementById("chatPhoneFilter").value = phone;
+          await loadChatMessages();
+          showBanner("Message sent!", "success");
+        } catch (err) {
+          showBanner(`Failed to send message: ${err.message}`, "danger");
+        }
+      });
     });
 
     document.getElementById("posSaleForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const prodId = document.getElementById("posProductSelect").value;
-      const unitType = document.getElementById("posUnitSelect").value;
-      const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
-      const prod = state.products.find((p) => String(p.id) === String(prodId));
-      if (!prod) {
-        showBanner("Please select a valid product.", "warning");
-        return;
-      }
-      const unitPrice = getPriceForUnit(prod, unitType);
-      const totalAmount = unitPrice * qty;
-      const custName = document.getElementById("posCustomerName").value.trim() || "Walk-in Customer";
-      const custPhone = document.getElementById("posPhone").value.trim() || "N/A";
-      const paySource = document.getElementById("posPaymentMethod").value;
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("pos-sale", 1500, btn, "Recording...", async () => {
+        const prodId = document.getElementById("posProductSelect").value;
+        const unitType = document.getElementById("posUnitSelect").value;
+        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
+        const prod = state.products.find((p) => String(p.id) === String(prodId));
+        if (!prod) {
+          showBanner("Please select a valid product.", "warning");
+          return;
+        }
+        const unitPrice = getPriceForUnit(prod, unitType);
+        const totalAmount = unitPrice * qty;
+        const custName = document.getElementById("posCustomerName").value.trim() || "Walk-in Customer";
+        const custPhone = document.getElementById("posPhone").value.trim() || "N/A";
+        const paySource = document.getElementById("posPaymentMethod").value;
 
-      try {
-        const res = await apiRequest("/api/sales", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            product_id: prod.id,
-            item_name: prod.name,
-            unit_type: unitType,
-            qty,
-            unit_price: unitPrice,
-            total: totalAmount,
-            customer_name: custName,
-            customer_phone: custPhone,
-            payment_source: paySource,
-            worker: state.user?.username || "admin",
-            record_debt: false,
-          }),
-        });
-        const rec = res.receipt || {};
-        const refCode = rec.payment_ref || "";
-        document.getElementById("posReceiptBox").innerHTML = `
-          <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <div>
-              <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${state.currency}${totalAmount.toFixed(2)}</strong>
+        try {
+          const res = await apiRequest("/api/sales", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              product_id: prod.id,
+              item_name: prod.name,
+              unit_type: unitType,
+              qty,
+              unit_price: unitPrice,
+              total: totalAmount,
+              customer_name: custName,
+              customer_phone: custPhone,
+              payment_source: paySource,
+              worker: state.user?.username || "admin",
+              record_debt: false,
+            }),
+          });
+          const rec = res.receipt || {};
+          const refCode = rec.payment_ref || "";
+          document.getElementById("posReceiptBox").innerHTML = `
+            <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${state.currency}${totalAmount.toFixed(2)}</strong>
+              </div>
+              <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${state.currency}${totalAmount.toFixed(2)}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+                <i class="fa-solid fa-print me-1"></i>Thermal Receipt
+              </button>
             </div>
-            <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${state.currency}${totalAmount.toFixed(2)}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
-              <i class="fa-solid fa-print me-1"></i>Thermal Receipt
-            </button>
-          </div>
-        `;
-        await loadProducts();
-        showBanner(`Recorded sale of ${state.currency}${totalAmount.toFixed(2)} and updated stock.`, "success");
-      } catch (err) {
-        showBanner(`Failed to record sale: ${err.message}`, "danger");
-      }
+          `;
+          await loadProducts();
+          showBanner(`Recorded sale of ${state.currency}${totalAmount.toFixed(2)} and updated stock.`, "success");
+        } catch (err) {
+          showBanner(`Failed to record sale: ${err.message}`, "danger");
+        }
+      });
     });
 
     document.getElementById("debtorForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      try {
-        await apiRequest("/api/debtors", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customer: document.getElementById("debtorName").value.trim(),
-            phone: document.getElementById("debtorPhone").value.trim(),
-            amount: Number(document.getElementById("debtorAmount").value),
-            items_bought: document.getElementById("debtorNote").value.trim(),
-          }),
-        });
-        e.target.reset();
-        showBanner("Debtor saved to Firestore.", "success");
-      } catch (err) {
-        showBanner(`Failed to save debtor: ${err.message}`, "danger");
-      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("save-debtor", 1200, btn, "Saving...", async () => {
+        try {
+          await apiRequest("/api/debtors", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customer: document.getElementById("debtorName").value.trim(),
+              phone: document.getElementById("debtorPhone").value.trim(),
+              amount: Number(document.getElementById("debtorAmount").value),
+              items_bought: document.getElementById("debtorNote").value.trim(),
+            }),
+          });
+          e.target.reset();
+          showBanner("Debtor saved to Firestore.", "success");
+        } catch (err) {
+          showBanner(`Failed to save debtor: ${err.message}`, "danger");
+        }
+      });
     });
 
     document.getElementById("expenseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      try {
-        await apiRequest("/api/expenses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            category: document.getElementById("expenseCategory").value.trim() || document.getElementById("expenseTitle").value.trim() || "Operations",
-            amount: Number(document.getElementById("expenseAmount").value),
-            note: document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim(),
-          }),
-        });
-        e.target.reset();
-        document.getElementById("expenseCategory").value = "Operations";
-        showBanner("Expense saved to Firestore.", "success");
-      } catch (err) {
-        showBanner(`Failed to save expense: ${err.message}`, "danger");
-      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("save-expense", 1200, btn, "Saving...", async () => {
+        try {
+          await apiRequest("/api/expenses", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              category: document.getElementById("expenseCategory").value.trim() || document.getElementById("expenseTitle").value.trim() || "Operations",
+              amount: Number(document.getElementById("expenseAmount").value),
+              note: document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim(),
+            }),
+          });
+          e.target.reset();
+          document.getElementById("expenseCategory").value = "Operations";
+          showBanner("Expense saved to Firestore.", "success");
+        } catch (err) {
+          showBanner(`Failed to save expense: ${err.message}`, "danger");
+        }
+      });
     });
 
     document.getElementById("workerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      try {
-        await apiRequest("/api/workers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: document.getElementById("workerName").value.trim(),
-            role: document.getElementById("workerRole").value.trim() || "Staff",
-            password: document.getElementById("workerPassword").value,
-          }),
-        });
-        e.target.reset();
-        document.getElementById("workerRole").value = "Staff";
-        showBanner("Worker saved to Firestore.", "success");
-      } catch (err) {
-        showBanner(`Failed to save worker: ${err.message}`, "danger");
-      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("save-worker", 1200, btn, "Saving...", async () => {
+        try {
+          await apiRequest("/api/workers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: document.getElementById("workerName").value.trim(),
+              role: document.getElementById("workerRole").value.trim() || "Staff",
+              password: document.getElementById("workerPassword").value,
+            }),
+          });
+          e.target.reset();
+          document.getElementById("workerRole").value = "Staff";
+          showBanner("Worker saved to Firestore.", "success");
+        } catch (err) {
+          showBanner(`Failed to save worker: ${err.message}`, "danger");
+        }
+      });
     });
 
     document.getElementById("settingsForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const fd = new FormData(e.target);
-      fd.append("currency", state.currency);
-      try {
-        await apiRequest("/api/settings", { method: "POST", body: fd });
-        document.getElementById("setBroadcastVideoFile").value = "";
-        await loadSettings();
-        showBanner("Settings saved to Firestore.", "success");
-      } catch (err) {
-        showBanner(`Failed to save settings: ${err.message}`, "danger");
-      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("save-settings", 1500, btn, "Saving...", async () => {
+        const fd = new FormData(e.target);
+        fd.append("currency", state.currency);
+        try {
+          await apiRequest("/api/settings", { method: "POST", body: fd });
+          document.getElementById("setBroadcastVideoFile").value = "";
+          await loadSettings();
+          showBanner("Settings saved to Firestore.", "success");
+        } catch (err) {
+          showBanner(`Failed to save settings: ${err.message}`, "danger");
+        }
+      });
     });
 
     (async function initApp() {

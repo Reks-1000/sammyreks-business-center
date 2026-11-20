@@ -16,6 +16,9 @@ from firebase_admin import credentials, firestore
 app = FastAPI(title="Sammyreks Business Center")
 templates = Jinja2Templates(directory="templates")
 
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_VIDEO_BYTES = 50 * 1024 * 1024
+
 
 def init_firestore() -> firestore.Client:
     if firebase_admin._apps:
@@ -101,6 +104,70 @@ def make_ref() -> str:
     return f"SRK-{uuid.uuid4().hex[:6].upper()}"
 
 
+def normalize_product(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    data = dict(raw or {})
+    price_carton = float(data.get("price_carton") if data.get("price_carton") is not None else (data.get("price") or 0.0))
+    stock_cartons = float(data.get("qty_cartons") if data.get("qty_cartons") is not None else (data.get("stock") or 0.0))
+    image_url = str(data.get("image_url") or data.get("img_data") or "").strip()
+    data["id"] = doc_id
+    data["name"] = str(data.get("name") or "Unnamed Product").strip()
+    data["category"] = str(data.get("category") or "General").strip()
+    data["unit_main_label"] = str(data.get("unit_main_label") or "Carton").strip()
+    data["unit_pack_label"] = str(data.get("unit_pack_label") or "Pack").strip()
+    data["unit_retail_label"] = str(data.get("unit_retail_label") or "Retail Unit").strip()
+    data["price_carton"] = price_carton
+    data["price"] = price_carton
+    data["qty_cartons"] = stock_cartons
+    data["stock"] = stock_cartons
+    data["cost"] = float(data.get("cost") or 0.0)
+    data["price_pack"] = float(data.get("price_pack") or 0.0)
+    data["price_retail"] = float(data.get("price_retail") if data.get("price_retail") is not None else price_carton)
+    data["packs_per_carton"] = max(1, int(data.get("packs_per_carton") or 1))
+    data["units_per_pack"] = max(1, int(data.get("units_per_pack") or 1))
+    data["image_url"] = image_url
+    data["video_url"] = str(data.get("video_url") or "").strip()
+    data["description"] = str(data.get("description") or "").strip()
+    data["shelf"] = str(data.get("shelf") or "").strip()
+    data["expiry"] = str(data.get("expiry") or "").strip()
+    return data
+
+
+def normalize_order(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    data = dict(raw or {})
+    phone = str(data.get("contact_phone") or data.get("phone") or "").strip()
+    customer = str(data.get("customer") or data.get("customer_name") or "Customer").strip()
+    items = data.get("items") if isinstance(data.get("items"), list) else []
+    special_items = data.get("special_items") if isinstance(data.get("special_items"), list) else []
+    data["id"] = doc_id
+    data["customer"] = customer
+    data["customer_name"] = customer
+    data["contact_phone"] = phone
+    data["phone"] = phone
+    data["notes"] = str(data.get("notes") or "").strip()
+    data["items"] = items
+    data["special_items"] = special_items
+    data["order_type"] = str(data.get("order_type") or ("Multi-Item Request" if special_items else "Cart Order")).strip()
+    data["payment_ref"] = str(data.get("payment_ref") or "").strip()
+    data["status"] = str(data.get("status") or "Pending").strip()
+    data["timestamp"] = str(data.get("timestamp") or "").strip()
+    return data
+
+
+def normalize_message(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    data = dict(raw or {})
+    phone = str(data.get("customer_phone") or data.get("phone") or "").strip()
+    body = str(data.get("message") if data.get("message") is not None else (data.get("text") or "")).strip()
+    data["id"] = doc_id
+    data["sender"] = str(data.get("sender") or "Customer").strip()
+    data["customer_phone"] = phone
+    data["phone"] = phone
+    data["message"] = body
+    data["text"] = body
+    data["proof_url"] = str(data.get("proof_url") or "").strip()
+    data["timestamp"] = str(data.get("timestamp") or "").strip()
+    return data
+
+
 def upload_to_cloudinary(
     file: Optional[UploadFile],
     folder: str,
@@ -114,6 +181,19 @@ def upload_to_cloudinary(
             status_code=500,
             detail="Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.",
         )
+
+    content_type = (file.content_type or "").lower()
+    if resource_type == "image" and content_type and not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed for this upload.")
+    if resource_type == "video" and content_type and not content_type.startswith("video/"):
+        raise HTTPException(status_code=400, detail="Only video files are allowed for this upload.")
+
+    file.file.seek(0, os.SEEK_END)
+    size_bytes = file.file.tell()
+    max_allowed = MAX_VIDEO_BYTES if resource_type == "video" else MAX_IMAGE_BYTES
+    if size_bytes > max_allowed:
+        limit_mb = max_allowed // (1024 * 1024)
+        raise HTTPException(status_code=400, detail=f"Uploaded file exceeds the {limit_mb}MB limit.")
 
     upload_kwargs: Dict[str, Any] = {
         "folder": folder,
@@ -161,11 +241,7 @@ async def login(request: Request):
 @app.get("/api/products")
 def get_products():
     docs = db.collection("products").stream()
-    products: List[Dict[str, Any]] = []
-    for doc in docs:
-        data = doc.to_dict() or {}
-        data["id"] = doc.id
-        products.append(data)
+    products = [normalize_product(doc.id, doc.to_dict()) for doc in docs]
     products.sort(key=lambda x: str(x.get("name", "")).lower())
     return {"products": products}
 
@@ -232,10 +308,10 @@ async def save_product(
         "stock": float(stock_cartons),
         "cost": float(cost_price_carton),
         "price_pack": float(price_pack),
-        "packs_per_carton": int(packs_per_carton or 1),
+        "packs_per_carton": max(1, int(packs_per_carton or 1)),
         "shelf": shelf_location.strip(),
         "price_retail": float(price_retail),
-        "units_per_pack": int(retail_per_pack or 1),
+        "units_per_pack": max(1, int(retail_per_pack or 1)),
         "expiry": expiry_date.strip(),
         "video_url": final_video_url,
         "description": description.strip(),
@@ -246,8 +322,8 @@ async def save_product(
         product_doc["created_at"] = now_str()
 
     db.collection("products").document(target_id).set(product_doc, merge=True)
-    product_doc["id"] = target_id
-    return {"ok": True, "id": target_id, "product": product_doc}
+    normalized = normalize_product(target_id, {**existing_data, **product_doc})
+    return {"ok": True, "id": target_id, "product": normalized}
 
 
 @app.delete("/api/products/{product_id}")
@@ -262,11 +338,7 @@ def delete_product(product_id: str):
 @app.get("/api/orders")
 def get_orders():
     docs = db.collection("orders").stream()
-    orders: List[Dict[str, Any]] = []
-    for doc in docs:
-        data = doc.to_dict() or {}
-        data["id"] = doc.id
-        orders.append(data)
+    orders = [normalize_order(doc.id, doc.to_dict()) for doc in docs]
     orders.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
     return {"orders": orders}
 
@@ -277,8 +349,8 @@ async def create_order(request: Request):
     customer = str(payload.get("customer") or payload.get("customer_name") or "Customer").strip()
     phone = str(payload.get("contact_phone") or payload.get("phone") or "").strip()
     notes = str(payload.get("notes") or "").strip()
-    items = payload.get("items") or []
-    special_items = payload.get("special_items") or []
+    items = payload.get("items") if isinstance(payload.get("items"), list) else []
+    special_items = payload.get("special_items") if isinstance(payload.get("special_items"), list) else []
     payment_ref = make_ref()
     ts = now_str()
 
@@ -423,10 +495,8 @@ def get_messages(phone: Optional[str] = Query(default=None)):
     clean_phone = (phone or "").strip()
     messages: List[Dict[str, Any]] = []
     for doc in docs:
-        data = doc.to_dict() or {}
-        data["id"] = doc.id
-        msg_phone = str(data.get("customer_phone") or data.get("phone") or "").strip()
-        if clean_phone and msg_phone != clean_phone:
+        data = normalize_message(doc.id, doc.to_dict())
+        if clean_phone and data["customer_phone"] != clean_phone:
             continue
         messages.append(data)
     messages.sort(key=lambda x: str(x.get("timestamp", "")))
@@ -442,6 +512,9 @@ async def post_message(
 ):
     clean_phone = phone.strip()
     clean_text = text.strip()
+    if not clean_phone:
+        raise HTTPException(status_code=400, detail="Phone number is required")
+
     proof_url = upload_to_cloudinary(proof_file, folder="sammyreks_receipts", resource_type="image", max_dim=1000)
 
     if not clean_text and not proof_url:

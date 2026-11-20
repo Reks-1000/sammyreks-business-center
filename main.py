@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import uuid
@@ -20,17 +21,51 @@ def init_firestore() -> firestore.Client:
     if firebase_admin._apps:
         return firestore.client()
 
-    service_account_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON", "").strip()
-    service_account_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+    raw_json = (
+        os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+        or os.getenv("FIREBASE_CREDENTIALS_JSON")
+        or os.getenv("FIREBASE_SERVICE_ACCOUNT")
+        or ""
+    ).strip()
 
-    if service_account_json:
-        cred = credentials.Certificate(json.loads(service_account_json))
+    key_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+
+    if raw_json:
+        if (raw_json.startswith("'") and raw_json.endswith("'")) or (
+            raw_json.startswith('"') and raw_json.endswith('"')
+        ):
+            try:
+                decoded_once = json.loads(raw_json)
+                if isinstance(decoded_once, dict):
+                    service_info = decoded_once
+                elif isinstance(decoded_once, str):
+                    service_info = json.loads(decoded_once)
+                else:
+                    raise ValueError("Unexpected JSON structure")
+            except Exception:
+                service_info = json.loads(raw_json[1:-1])
+        else:
+            try:
+                service_info = json.loads(raw_json)
+            except json.JSONDecodeError:
+                decoded_b64 = base64.b64decode(raw_json).decode("utf-8")
+                service_info = json.loads(decoded_b64)
+
+        if not isinstance(service_info, dict):
+            raise ValueError("Firebase service account JSON must decode to an object")
+
+        if isinstance(service_info.get("private_key"), str):
+            service_info["private_key"] = service_info["private_key"].replace("\\n", "\n")
+
+        cred = credentials.Certificate(service_info)
         firebase_admin.initialize_app(cred)
-    elif service_account_path and os.path.exists(service_account_path):
-        cred = credentials.Certificate(service_account_path)
+    elif key_path and os.path.exists(key_path):
+        cred = credentials.Certificate(key_path)
         firebase_admin.initialize_app(cred)
     else:
-        firebase_admin.initialize_app()
+        raise RuntimeError(
+            "Missing Firebase credentials. Set FIREBASE_SERVICE_ACCOUNT_JSON in Railway Variables."
+        )
 
     return firestore.client()
 

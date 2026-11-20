@@ -82,7 +82,7 @@
       <aside class="col-lg-3 col-xl-2 sidebar p-3">
         <div class="mb-3">
           <h4 class="fw-bold mb-1"><i class="fa-solid fa-store text-primary me-2"></i>Sammyreks Portal</h4>
-          <small class="text-muted">Business Center • Firestore + Cloudinary</small>
+          <small class="text-muted">Business Center &bull; Firestore + Cloudinary</small>
         </div>
 
         <div class="mb-2">
@@ -141,7 +141,7 @@
               <small class="text-muted" id="businessTaglineDisplay">Quality products, fast orders &amp; live support</small>
             </div>
             <button type="button" class="btn btn-success btn-sm" data-action="switch-customer-tab" data-tab="cartTab">
-              <i class="fa-solid fa-cart-shopping me-1"></i>Cart (<span id="cartCountBadge">0</span>) • <span id="cartTotalBadge">₦0.00</span>
+              <i class="fa-solid fa-cart-shopping me-1"></i>Cart (<span id="cartCountBadge">0</span>) &bull; <span id="cartTotalBadge">&#8358;0.00</span>
             </button>
           </div>
 
@@ -546,7 +546,7 @@
                     <button type="button" class="btn btn-warning" data-action="pos-debt">
                       <i class="fa-solid fa-book me-1"></i>Record Debt
                     </button>
-                    <span class="ms-auto fw-bold">Total: <span id="posTotalPreview">₦0.00</span></span>
+                    <span class="ms-auto fw-bold">Total: <span id="posTotalPreview">&#8358;0.00</span></span>
                   </div>
                 </form>
                 <div id="posReceiptBox" class="mt-3"></div>
@@ -621,7 +621,7 @@
                     <form id="debtorForm">
                       <input type="text" id="debtorName" class="form-control form-control-sm mb-2" placeholder="Customer name" required />
                       <input type="text" id="debtorPhone" class="form-control form-control-sm mb-2" placeholder="Phone" required />
-                      <input type="number" step="0.01" id="debtorAmount" class="form-control form-control-sm mb-2" placeholder="Amount owed (₦)" required />
+                      <input type="number" step="0.01" id="debtorAmount" class="form-control form-control-sm mb-2" placeholder="Amount owed (&#8358;)" required />
                       <input type="text" id="debtorNote" class="form-control form-control-sm mb-2" placeholder="Note / Items bought" />
                       <button type="submit" class="btn btn-warning btn-sm w-100">Save Debtor</button>
                     </form>
@@ -635,7 +635,7 @@
                     <h6 class="fw-bold">Add Expense</h6>
                     <form id="expenseForm">
                       <input type="text" id="expenseTitle" class="form-control form-control-sm mb-2" placeholder="Expense title / category" required />
-                      <input type="number" step="0.01" id="expenseAmount" class="form-control form-control-sm mb-2" placeholder="Amount (₦)" required />
+                      <input type="number" step="0.01" id="expenseAmount" class="form-control form-control-sm mb-2" placeholder="Amount (&#8358;)" required />
                       <input type="text" id="expenseCategory" class="form-control form-control-sm mb-2" value="Operations" />
                       <input type="text" id="expenseNote" class="form-control form-control-sm mb-2" placeholder="Note" />
                       <button type="submit" class="btn btn-danger btn-sm w-100">Save Expense</button>
@@ -673,7 +673,7 @@
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">Tagline</label>
-                    <input type="text" name="tagline" id="setTagline" class="form-control" placeholder="Quality products, fast orders & live support" />
+                    <input type="text" name="tagline" id="setTagline" class="form-control" placeholder="Quality products, fast orders &amp; live support" />
                   </div>
                   <div class="col-12">
                     <label class="form-label">Notice Message</label>
@@ -741,7 +741,7 @@
       ordersFeed: [],
       isLoggedIn: false,
       user: null,
-      currency: "₦",
+      currency: "\u20a6",
       businessName: "Sammyreks Business Center",
     };
 
@@ -758,7 +758,7 @@
       const textEl = document.getElementById("appFeedbackText");
       banner.className = `alert alert-${type} d-flex align-items-center justify-content-between py-2 px-3 mb-3`;
       banner.classList.remove("d-none");
-      textEl.innerHTML = `<i class="fa-solid ${type === "danger" ? "fa-triangle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info"} me-2"></i>${message}`;
+      textEl.innerHTML = `<i class="fa-solid ${type === "danger" ? "fa-triangle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info"} me-2"></i>${escapeHtml(message)}`;
     }
 
     async function apiRequest(url, options = {}) {
@@ -771,7 +771,7 @@
     }
 
     function escapeHtml(str) {
-      return String(str || "")
+      return String(str ?? "")
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
@@ -800,12 +800,12 @@
     }
 
     function hasValidVideoUrl(videoUrl) {
-      const clean = String(videoUrl || "").trim();
+      const clean = String(videoUrl ?? "").trim();
       return Boolean(clean && !["none", "nan", "null"].includes(clean.toLowerCase()));
     }
 
     function getYouTubeEmbedUrl(url) {
-      const raw = String(url || "").trim();
+      const raw = String(url ?? "").trim();
       const watchMatch = raw.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{6,})/);
       if (watchMatch && watchMatch[1]) {
         return `https://www.youtube.com/embed/${watchMatch[1]}`;
@@ -814,8 +814,8 @@
     }
 
     function openProductAd(prod) {
-      const cleanUrl = String(prod.video_url || "").trim();
-      document.getElementById("productAdModalLabel").textContent = `${prod.name || "Product"} — Advert`;
+      const cleanUrl = String(prod.video_url ?? "").trim();
+      document.getElementById("productAdModalLabel").textContent = `${prod.name || "Product"} \u2014 Advert`;
       const ytEmbed = getYouTubeEmbedUrl(cleanUrl);
       document.getElementById("productAdModalBody").innerHTML = ytEmbed
         ? `
@@ -835,7 +835,7 @@
     function renderBroadcastVideo(videoUrl) {
       const card = document.getElementById("customerBroadcastCard");
       const wrap = document.getElementById("customerBroadcastPlayerWrap");
-      const cleanUrl = String(videoUrl || "").trim();
+      const cleanUrl = String(videoUrl ?? "").trim();
 
       if (!hasValidVideoUrl(cleanUrl)) {
         card.classList.add("d-none");
@@ -887,7 +887,7 @@
             <li class="list-group-item d-flex justify-content-between align-items-center">
               <div>
                 <strong>${escapeHtml(item.name)}</strong> <span class="badge bg-light text-dark border">${escapeHtml(item.unit || "Unit")}</span>
-                <div class="small text-muted">${state.currency}${Number(item.price).toFixed(2)} × ${item.qty}</div>
+                <div class="small text-muted">${state.currency}${Number(item.price).toFixed(2)} &times; ${item.qty}</div>
               </div>
               <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-cart-item" data-index="${idx}">
                 <i class="fa-solid fa-xmark"></i>
@@ -994,7 +994,7 @@
                 <div class="card-body d-flex flex-column">
                   <h6 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h6>
                   <div class="text-primary fw-semibold mb-1">${state.currency}${displayPrice.toFixed(2)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
-                  <div class="small text-muted mb-2">Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} • ${escapeHtml(p.category || "General")}</div>
+                  <div class="small text-muted mb-2">Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}</div>
                   <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
                   ${hasAd ? `
                     <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" data-action="watch-ad" data-id="${escapeHtml(p.id)}">
@@ -1066,7 +1066,7 @@
       posSelect.innerHTML = state.products.map((p) => {
         const priceVal = Number(p.price_carton ?? p.price ?? 0);
         const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
-        return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${state.currency}${priceVal.toFixed(2)} • Stock: ${stockVal.toFixed(2)})</option>`;
+        return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${state.currency}${priceVal.toFixed(2)} &bull; Stock: ${stockVal.toFixed(2)})</option>`;
       }).join("");
       if (prevPos) posSelect.value = prevPos;
 
@@ -1125,6 +1125,29 @@
       } catch (_) {}
     }
 
+    function renderChatList(container, msgs, emptyText) {
+      if (!msgs.length) {
+        container.innerHTML = `<div class="text-muted small">${escapeHtml(emptyText)}</div>`;
+        return;
+      }
+
+      container.innerHTML = msgs.map((m) => {
+        const proofImg = m.proof_url && String(m.proof_url).startsWith("http")
+          ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
+          : "";
+        return `
+          <div class="border-bottom pb-2 mb-2">
+            <div class="d-flex justify-content-between small">
+              <strong>${escapeHtml(m.sender || "Customer")}</strong>
+              <span class="text-muted">${escapeHtml(m.customer_phone || m.phone || "")} &bull; ${escapeHtml(m.timestamp || "")}</span>
+            </div>
+            <div>${escapeHtml(m.message || m.text || "")}</div>
+            ${proofImg}
+          </div>
+        `;
+      }).join("");
+    }
+
     async function loadChatMessages() {
       const phone = document.getElementById("chatPhoneFilter").value.trim();
       const box = document.getElementById("chatMessagesBox");
@@ -1132,27 +1155,11 @@
         const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
         const res = await apiRequest(`/api/messages${query}`);
         const msgs = res.messages || res.data || [];
-
-        if (!msgs.length) {
-          box.innerHTML = `<div class="text-muted small">No messages or receipts found${phone ? ` for ${escapeHtml(phone)}` : ""}.</div>`;
-          return;
-        }
-
-        box.innerHTML = msgs.map((m) => {
-          const proofImg = m.proof_url && String(m.proof_url).startsWith("http")
-            ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
-            : "";
-          return `
-            <div class="border-bottom pb-2 mb-2">
-              <div class="d-flex justify-content-between small">
-                <strong>${escapeHtml(m.sender || "Customer")}</strong>
-                <span class="text-muted">${escapeHtml(m.customer_phone || m.phone || "")} • ${escapeHtml(m.timestamp || "")}</span>
-              </div>
-              <div>${m.sender === "System" ? (m.message || "") : escapeHtml(m.message || m.text || "")}</div>
-              ${proofImg}
-            </div>
-          `;
-        }).join("");
+        renderChatList(
+          box,
+          msgs,
+          `No messages or receipts found${phone ? ` for ${phone}` : ""}.`
+        );
         showBanner(`Loaded ${msgs.length} chat record(s).`, "success");
       } catch (err) {
         showBanner(`Failed to load chat: ${err.message}`, "danger");
@@ -1186,7 +1193,7 @@
           } else if (Array.isArray(o.items) && o.items.length > 0) {
             const totalVal = o.items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
             detailsHtml = o.items
-              .map((it) => `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) × ${escapeHtml(it.qty || 1)} — ${state.currency}${Number(it.total_price || 0).toFixed(2)}</div>`)
+              .map((it) => `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) &times; ${escapeHtml(it.qty || 1)} &mdash; ${state.currency}${Number(it.total_price || 0).toFixed(2)}</div>`)
               .join("") + `<div class="small fw-bold mt-1">Total: ${state.currency}${totalVal.toFixed(2)}</div>`;
           } else {
             detailsHtml = `<div class="small">${escapeHtml(o.notes || "Order submitted")}</div>`;
@@ -1198,7 +1205,7 @@
                 <strong>${escapeHtml(customerVal)} (${escapeHtml(phoneVal)})</strong>
                 <span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
               </div>
-              <div class="small text-muted mb-1">${escapeHtml(o.timestamp || "")}${o.payment_ref ? ` • Ref: ${escapeHtml(o.payment_ref)}` : ""}</div>
+              <div class="small text-muted mb-1">${escapeHtml(o.timestamp || "")}${o.payment_ref ? ` &bull; Ref: ${escapeHtml(o.payment_ref)}` : ""}</div>
               ${detailsHtml}
               ${o.notes ? `<div class="small text-secondary mt-1">Note: ${escapeHtml(o.notes)}</div>` : ""}
               <div class="mt-2">
@@ -1221,26 +1228,7 @@
         const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
         const res = await apiRequest(`/api/messages${query}`);
         const msgs = res.messages || res.data || [];
-        if (!msgs.length) {
-          box.innerHTML = `<div class="text-muted small">No chat messages or receipts found.</div>`;
-          return;
-        }
-        box.innerHTML = msgs.map((m) => {
-          const mPhone = m.customer_phone || m.phone || "";
-          const proofImg = m.proof_url && String(m.proof_url).startsWith("http")
-            ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
-            : "";
-          return `
-            <div class="border-bottom pb-2 mb-2">
-              <div class="d-flex justify-content-between small">
-                <strong>${escapeHtml(m.sender || "Customer")}</strong>
-                <span class="text-muted">${escapeHtml(mPhone)} • ${escapeHtml(m.timestamp || "")}</span>
-              </div>
-              <div>${m.sender === "System" ? (m.message || "") : escapeHtml(m.message || m.text || "")}</div>
-              ${proofImg}
-            </div>
-          `;
-        }).join("");
+        renderChatList(box, msgs, "No chat messages or receipts found.");
       } catch (err) {
         box.innerHTML = `<div class="text-danger small">Failed to load chat: ${escapeHtml(err.message)}</div>`;
       }
@@ -1633,7 +1621,7 @@
         document.getElementById("posReceiptBox").innerHTML = `
           <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-              <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) — <strong>${state.currency}${totalAmount.toFixed(2)}</strong>
+              <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${state.currency}${totalAmount.toFixed(2)}</strong>
             </div>
             <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${state.currency}${totalAmount.toFixed(2)}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
               <i class="fa-solid fa-print me-1"></i>Thermal Receipt

@@ -75,6 +75,11 @@
       font-size: 13px;
       line-height: 1.4;
     }
+    .store-footer {
+      border-top: 1px solid #e5e7eb;
+      color: #6b7280;
+      font-size: 0.85rem;
+    }
     @media print {
       body * {
         visibility: hidden !important;
@@ -97,21 +102,21 @@
 <body>
   <div class="container-fluid">
     <div class="row">
-      <!-- Left Portal & Staff/Admin Login Sidebar -->
-      <aside class="col-lg-3 col-xl-2 sidebar p-3">
+      <!-- Staff / Admin Sidebar (Hidden in Customer Storefront Mode) -->
+      <aside id="staffSidebarCol" class="col-lg-3 col-xl-2 sidebar p-3 d-none">
         <div class="mb-3">
-          <h4 class="fw-bold mb-1"><i class="fa-solid fa-store text-primary me-2"></i>Sammyreks Portal</h4>
-          <small class="text-muted">Business Center &bull; Firestore + Cloudinary</small>
+          <h4 class="fw-bold mb-1"><i class="fa-solid fa-store text-primary me-2"></i>Staff Portal</h4>
+          <small class="text-muted" id="sidebarBusinessName">Sammyreks Business Center</small>
         </div>
 
         <div class="mb-2">
-          <span id="authBadge" class="badge bg-secondary">Customer Mode</span>
+          <span id="authBadge" class="badge bg-secondary">Staff Mode</span>
         </div>
 
         <form id="loginForm" class="border rounded p-3 bg-light mb-3">
-          <label class="form-label small fw-semibold">Choose Portal Mode</label>
+          <label class="form-label small fw-semibold">Portal Access</label>
           <select id="loginMode" class="form-select form-select-sm mb-2">
-            <option value="admin">Staff / Admin Login</option>
+            <option value="admin">Admin Login</option>
             <option value="staff">Staff Login</option>
           </select>
 
@@ -128,25 +133,24 @@
 
         <div class="d-grid gap-1">
           <button type="button" class="btn btn-outline-dark btn-sm text-start nav-pill-btn active" data-action="switch-section" data-section="customerSection">
-            <i class="fa-solid fa-bag-shopping me-2"></i>Customer Storefront
+            <i class="fa-solid fa-bag-shopping me-2"></i>Back to Storefront
           </button>
           <button type="button" class="btn btn-outline-primary btn-sm text-start nav-pill-btn" data-action="switch-section" data-section="staffSection">
-            <i class="fa-solid fa-gauge-high me-2"></i>Staff / Admin Panel
+            <i class="fa-solid fa-gauge-high me-2"></i>Management Panel
           </button>
         </div>
 
         <hr />
         <div class="small text-muted">
-          <div id="sidebarBusinessName">Sammyreks Business Center</div>
-          <div>v21.1 | 2026</div>
+          <div>v21.2 | 2026</div>
         </div>
       </aside>
 
-      <!-- Main Content Area -->
-      <main class="col-lg-9 col-xl-10 p-3 p-md-4">
+      <!-- Main Content Area (Full Width for Customers) -->
+      <main id="mainContentCol" class="col-12 p-3 p-md-4">
         <!-- Live Feedback Banner -->
-        <div id="appFeedbackBanner" class="alert alert-info d-flex align-items-center justify-content-between py-2 px-3 mb-3" role="alert">
-          <span id="appFeedbackText"><i class="fa-solid fa-circle-info me-2"></i>Ready. Loading products from Firestore...</span>
+        <div id="appFeedbackBanner" class="alert alert-info d-none d-flex align-items-center justify-content-between py-2 px-3 mb-3" role="alert">
+          <span id="appFeedbackText"></span>
           <button type="button" class="btn-close btn-sm" data-action="dismiss-banner" aria-label="Close"></button>
         </div>
 
@@ -154,12 +158,12 @@
         <!-- CUSTOMER SECTION                                                 -->
         <!-- ================================================================ -->
         <section id="customerSection">
-          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
             <div>
-              <h2 class="h4 fw-bold mb-0" id="businessTitleDisplay">Sammyreks Business Center</h2>
+              <h1 class="h4 fw-bold mb-0" id="businessTitleDisplay">Sammyreks Business Center</h1>
               <small class="text-muted" id="businessTaglineDisplay">Quality products, fast orders &amp; live support</small>
             </div>
-            <button type="button" class="btn btn-success btn-sm" data-action="switch-customer-tab" data-tab="cartTab">
+            <button type="button" class="btn btn-success btn-sm px-3" data-action="switch-customer-tab" data-tab="cartTab">
               <i class="fa-solid fa-cart-shopping me-1"></i>Cart (<span id="cartCountBadge">0</span>) &bull; <span id="cartTotalBadge">&#8358;0.00</span>
             </button>
           </div>
@@ -170,7 +174,7 @@
           <div id="customerBroadcastCard" class="card shadow-sm mb-3 d-none">
             <div class="card-body py-2">
               <div class="small fw-semibold text-primary mb-2">
-                <i class="fa-solid fa-video me-1"></i>Customer Update / Broadcast Video
+                <i class="fa-solid fa-video me-1"></i>Featured Announcement
               </div>
               <div id="customerBroadcastPlayerWrap"></div>
             </div>
@@ -318,6 +322,14 @@
               </div>
             </div>
           </div>
+
+          <!-- Discreet Store Footer -->
+          <footer class="store-footer mt-5 pt-3 pb-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>&copy; <span id="footerBusinessName">Sammyreks Business Center</span>. All rights reserved.</div>
+            <button type="button" class="btn btn-link btn-sm text-decoration-none text-muted p-0" data-action="open-staff-portal">
+              Staff Sign-In
+            </button>
+          </footer>
         </section>
 
         <!-- ================================================================ -->
@@ -490,7 +502,7 @@
             <div class="card shadow-sm">
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                  <h5 class="card-title mb-0"><i class="fa-solid fa-table me-2 text-secondary"></i>Saved Firestore Inventory</h5>
+                  <h5 class="card-title mb-0"><i class="fa-solid fa-table me-2 text-secondary"></i>Saved Inventory</h5>
                   <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-products">
                     <i class="fa-solid fa-rotate-right me-1"></i>Refresh
                   </button>
@@ -775,7 +787,23 @@
       document.getElementById("productAdModalBody").innerHTML = "";
     });
 
+    function syncLayoutChrome() {
+      const sidebarCol = document.getElementById("staffSidebarCol");
+      const mainCol = document.getElementById("mainContentCol");
+      const showSidebar = Boolean(state.isLoggedIn);
+
+      sidebarCol.classList.toggle("d-none", !showSidebar);
+      if (showSidebar) {
+        mainCol.className = "col-lg-9 col-xl-10 p-3 p-md-4";
+      } else {
+        mainCol.className = "col-12 p-3 p-md-4";
+      }
+    }
+
     function showBanner(message, type = "info") {
+      if (!state.isLoggedIn && type !== "danger" && type !== "warning") {
+        return;
+      }
       const banner = document.getElementById("appFeedbackBanner");
       const textEl = document.getElementById("appFeedbackText");
       banner.className = `alert alert-${type} d-flex align-items-center justify-content-between py-2 px-3 mb-3`;
@@ -1104,7 +1132,7 @@
       });
 
       if (!filtered.length) {
-        grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products available yet. Log in as Staff/Admin to add products.</div></div>`;
+        grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products match your selection right now.</div></div>`;
       } else {
         grid.innerHTML = filtered.map((p) => {
           const imgSrc = p.image_url || "";
@@ -1155,7 +1183,7 @@
       }
 
       if (!state.products.length) {
-        tbody.innerHTML = `<tr><td colspan="12" class="text-muted">No inventory records in Firestore yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="text-muted">No inventory items yet.</td></tr>`;
         posSelect.innerHTML = `<option value="">No products available</option>`;
         existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>`;
         syncPosUnitOptions();
@@ -1219,7 +1247,6 @@
         const rawList = res.products || res.data || [];
         state.products = rawList.map(normalizeProductClient);
         renderProducts();
-        showBanner(`Loaded ${state.products.length} product(s) from Firestore.`, "success");
       } catch (err) {
         showBanner(`Could not load products: ${err.message}`, "danger");
       }
@@ -1231,8 +1258,10 @@
         const s = res.settings || res.data || {};
         if (s.business_name) {
           state.businessName = s.business_name;
+          document.title = s.business_name;
           document.getElementById("businessTitleDisplay").textContent = s.business_name;
           document.getElementById("sidebarBusinessName").textContent = s.business_name;
+          document.getElementById("footerBusinessName").textContent = s.business_name;
           document.getElementById("setBusinessName").value = s.business_name;
         }
         if (s.tagline) {
@@ -1300,7 +1329,6 @@
           msgs,
           `No messages or receipts found${phone ? ` for ${phone}` : ""}.`
         );
-        showBanner(`Loaded ${msgs.length} chat record(s).`, "success");
       } catch (err) {
         showBanner(`Failed to load chat: ${err.message}`, "danger");
       }
@@ -1396,9 +1424,16 @@
       }
     }
 
+    function openStaffPortalLogin() {
+      document.getElementById("staffSidebarCol").classList.remove("d-none");
+      document.getElementById("mainContentCol").className = "col-lg-9 col-xl-10 p-3 p-md-4";
+      document.getElementById("loginUsername").focus();
+      showBanner("Enter your staff or admin credentials on the left to sign in.", "info");
+    }
+
     function switchSection(sectionId) {
       if (sectionId === "staffSection" && !state.isLoggedIn) {
-        showBanner("Please log in using the left sidebar first to open the Staff / Admin Panel.", "warning");
+        openStaffPortalLogin();
         return;
       }
       document.getElementById("customerSection").classList.toggle("d-none", sectionId !== "customerSection");
@@ -1406,6 +1441,7 @@
       document.querySelectorAll(".nav-pill-btn").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.section === sectionId);
       });
+      syncLayoutChrome();
     }
 
     function switchCustomerTab(tabId) {
@@ -1439,6 +1475,8 @@
 
       if (action === "dismiss-banner") {
         document.getElementById("appFeedbackBanner").classList.add("d-none");
+      } else if (action === "open-staff-portal") {
+        openStaffPortalLogin();
       } else if (action === "switch-section") {
         switchSection(target.dataset.section);
       } else if (action === "switch-customer-tab") {
@@ -1519,7 +1557,7 @@
           try {
             await apiRequest(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE" });
             await loadStaffOrders();
-            showBanner("Order removed from Firestore.", "success");
+            showBanner("Order removed.", "success");
           } catch (err) {
             showBanner(`Failed to delete order: ${err.message}`, "danger");
           }
@@ -1583,7 +1621,7 @@
           try {
             await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, { method: "DELETE" });
             await loadProducts();
-            showBanner("Product deleted from Firestore.", "success");
+            showBanner("Product deleted.", "success");
           } catch (err) {
             showBanner(`Failed to delete product: ${err.message}`, "danger");
           }
@@ -1663,7 +1701,7 @@
           state.isLoggedIn = true;
           state.user = res;
           document.getElementById("authBadge").className = "badge bg-success";
-          document.getElementById("authBadge").textContent = `${res.role || "CEO"}: ${res.username || username}`;
+          document.getElementById("authBadge").textContent = `${res.role || "Admin"}: ${res.username || username}`;
           document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username}`;
           document.getElementById("logoutBtn").classList.remove("d-none");
           document.getElementById("loginPassword").value = "";
@@ -1680,7 +1718,7 @@
       state.isLoggedIn = false;
       state.user = null;
       document.getElementById("authBadge").className = "badge bg-secondary";
-      document.getElementById("authBadge").textContent = "Customer Mode";
+      document.getElementById("authBadge").textContent = "Staff Mode";
       document.getElementById("logoutBtn").classList.add("d-none");
       switchSection("customerSection");
       showBanner("Logged out.", "info");
@@ -1708,7 +1746,7 @@
           document.getElementById("prodPriceRetail").value = "0.00";
           document.getElementById("prodRetailPerPack").value = "1";
           await loadProducts();
-          showBanner("Product inventory saved to Firestore and synced!", "success");
+          showBanner("Product inventory saved and synced!", "success");
         } catch (err) {
           showBanner(`Failed to save product: ${err.message}`, "danger");
         }
@@ -1734,7 +1772,7 @@
         }));
 
         try {
-          const res = await apiRequest("/api/orders", {
+          await apiRequest("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -1750,7 +1788,6 @@
           document.getElementById("chatSendPhone").value = phone;
           switchCustomerTab("chatTab");
           await loadChatMessages();
-          showBanner(`Order sent to Live Chat! Ref: ${res.payment_ref || ""}`, "success");
         } catch (err) {
           showBanner(`Failed to send order: ${err.message}`, "danger");
         }
@@ -1779,7 +1816,6 @@
           document.getElementById("chatSendPhone").value = phone;
           switchCustomerTab("chatTab");
           await loadChatMessages();
-          showBanner("Multi-item request sent to Live Chat!", "success");
         } catch (err) {
           showBanner(`Failed to send request: ${err.message}`, "danger");
         }
@@ -1805,7 +1841,6 @@
           document.getElementById("chatProofFile").value = "";
           document.getElementById("chatPhoneFilter").value = phone;
           await loadChatMessages();
-          showBanner("Message sent!", "success");
         } catch (err) {
           showBanner(`Failed to send message: ${err.message}`, "danger");
         }
@@ -1884,7 +1919,7 @@
             }),
           });
           e.target.reset();
-          showBanner("Debtor saved to Firestore.", "success");
+          showBanner("Debtor saved.", "success");
         } catch (err) {
           showBanner(`Failed to save debtor: ${err.message}`, "danger");
         }
@@ -1907,7 +1942,7 @@
           });
           e.target.reset();
           document.getElementById("expenseCategory").value = "Operations";
-          showBanner("Expense saved to Firestore.", "success");
+          showBanner("Expense saved.", "success");
         } catch (err) {
           showBanner(`Failed to save expense: ${err.message}`, "danger");
         }
@@ -1930,7 +1965,7 @@
           });
           e.target.reset();
           document.getElementById("workerRole").value = "Staff";
-          showBanner("Worker saved to Firestore.", "success");
+          showBanner("Worker saved.", "success");
         } catch (err) {
           showBanner(`Failed to save worker: ${err.message}`, "danger");
         }
@@ -1947,7 +1982,7 @@
           await apiRequest("/api/settings", { method: "POST", body: fd });
           document.getElementById("setBroadcastVideoFile").value = "";
           await loadSettings();
-          showBanner("Settings saved to Firestore.", "success");
+          showBanner("Settings saved.", "success");
         } catch (err) {
           showBanner(`Failed to save settings: ${err.message}`, "danger");
         }
@@ -1955,6 +1990,7 @@
     });
 
     (async function initApp() {
+      syncLayoutChrome();
       updateCartSummary();
       await loadSettings();
       await loadProducts();

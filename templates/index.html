@@ -1175,7 +1175,7 @@
           const phoneVal = o.contact_phone || o.phone || "";
           const customerVal = o.customer || o.customer_name || "Customer";
           const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
-          const badgeLabel = hasSpecial ? "Multi-Item Request" : "Cart Order";
+          const badgeLabel = o.order_type || (hasSpecial ? "Multi-Item Request" : "Cart Order");
           const badgeClass = hasSpecial ? "bg-info text-dark" : "bg-primary";
 
           let detailsHtml = "";
@@ -1196,7 +1196,7 @@
             <div class="border rounded p-2 mb-2 bg-light order-entry" data-action="select-order-phone" data-phone="${escapeHtml(phoneVal)}">
               <div class="d-flex justify-content-between align-items-center small mb-1">
                 <strong>${escapeHtml(customerVal)} (${escapeHtml(phoneVal)})</strong>
-                <span class="badge ${badgeClass}">${badgeLabel}</span>
+                <span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
               </div>
               <div class="small text-muted mb-1">${escapeHtml(o.timestamp || "")}${o.payment_ref ? ` • Ref: ${escapeHtml(o.payment_ref)}` : ""}</div>
               ${detailsHtml}

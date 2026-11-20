@@ -21,7 +21,7 @@
       object-fit: cover;
     }
     .chat-box {
-      max-height: 360px;
+      max-height: 400px;
       overflow-y: auto;
       background: #ffffff;
     }
@@ -43,6 +43,11 @@
     }
     .order-entry {
       cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .order-entry:hover {
+      border-color: #0d6efd !important;
+      background-color: #f8fbff !important;
     }
     .thermal-paper {
       font-family: "Courier New", Courier, monospace;
@@ -560,12 +565,13 @@
               <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                   <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
                       <h5 class="card-title mb-0"><i class="fa-solid fa-receipt me-1 text-primary"></i>Cart Orders &amp; Multi-Item Requests</h5>
                       <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-staff-orders-chat">
                         <i class="fa-solid fa-rotate-right me-1"></i>Refresh
                       </button>
                     </div>
+                    <div class="small text-muted mb-2">Click any order card to load that customer's Live Chat &amp; payment proofs.</div>
                     <div id="staffOrdersBox" class="chat-box border rounded p-2">
                       <div class="text-muted small">Loading customer orders and multi-item requests...</div>
                     </div>
@@ -1135,13 +1141,17 @@
         const proofImg = m.proof_url && String(m.proof_url).startsWith("http")
           ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
           : "";
+        const rawText = m.message || m.text || "";
+        const isSystemReceipt = m.sender === "System" && rawText.trim().startsWith("<");
+        const bodyHtml = isSystemReceipt ? rawText : escapeHtml(rawText);
+
         return `
           <div class="border-bottom pb-2 mb-2">
             <div class="d-flex justify-content-between small">
               <strong>${escapeHtml(m.sender || "Customer")}</strong>
               <span class="text-muted">${escapeHtml(m.customer_phone || m.phone || "")} &bull; ${escapeHtml(m.timestamp || "")}</span>
             </div>
-            <div>${escapeHtml(m.message || m.text || "")}</div>
+            <div>${bodyHtml}</div>
             ${proofImg}
           </div>
         `;
@@ -1170,7 +1180,16 @@
       const box = document.getElementById("staffOrdersBox");
       try {
         const res = await apiRequest("/api/orders");
-        const orders = res.orders || res.data || [];
+        const rawOrders = res.orders || res.data || [];
+
+        const seenKeys = new Set();
+        const orders = rawOrders.filter((o) => {
+          const key = `${o.payment_ref || ""}|${o.timestamp || ""}|${o.contact_phone || o.phone || ""}`;
+          if (o.payment_ref && seenKeys.has(key)) return false;
+          seenKeys.add(key);
+          return true;
+        });
+
         state.ordersFeed = orders;
 
         if (!orders.length) {
@@ -1184,6 +1203,7 @@
           const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
           const badgeLabel = o.order_type || (hasSpecial ? "Multi-Item Request" : "Cart Order");
           const badgeClass = hasSpecial ? "bg-info text-dark" : "bg-primary";
+          const isVerified = String(o.status || "").toLowerCase() === "verified";
 
           let detailsHtml = "";
           if (hasSpecial) {
@@ -1195,22 +1215,34 @@
             detailsHtml = o.items
               .map((it) => `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) &times; ${escapeHtml(it.qty || 1)} &mdash; ${state.currency}${Number(it.total_price || 0).toFixed(2)}</div>`)
               .join("") + `<div class="small fw-bold mt-1">Total: ${state.currency}${totalVal.toFixed(2)}</div>`;
-          } else {
-            detailsHtml = `<div class="small">${escapeHtml(o.notes || "Order submitted")}</div>`;
           }
+
+          const hasStructuredItems = hasSpecial || (Array.isArray(o.items) && o.items.length > 0);
+          const noteHtml = o.notes
+            ? `<div class="${hasStructuredItems ? "small text-secondary mt-1" : "small"}">${hasStructuredItems ? "Note: " : ""}${escapeHtml(o.notes)}</div>`
+            : "";
 
           return `
             <div class="border rounded p-2 mb-2 bg-light order-entry" data-action="select-order-phone" data-phone="${escapeHtml(phoneVal)}">
-              <div class="d-flex justify-content-between align-items-center small mb-1">
+              <div class="d-flex justify-content-between align-items-center small mb-1 gap-1">
                 <strong>${escapeHtml(customerVal)} (${escapeHtml(phoneVal)})</strong>
-                <span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
+                <div class="d-flex gap-1">
+                  ${isVerified ? `<span class="badge bg-success">Verified</span>` : `<span class="badge bg-warning text-dark">Pending</span>`}
+                  <span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
+                </div>
               </div>
               <div class="small text-muted mb-1">${escapeHtml(o.timestamp || "")}${o.payment_ref ? ` &bull; Ref: ${escapeHtml(o.payment_ref)}` : ""}</div>
               ${detailsHtml}
-              ${o.notes ? `<div class="small text-secondary mt-1">Note: ${escapeHtml(o.notes)}</div>` : ""}
-              <div class="mt-2">
+              ${noteHtml}
+              <div class="mt-2 d-flex flex-wrap gap-1">
                 <button type="button" class="btn btn-outline-dark btn-sm" data-action="open-order-receipt" data-order-index="${idx}">
                   <i class="fa-solid fa-print me-1"></i>Thermal Receipt
+                </button>
+                <button type="button" class="btn btn-success btn-sm" data-action="verify-send-receipt" data-order-id="${escapeHtml(o.id)}" data-phone="${escapeHtml(phoneVal)}">
+                  <i class="fa-solid fa-check-double me-1"></i>Verify &amp; Send Receipt
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-order" data-order-id="${escapeHtml(o.id)}">
+                  <i class="fa-solid fa-trash"></i>
                 </button>
               </div>
             </div>
@@ -1308,10 +1340,13 @@
           lines = o.items.map((it) => `${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${state.currency}${Number(it.total_price || 0).toFixed(2)}`);
           const sum = o.items.reduce((acc, it) => acc + Number(it.total_price || 0), 0);
           totalStr = `${state.currency}${sum.toFixed(2)}`;
+        } else if (o.notes) {
+          lines = [o.notes];
         } else {
-          lines = [o.notes || "Customer Order"];
+          lines = ["Customer Order"];
         }
-        if (o.notes) lines.push(`Note: ${o.notes}`);
+        if (o.notes && hasSpecial) lines.push(`Note: ${o.notes}`);
+        if (o.notes && Array.isArray(o.items) && o.items.length > 0) lines.push(`Note: ${o.notes}`);
         openThermalReceipt({
           title: hasSpecial ? "MULTI-ITEM REQUEST RECEIPT" : "CUSTOMER ORDER RECEIPT",
           ref: o.payment_ref || "",
@@ -1321,6 +1356,38 @@
           lines,
           total: totalStr,
         });
+      } else if (action === "verify-send-receipt") {
+        event.stopPropagation();
+        const orderId = target.dataset.orderId;
+        const phone = (target.dataset.phone || "").trim();
+        if (!orderId) return;
+        try {
+          await apiRequest(`/api/orders/${encodeURIComponent(orderId)}/verify`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ verified_by: state.user?.username || "admin" }),
+          });
+          if (phone) {
+            document.getElementById("staffChatPhoneFilter").value = phone;
+            document.getElementById("staffChatSendPhone").value = phone;
+          }
+          await loadStaffOrders();
+          await loadStaffChatMessages();
+          showBanner("Order verified and official receipt sent to customer Live Chat!", "success");
+        } catch (err) {
+          showBanner(`Failed to verify order: ${err.message}`, "danger");
+        }
+      } else if (action === "delete-order") {
+        event.stopPropagation();
+        const orderId = target.dataset.orderId;
+        if (!orderId) return;
+        try {
+          await apiRequest(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE" });
+          await loadStaffOrders();
+          showBanner("Order removed from Firestore.", "success");
+        } catch (err) {
+          showBanner(`Failed to delete order: ${err.message}`, "danger");
+        }
       } else if (action === "open-pos-receipt") {
         openThermalReceipt({
           title: "POS SALES RECEIPT",

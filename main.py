@@ -330,6 +330,93 @@ async def create_order(request: Request):
     return {"ok": True, "id": order_id, "payment_ref": payment_ref}
 
 
+@app.post("/api/orders/{order_id}/verify")
+async def verify_order(order_id: str, request: Request):
+    order_ref = db.collection("orders").document(order_id)
+    snap = order_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    order_data = snap.to_dict() or {}
+    payload = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
+    verified_by = str(payload.get("verified_by") or "admin").strip()
+
+    settings_snap = db.collection("settings").document("business").get()
+    settings_data = settings_snap.to_dict() if settings_snap.exists else {}
+    biz_name = str(settings_data.get("business_name") or "SAMMYREKS BUSINESS CENTER").upper()
+    currency = str(settings_data.get("currency") or "₦")
+
+    customer = str(order_data.get("customer") or order_data.get("customer_name") or "Customer").strip()
+    phone = str(order_data.get("contact_phone") or order_data.get("phone") or "").strip()
+    ref_code = str(order_data.get("payment_ref") or make_ref()).strip()
+    ts = now_str()
+
+    items = order_data.get("items") or []
+    special_items = order_data.get("special_items") or []
+    lines_html = ""
+    total_val = 0.0
+
+    if special_items:
+        for sp in special_items:
+            sp_text = str(sp.get("item") or sp.get("name") or "Requested Item")
+            lines_html += f"<p style='margin:2px 0;'>{sp_text}</p>"
+    elif items:
+        for it in items:
+            it_name = str(it.get("name") or "Item")
+            it_unit = str(it.get("unit") or "Unit")
+            it_qty = it.get("qty") or 1
+            it_total = float(it.get("total_price") or 0.0)
+            total_val += it_total
+            lines_html += f"<p style='margin:2px 0;'>{it_qty} {it_unit}(s) of {it_name} &mdash; {currency}{it_total:,.2f}</p>"
+    elif order_data.get("notes"):
+        lines_html += f"<p style='margin:2px 0;'>{order_data.get('notes')}</p>"
+
+    receipt_html = (
+        f"<div style='background:#fdfcf7; color:#111; padding:16px; border-radius:6px; border:1px solid #dcd6cd; "
+        f"font-family:\"Courier New\", Courier, monospace; max-width:360px; margin:6px 0;'>"
+        f"<div style='text-align:center; border-bottom:1px dashed #333; padding-bottom:8px; margin-bottom:8px;'>"
+        f"<h5 style='margin:0; font-weight:bold;'>{biz_name}</h5>"
+        f"<div style='font-size:0.75rem; color:#444; margin:2px 0;'>OFFICIAL PURCHASE RECEIPT</div>"
+        f"<span style='background:#198754; color:#fff; font-size:0.72rem; padding:2px 6px; border-radius:3px; font-weight:bold;'>PAID &amp; VERIFIED</span>"
+        f"</div>"
+        f"<div style='font-size:0.8rem; margin-bottom:8px; border-bottom:1px dashed #333; padding-bottom:6px;'>"
+        f"<p style='margin:2px 0;'><b>REF CODE:</b> {ref_code}</p>"
+        f"<p style='margin:2px 0;'><b>CUSTOMER:</b> {customer}</p>"
+        f"<p style='margin:2px 0;'><b>PHONE:</b> {phone or 'N/A'}</p>"
+        f"<p style='margin:2px 0;'><b>VERIFIED BY:</b> {verified_by}</p>"
+        f"</div>"
+        f"<div style='font-size:0.8rem; margin-bottom:8px;'>{lines_html}</div>"
+        f"<div style='border-top:1px dashed #333; padding-top:6px; font-size:0.85rem; font-weight:bold;'>"
+        f"TOTAL: {currency}{total_val:,.2f}"
+        f"</div>"
+        f"</div>"
+    )
+
+    order_ref.set({"status": "Verified", "verified_by": verified_by, "verified_at": ts}, merge=True)
+
+    msg_doc: Dict[str, Any] = {
+        "sender": "System",
+        "customer_phone": phone,
+        "phone": phone,
+        "message": receipt_html,
+        "text": receipt_html,
+        "payment_ref": ref_code,
+        "timestamp": ts,
+    }
+    db.collection("messages").document(uuid.uuid4().hex).set(msg_doc)
+
+    return {"ok": True, "id": order_id, "status": "Verified", "payment_ref": ref_code}
+
+
+@app.delete("/api/orders/{order_id}")
+def delete_order(order_id: str):
+    order_ref = db.collection("orders").document(order_id)
+    if not order_ref.get().exists:
+        raise HTTPException(status_code=404, detail="Order not found")
+    order_ref.delete()
+    return {"ok": True, "id": order_id}
+
+
 @app.get("/api/messages")
 def get_messages(phone: Optional[str] = Query(default=None)):
     docs = db.collection("messages").stream()

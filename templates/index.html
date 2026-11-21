@@ -245,7 +245,7 @@
 
         <hr />
         <div class="small text-muted">
-          <div>v24.2 | 2026</div>
+          <div>v24.3 | 2026</div>
         </div>
       </aside>
 
@@ -346,13 +346,9 @@
                   </button>
                 </div>
 
-                <!-- Optional Bank / Payment Info Box from Settings -->
                 <div id="chatPaymentInfoAlert" class="alert alert-warning py-2 px-3 small d-none"></div>
-
-                <!-- Credential Banner after placing an order -->
                 <div id="customerCredentialNotice" class="alert alert-success py-2 px-3 small d-none"></div>
 
-                <!-- Unlock Portfolio Form -->
                 <form id="unlockChatForm" class="row g-2 mb-3">
                   <div class="col-md-5">
                     <input type="text" id="chatPhoneFilter" class="form-control" placeholder="Your registered phone number" required />
@@ -396,10 +392,7 @@
             <div class="card shadow-sm">
               <div class="card-body">
                 <h5 class="card-title"><i class="fa-solid fa-cart-shopping me-2 text-primary"></i>Your Cart &amp; Order Checkout</h5>
-
-                <!-- Optional Bank / Payment Info Box from Settings -->
                 <div id="checkoutPaymentInfoAlert" class="alert alert-info py-2 px-3 small d-none"></div>
-
                 <div id="cartItemsContainer" class="mb-3">
                   <p class="text-muted">Your cart is empty.</p>
                 </div>
@@ -565,9 +558,12 @@
 
           <!-- Staff Tab 1: Add / Update Item & Inventory Table -->
           <div id="inventoryTab" class="staff-tab-pane">
-            <div class="card shadow-sm mb-4">
+            <div class="card shadow-sm mb-4" id="addUpdateItemCard">
               <div class="card-body">
-                <h5 class="card-title mb-3"><i class="fa-solid fa-pen-to-square me-2 text-primary"></i>Add / Update Item</h5>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="card-title mb-0"><i class="fa-solid fa-pen-to-square me-2 text-primary"></i>Add / Update Item</h5>
+                  <span class="badge bg-light text-dark border" id="formModeIndicator">Mode: Add New Item</span>
+                </div>
 
                 <form id="addProductForm" enctype="multipart/form-data">
                   <div class="mb-3">
@@ -603,7 +599,7 @@
                   </div>
 
                   <div class="alert alert-info py-2 small">
-                    <i class="fa-solid fa-pen me-1"></i><strong>Category &amp; Box Headings:</strong> Type any category name of your choice below.
+                    <i class="fa-solid fa-pen me-1"></i><strong>Category, Vendor / Sponsor &amp; Box Headings:</strong> Type any category or vendor/sponsor name below and click <strong>Save Product Data</strong> to update.
                   </div>
 
                   <div class="row g-3 mb-3">
@@ -612,8 +608,8 @@
                       <input type="text" name="category" id="prodCategory" class="form-control" value="General" />
                     </div>
                     <div class="col-md-6">
-                      <label class="form-label">Vendor / Ad Sponsor Name (Optional)</label>
-                      <input type="text" name="vendor_name" id="prodVendorName" class="form-control" placeholder="e.g. Sammyreks Store or Partner Vendor" />
+                      <label class="form-label fw-semibold">Vendor / Ad Sponsor Name</label>
+                      <input type="text" name="vendor_name" id="prodVendorName" class="form-control" placeholder="e.g. Gladosmit Drinks or Partner Vendor" />
                     </div>
                   </div>
 
@@ -1055,7 +1051,7 @@
                     </div>
                     <div class="col-md-3 col-6">
                       <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="setShowVendorBadges" />
+                        <input class="form-check-input" type="checkbox" id="setShowVendorBadges" checked />
                         <label class="form-check-label" for="setShowVendorBadges">Show <strong>Vendor / Sponsor</strong> Tags</label>
                       </div>
                     </div>
@@ -1156,6 +1152,7 @@
     const EXTRA_SETTINGS_STORAGE_KEY = "sammyreks_extra_app_settings_v1";
     const DELETED_CHAT_PHOTOS_KEY = "sammyreks_deleted_chat_photo_ids_v1";
     const PAID_DEBTOR_IDS_KEY = "sammyreks_paid_debtor_ids_v1";
+    const VENDOR_OVERRIDES_STORAGE_KEY = "sammyreks_product_vendor_overrides_v1";
 
     const DEFAULT_EXTRA_SETTINGS = {
       showBusinessAnalytics: false,
@@ -1169,7 +1166,7 @@
       showTopCartBtn: true,
       mobileTabLabels: "Shop | Request | Chat & Receipts | Checkout",
       showWatchAd: true,
-      showVendorBadges: false,
+      showVendorBadges: true,
       showStockOnCards: true,
       hideOutOfStock: false,
       searchPlaceholder: "Search products...",
@@ -1193,6 +1190,7 @@
       workersList: [],
       paidDebtorIds: new Set(),
       deletedPhotoIds: new Set(),
+      vendorOverrides: {},
       pendingWhatsAppReceipt: null,
       isLoggedIn: false,
       user: null,
@@ -1237,6 +1235,38 @@
       try {
         localStorage.setItem(key, JSON.stringify(Array.from(idSet)));
       } catch (_) {}
+    }
+
+    function readVendorOverrides() {
+      try {
+        const raw = localStorage.getItem(VENDOR_OVERRIDES_STORAGE_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function saveVendorOverride(prodId, prodName, vendorName) {
+      const cleanVendor = String(vendorName || "").trim();
+      if (prodId) {
+        state.vendorOverrides[`id:${String(prodId)}`] = cleanVendor;
+      }
+      if (prodName) {
+        state.vendorOverrides[`name:${String(prodName).trim().toLowerCase()}`] = cleanVendor;
+      }
+      try {
+        localStorage.setItem(VENDOR_OVERRIDES_STORAGE_KEY, JSON.stringify(state.vendorOverrides));
+      } catch (_) {}
+    }
+
+    function resolveVendorName(rawItem, id, name) {
+      const serverVal = String(rawItem?.vendor_name ?? rawItem?.vendor ?? rawItem?.sponsor ?? "").trim();
+      const byId = id ? state.vendorOverrides[`id:${String(id)}`] : undefined;
+      const byName = name ? state.vendorOverrides[`name:${String(name).trim().toLowerCase()}`] : undefined;
+      if (byId !== undefined) return byId;
+      if (byName !== undefined) return byName;
+      return serverVal;
     }
 
     function getProductAlertInfo(p) {
@@ -1609,6 +1639,14 @@
       }
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (response.status === 401 && state.staffToken && !url.startsWith("/api/messages")) {
+          state.isLoggedIn = false;
+          state.staffToken = "";
+          document.getElementById("authBadge").className = "badge bg-secondary";
+          document.getElementById("authBadge").textContent = "Staff Mode";
+          document.getElementById("logoutBtn").classList.add("d-none");
+          syncLayoutChrome();
+        }
         throw new Error(data.detail || data.message || `Request failed (${response.status})`);
       }
       return data;
@@ -1659,14 +1697,16 @@
 
     function normalizeProductClient(p) {
       const item = p || {};
+      const id = String(item.id ?? "");
+      const name = String(item.name ?? "Unnamed Product");
       const priceCarton = Number(item.price_carton ?? item.price ?? 0);
       const stockCartons = Number(item.qty_cartons ?? item.stock ?? 0);
       return {
         ...item,
-        id: String(item.id ?? ""),
-        name: String(item.name ?? "Unnamed Product"),
+        id,
+        name,
         category: String(item.category ?? "General"),
-        vendor_name: String(item.vendor_name ?? item.vendor ?? item.sponsor ?? "").trim(),
+        vendor_name: resolveVendorName(item, id, name),
         unit_main_label: String(item.unit_main_label ?? "Carton"),
         unit_pack_label: String(item.unit_pack_label ?? "Pack"),
         unit_retail_label: String(item.unit_retail_label ?? "Retail Unit"),
@@ -1961,16 +2001,7 @@
       `;
     }
 
-    function toggleUpdateMode() {
-      const isUpdate = document.getElementById("actionUpdateExisting").checked;
-      document.getElementById("existingProductSelectorWrap").classList.toggle("d-none", !isUpdate);
-    }
-
-    document.getElementById("actionAddNew").addEventListener("change", toggleUpdateMode);
-    document.getElementById("actionUpdateExisting").addEventListener("change", toggleUpdateMode);
-
-    document.getElementById("existingProductSelect").addEventListener("change", (e) => {
-      const prod = state.products.find((p) => String(p.id) === String(e.target.value));
+    function populateFormFromProduct(prod) {
       if (!prod) return;
       document.getElementById("prodName").value = prod.name || "";
       document.getElementById("prodCategory").value = prod.category || "General";
@@ -1989,7 +2020,40 @@
       document.getElementById("prodExpiryDate").value = prod.expiry || "";
       document.getElementById("prodVideoLink").value = prod.video_url || "";
       document.getElementById("prodDescription").value = prod.description || "";
+    }
+
+    function toggleUpdateMode() {
+      const isUpdate = document.getElementById("actionUpdateExisting").checked;
+      document.getElementById("existingProductSelectorWrap").classList.toggle("d-none", !isUpdate);
+      document.getElementById("formModeIndicator").textContent = isUpdate ? "Mode: Update Existing Item" : "Mode: Add New Item";
+    }
+
+    document.getElementById("actionAddNew").addEventListener("change", toggleUpdateMode);
+    document.getElementById("actionUpdateExisting").addEventListener("change", toggleUpdateMode);
+
+    document.getElementById("existingProductSelect").addEventListener("change", (e) => {
+      const prod = state.products.find((p) => String(p.id) === String(e.target.value));
+      populateFormFromProduct(prod);
     });
+
+    function startEditingProduct(prodId, focusVendor = false) {
+      const prod = state.products.find((p) => String(p.id) === String(prodId));
+      if (!prod) return;
+      document.getElementById("actionUpdateExisting").checked = true;
+      toggleUpdateMode();
+      document.getElementById("existingProductSelect").value = String(prod.id);
+      populateFormFromProduct(prod);
+      const card = document.getElementById("addUpdateItemCard");
+      if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (focusVendor) {
+        const vendorInp = document.getElementById("prodVendorName");
+        setTimeout(() => {
+          vendorInp.focus();
+          vendorInp.select();
+        }, 250);
+      }
+      showBanner(`Loaded "${prod.name}" into editor — update Vendor / Sponsor and click Save Product Data.`, "info");
+    }
 
     function syncPosUnitOptions() {
       const prod = state.products.find((p) => String(p.id) === String(document.getElementById("posProductSelect").value));
@@ -2141,7 +2205,10 @@
             <td>${retailCount}</td>
             <td>${escapeHtml(p.shelf || "-")}</td>
             <td>${escapeHtml(p.expiry || "-")}${expFlag}</td>
-            <td>
+            <td class="text-nowrap">
+              <button type="button" class="btn btn-outline-primary btn-sm me-1" data-action="edit-product-vendor" data-id="${escapeHtml(p.id)}" title="Edit product & vendor/sponsor">
+                <i class="fa-solid fa-pen"></i>
+              </button>
               <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
                 <i class="fa-solid fa-trash"></i>
               </button>
@@ -2308,7 +2375,12 @@
         renderChatList(box, msgs, `No messages or receipts found for ${phone}.`, { allowPhotoDelete: false });
       } catch (err) {
         lockCustomerChatView();
-        showBanner(err.message, "danger");
+        document.getElementById("chatMessagesBox").innerHTML = `
+          <div class="text-danger small py-3 text-center">
+            <i class="fa-solid fa-circle-exclamation fa-lg mb-2 d-block"></i>
+            ${escapeHtml(err.message)}
+          </div>
+        `;
       }
     }
 
@@ -2613,6 +2685,8 @@
 
       if (action === "dismiss-banner") {
         document.getElementById("appFeedbackBanner").classList.add("d-none");
+      } else if (action === "edit-product-vendor") {
+        startEditingProduct(target.dataset.id, true);
       } else if (action === "refresh-analytics") {
         await runGuardedAction("refresh-analytics", 500, target, "Refreshing...", async () => {
           await loadBusinessAnalytics();
@@ -2973,8 +3047,15 @@
       const btn = document.getElementById("saveProductBtn");
       await runGuardedAction("save-product", 1500, btn, "Saving...", async () => {
         const formData = new FormData(e.target);
+        const submittedName = String(formData.get("name") || "").trim();
+        const submittedVendor = String(formData.get("vendor_name") || "").trim();
+        const selectedExistingId = String(document.getElementById("existingProductSelect").value || "").trim();
+
         try {
-          await apiRequest("/api/products", { method: "POST", body: formData });
+          const res = await apiRequest("/api/products", { method: "POST", body: formData });
+          const savedId = String(res.product?.id ?? res.id ?? selectedExistingId ?? "");
+          saveVendorOverride(savedId, submittedName, submittedVendor);
+
           e.target.reset();
           document.getElementById("actionAddNew").checked = true;
           toggleUpdateMode();
@@ -2991,7 +3072,7 @@
           document.getElementById("prodPriceRetail").value = "0.00";
           document.getElementById("prodRetailPerPack").value = "1";
           await loadProducts();
-          showBanner("Product inventory saved and synced!", "success");
+          showBanner(`Saved "${submittedName}"${submittedVendor ? ` (Vendor/Sponsor: ${submittedVendor})` : ""}.`, "success");
         } catch (err) {
           showBanner(`Failed to save product: ${err.message}`, "danger");
         }
@@ -3093,7 +3174,7 @@
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("customer-chat-send", 1200, btn, "Sending...", async () => {
         const phone = state.customerAuth.phone;
-        const pin = state.customerAuth.pin;
+        const pin = state.customerAuth.pin || document.getElementById("chatPinFilter").value.trim();
         const text = document.getElementById("chatSendText").value.trim();
         const proofFile = document.getElementById("chatProofFile").files[0];
         const fd = new FormData();
@@ -3330,6 +3411,7 @@
     (async function initApp() {
       state.deletedPhotoIds = readIdSetFromStorage(DELETED_CHAT_PHOTOS_KEY);
       state.paidDebtorIds = readIdSetFromStorage(PAID_DEBTOR_IDS_KEY);
+      state.vendorOverrides = readVendorOverrides();
       syncLayoutChrome();
       lockCustomerChatView();
       updateCartSummary();

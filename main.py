@@ -1,6 +1,9 @@
 import base64
+import hashlib
+import hmac
 import json
 import os
+import random
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -8,7 +11,7 @@ from typing import Any, Dict, List, Optional
 import cloudinary
 import cloudinary.uploader
 import firebase_admin
-from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from firebase_admin import credentials, firestore
@@ -94,6 +97,7 @@ cloudinary_ready = init_cloudinary()
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+APP_SECRET = os.getenv("APP_SECRET", f"srk-secret-{ADMIN_PASSWORD}")
 
 
 def now_str() -> str:
@@ -102,6 +106,81 @@ def now_str() -> str:
 
 def make_ref() -> str:
     return f"SRK-{uuid.uuid4().hex[:6].upper()}"
+
+
+def make_pin() -> str:
+    return f"{random.randint(1000, 9999)}"
+
+
+def normalize_phone(phone: str) -> str:
+    digits = "".join(ch for ch in str(phone or "") if ch.isdigit())
+    return digits or str(phone or "").strip()
+
+
+def make_staff_token(username: str, role: str) -> str:
+    payload = f"{username}|{role}"
+    sig = hmac.new(APP_SECRET.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
+    raw = f"{payload}|{sig}".encode("utf-8")
+    return base64.urlsafe_b64encode(raw).decode("utf-8")
+
+
+def verify_staff_token(token: Optional[str]) -> Optional[Dict[str, str]]:
+    if not token:
+        return None
+    try:
+        decoded = base64.urlsafe_b64decode(token.encode("utf-8")).decode("utf-8")
+        username, role, sig = decoded.split("|", 2)
+        expected = hmac.new(
+            APP_SECRET.encode("utf-8"), f"{username}|{role}".encode("utf-8"), hashlib.sha256
+        ).hexdigest()
+        if hmac.compare_digest(sig, expected):
+            return {"username": username, "role": role}
+    except Exception:
+        return None
+    return None
+
+
+def get_or_create_customer_pin(phone: str, requested_pin: str = "") -> str:
+    norm = normalize_phone(phone)
+    if not norm:
+        return ""
+    ref = db.collection("customer_profiles").document(norm)
+    snap = ref.get()
+    clean_req = str(requested_pin or "").strip()
+
+    if snap.exists:
+        data = snap.to_dict() or {}
+        existing_pin = str(data.get("pin") or "").strip()
+        if existing_pin:
+            return existing_pin
+
+    pin_to_save = clean_req if (clean_req.isdigit() and len(clean_req) >= 4) else make_pin()
+    ref.set({"phone": norm, "pin": pin_to_save, "updated_at": now_str()}, merge=True)
+    return pin_to_save
+
+
+def verify_customer_access(phone: str, access_code: str) -> bool:
+    norm = normalize_phone(phone)
+    code = str(access_code or "").strip()
+    if not norm or not code:
+        return False
+
+    prof_snap = db.collection("customer_profiles").document(norm).get()
+    if prof_snap.exists:
+        saved_pin = str((prof_snap.to_dict() or {}).get("pin") or "").strip()
+        if saved_pin and hmac.compare_digest(saved_pin, code):
+            return True
+
+    # Also allow unlocking with any valid Order Reference Code (e.g. SRK-4247) belonging to this phone
+    code_upper = code.upper()
+    for doc in db.collection("orders").stream():
+        odata = doc.to_dict() or {}
+        ophone = normalize_phone(odata.get("contact_phone") or odata.get("phone") or "")
+        oref = str(odata.get("payment_ref") or "").strip().upper()
+        if ophone == norm and oref and hmac.compare_digest(oref, code_upper):
+            return True
+
+    return False
 
 
 def normalize_product(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -223,17 +302,17 @@ async def login(request: Request):
 
     if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
         role = "CEO" if mode == "admin" else "Staff"
-        return {"ok": True, "username": username, "role": role}
+        token = make_staff_token(username, role)
+        return {"ok": True, "username": username, "role": role, "token": token}
 
     worker_docs = db.collection("workers").where("username", "==", username).stream()
     for doc in worker_docs:
         w = doc.to_dict() or {}
         if str(w.get("password", "")) == password:
-            return {
-                "ok": True,
-                "username": w.get("username") or w.get("name") or username,
-                "role": w.get("role") or "Staff",
-            }
+            uname = w.get("username") or w.get("name") or username
+            role = w.get("role") or "Staff"
+            token = make_staff_token(uname, role)
+            return {"ok": True, "username": uname, "role": role, "token": token}
 
     raise HTTPException(status_code=401, detail="Invalid username or password")
 
@@ -348,10 +427,15 @@ async def create_order(request: Request):
     payload = await request.json()
     customer = str(payload.get("customer") or payload.get("customer_name") or "Customer").strip()
     phone = str(payload.get("contact_phone") or payload.get("phone") or "").strip()
+    requested_pin = str(payload.get("pin") or "").strip()
     notes = str(payload.get("notes") or "").strip()
     items = payload.get("items") if isinstance(payload.get("items"), list) else []
     special_items = payload.get("special_items") if isinstance(payload.get("special_items"), list) else []
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone number is required")
+
     payment_ref = make_ref()
+    customer_pin = get_or_create_customer_pin(phone, requested_pin)
     ts = now_str()
 
     if special_items:
@@ -399,7 +483,7 @@ async def create_order(request: Request):
     }
     db.collection("messages").document(uuid.uuid4().hex).set(msg_doc)
 
-    return {"ok": True, "id": order_id, "payment_ref": payment_ref}
+    return {"ok": True, "id": order_id, "payment_ref": payment_ref, "customer_pin": customer_pin}
 
 
 @app.post("/api/orders/{order_id}/verify")
@@ -490,13 +574,32 @@ def delete_order(order_id: str):
 
 
 @app.get("/api/messages")
-def get_messages(phone: Optional[str] = Query(default=None)):
-    docs = db.collection("messages").stream()
+def get_messages(
+    phone: Optional[str] = Query(default=None),
+    pin: Optional[str] = Query(default=None),
+    x_staff_token: Optional[str] = Header(default=None),
+):
+    staff_user = verify_staff_token(x_staff_token)
     clean_phone = (phone or "").strip()
+    norm_target = normalize_phone(clean_phone)
+
+    if not staff_user:
+        if not norm_target or not (pin or "").strip():
+            raise HTTPException(
+                status_code=401,
+                detail="Enter both your Phone Number and your 4-digit Chat PIN (or Order Reference Code) to access your private chat.",
+            )
+        if not verify_customer_access(norm_target, pin or ""):
+            raise HTTPException(
+                status_code=403,
+                detail="Invalid Phone Number or PIN / Reference Code.",
+            )
+
+    docs = db.collection("messages").stream()
     messages: List[Dict[str, Any]] = []
     for doc in docs:
         data = normalize_message(doc.id, doc.to_dict())
-        if clean_phone and data["customer_phone"] != clean_phone:
+        if norm_target and normalize_phone(data["customer_phone"]) != norm_target:
             continue
         messages.append(data)
     messages.sort(key=lambda x: str(x.get("timestamp", "")))
@@ -506,22 +609,40 @@ def get_messages(phone: Optional[str] = Query(default=None)):
 @app.post("/api/messages")
 async def post_message(
     phone: str = Form(...),
+    pin: str = Form(""),
     sender: str = Form("Customer"),
     text: str = Form(""),
     proof_file: Optional[UploadFile] = File(None),
+    x_staff_token: Optional[str] = Header(default=None),
 ):
+    staff_user = verify_staff_token(x_staff_token)
     clean_phone = phone.strip()
     clean_text = text.strip()
     if not clean_phone:
         raise HTTPException(status_code=400, detail="Phone number is required")
+
+    customer_pin = ""
+    if not staff_user:
+        norm = normalize_phone(clean_phone)
+        prof_snap = db.collection("customer_profiles").document(norm).get()
+        if prof_snap.exists:
+            if not verify_customer_access(norm, pin):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Please enter your valid 4-digit Chat PIN (or Order Ref) for this phone number before sending.",
+                )
+            customer_pin = str((prof_snap.to_dict() or {}).get("pin") or "")
+        else:
+            customer_pin = get_or_create_customer_pin(clean_phone, pin)
 
     proof_url = upload_to_cloudinary(proof_file, folder="sammyreks_receipts", resource_type="image", max_dim=1000)
 
     if not clean_text and not proof_url:
         raise HTTPException(status_code=400, detail="Enter a message or attach a receipt image")
 
+    final_sender = "Staff" if staff_user else "Customer"
     msg_doc: Dict[str, Any] = {
-        "sender": sender.strip() or "Customer",
+        "sender": final_sender,
         "customer_phone": clean_phone,
         "phone": clean_phone,
         "message": clean_text,
@@ -531,7 +652,7 @@ async def post_message(
     }
     msg_id = uuid.uuid4().hex
     db.collection("messages").document(msg_id).set(msg_doc)
-    return {"ok": True, "id": msg_id, "proof_url": proof_url}
+    return {"ok": True, "id": msg_id, "proof_url": proof_url, "customer_pin": customer_pin}
 
 
 @app.post("/api/sales")

@@ -1,6 +1,10 @@
 import base64
+import hashlib
+import hmac
+import html
 import json
 import os
+import secrets
 import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -94,6 +98,10 @@ cloudinary_ready = init_cloudinary()
 
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+SESSION_SECRET = (
+    os.getenv("SESSION_SECRET")
+    or hashlib.sha256(f"{ADMIN_USERNAME}:{ADMIN_PASSWORD}:sammyreks".encode("utf-8")).hexdigest()
+)
 
 
 def now_str() -> str:
@@ -102,6 +110,72 @@ def now_str() -> str:
 
 def make_ref() -> str:
     return f"SRK-{uuid.uuid4().hex[:6].upper()}"
+
+
+def make_pin() -> str:
+    return f"{secrets.randbelow(9000) + 1000}"
+
+
+def hash_password(plain_password: str) -> str:
+    if not plain_password:
+        return ""
+    salt = secrets.token_hex(8)
+    digest = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt.encode("utf-8"), 100_000).hex()
+    return f"pbkdf2${salt}${digest}"
+
+
+def verify_password(plain_password: str, stored_password: str) -> bool:
+    if not stored_password:
+        return plain_password == ""
+    if stored_password.startswith("pbkdf2$"):
+        parts = stored_password.split("$", 2)
+        if len(parts) != 3:
+            return False
+        _, salt, expected_hex = parts
+        actual_hex = hashlib.pbkdf2_hmac(
+            "sha256", plain_password.encode("utf-8"), salt.encode("utf-8"), 100_000
+        ).hex()
+        return hmac.compare_digest(actual_hex, expected_hex)
+    return hmac.compare_digest(plain_password, stored_password)
+
+
+def issue_staff_token(username: str, role: str) -> str:
+    payload_b64 = base64.urlsafe_b64encode(
+        json.dumps({"u": username, "r": role}, separators=(",", ":")).encode("utf-8")
+    ).decode("ascii")
+    sig = hmac.new(SESSION_SECRET.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{payload_b64}.{sig}"
+
+
+def parse_staff_token(request: Request) -> Optional[Dict[str, str]]:
+    raw_token = (request.headers.get("X-Staff-Token") or "").strip()
+    if not raw_token:
+        auth_header = (request.headers.get("Authorization") or "").strip()
+        if auth_header.lower().startswith("bearer "):
+            raw_token = auth_header[7:].strip()
+    if not raw_token or "." not in raw_token:
+        return None
+    payload_b64, sig = raw_token.split(".", 1)
+    expected_sig = hmac.new(
+        SESSION_SECRET.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+    if not hmac.compare_digest(sig, expected_sig):
+        return None
+    try:
+        padded = payload_b64 + "=" * (-len(payload_b64) % 4)
+        data = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
+        if isinstance(data, dict) and data.get("u"):
+            return {"username": str(data["u"]), "role": str(data.get("r") or "Staff")}
+    except Exception:
+        return None
+    return None
+
+
+def require_staff(request: Request) -> Dict[str, str]:
+    staff = parse_staff_token(request)
+    if not staff:
+        raise HTTPException(status_code=401, detail="Staff login required")
+    return staff
 
 
 def normalize_product(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -237,18 +311,23 @@ async def login(request: Request):
     password = str(payload.get("password", ""))
     mode = str(payload.get("mode", "admin")).strip().lower()
 
-    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+    if hmac.compare_digest(username, ADMIN_USERNAME) and hmac.compare_digest(password, ADMIN_PASSWORD):
         role = "CEO" if mode == "admin" else "Staff"
-        return {"ok": True, "username": username, "role": role}
+        token = issue_staff_token(username, role)
+        return {"ok": True, "username": username, "role": role, "token": token}
 
     worker_docs = db.collection("workers").where("username", "==", username).stream()
     for doc in worker_docs:
         w = doc.to_dict() or {}
-        if str(w.get("password", "")) == password:
+        if verify_password(password, str(w.get("password", ""))):
+            resolved_user = w.get("username") or w.get("name") or username
+            resolved_role = w.get("role") or "Staff"
+            token = issue_staff_token(resolved_user, resolved_role)
             return {
                 "ok": True,
-                "username": w.get("username") or w.get("name") or username,
-                "role": w.get("role") or "Staff",
+                "username": resolved_user,
+                "role": resolved_role,
+                "token": token,
             }
 
     raise HTTPException(status_code=401, detail="Invalid username or password")
@@ -264,6 +343,7 @@ def get_products():
 
 @app.post("/api/products")
 async def save_product(
+    request: Request,
     action_mode: str = Form("create"),
     existing_product_id: str = Form(""),
     category: str = Form("General"),
@@ -286,6 +366,7 @@ async def save_product(
     image_file: Optional[UploadFile] = File(None),
     video_file: Optional[UploadFile] = File(None),
 ):
+    require_staff(request)
     clean_name = name.strip()
     if not clean_name:
         raise HTTPException(status_code=400, detail="Product name is required")
@@ -354,7 +435,8 @@ async def save_product(
 
 
 @app.delete("/api/products/{product_id}")
-def delete_product(product_id: str):
+def delete_product(product_id: str, request: Request):
+    require_staff(request)
     doc_ref = db.collection("products").document(product_id)
     if not doc_ref.get().exists:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -363,7 +445,8 @@ def delete_product(product_id: str):
 
 
 @app.get("/api/orders")
-def get_orders():
+def get_orders(request: Request):
+    require_staff(request)
     docs = db.collection("orders").stream()
     orders = [normalize_order(doc.id, doc.to_dict()) for doc in docs]
     orders.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
@@ -378,8 +461,13 @@ async def create_order(request: Request):
     notes = str(payload.get("notes") or "").strip()
     items = payload.get("items") if isinstance(payload.get("items"), list) else []
     special_items = payload.get("special_items") if isinstance(payload.get("special_items"), list) else []
+    requested_pin = str(payload.get("pin") or "").strip()
+    customer_pin = requested_pin if requested_pin else make_pin()
     payment_ref = make_ref()
     ts = now_str()
+
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone number is required")
 
     if special_items:
         req_summary = "; ".join(str(sp.get("item") or sp.get("name") or "") for sp in special_items if sp)
@@ -408,6 +496,7 @@ async def create_order(request: Request):
         "customer": customer,
         "contact_phone": phone,
         "phone": phone,
+        "customer_pin": customer_pin,
         "notes": notes,
         "items": items,
         "special_items": special_items,
@@ -422,6 +511,7 @@ async def create_order(request: Request):
         "sender": "Customer",
         "customer_phone": phone,
         "phone": phone,
+        "customer_pin": customer_pin,
         "message": chat_text,
         "text": chat_text,
         "payment_ref": payment_ref,
@@ -429,11 +519,12 @@ async def create_order(request: Request):
     }
     db.collection("messages").document(uuid.uuid4().hex).set(msg_doc)
 
-    return {"ok": True, "id": order_id, "payment_ref": payment_ref}
+    return {"ok": True, "id": order_id, "payment_ref": payment_ref, "customer_pin": customer_pin}
 
 
 @app.post("/api/orders/{order_id}/verify")
 async def verify_order(order_id: str, request: Request):
+    staff = require_staff(request)
     order_ref = db.collection("orders").document(order_id)
     snap = order_ref.get()
     if not snap.exists:
@@ -441,16 +532,19 @@ async def verify_order(order_id: str, request: Request):
 
     order_data = snap.to_dict() or {}
     payload = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
-    verified_by = str(payload.get("verified_by") or "admin").strip()
+    verified_by = str(payload.get("verified_by") or staff.get("username") or "admin").strip()
 
     settings_snap = db.collection("settings").document("business").get()
     settings_data = settings_snap.to_dict() if settings_snap.exists else {}
-    biz_name = str(settings_data.get("business_name") or "SAMMYREKS BUSINESS CENTER").upper()
-    currency = str(settings_data.get("currency") or "₦")
+    biz_name = html.escape(str(settings_data.get("business_name") or "SAMMYREKS BUSINESS CENTER").upper())
+    currency = html.escape(str(settings_data.get("currency") or "₦"))
 
-    customer = str(order_data.get("customer") or order_data.get("customer_name") or "Customer").strip()
-    phone = str(order_data.get("contact_phone") or order_data.get("phone") or "").strip()
+    customer = html.escape(str(order_data.get("customer") or order_data.get("customer_name") or "Customer").strip())
+    phone_raw = str(order_data.get("contact_phone") or order_data.get("phone") or "").strip()
+    phone_esc = html.escape(phone_raw or "N/A")
     ref_code = str(order_data.get("payment_ref") or make_ref()).strip()
+    ref_esc = html.escape(ref_code)
+    verified_by_esc = html.escape(verified_by)
     ts = now_str()
 
     items = order_data.get("items") or []
@@ -460,13 +554,13 @@ async def verify_order(order_id: str, request: Request):
 
     if special_items:
         for sp in special_items:
-            sp_text = str(sp.get("item") or sp.get("name") or "Requested Item")
+            sp_text = html.escape(str(sp.get("item") or sp.get("name") or "Requested Item"))
             lines_html += f"<p style='margin:2px 0;'>{sp_text}</p>"
     elif items:
         for it in items:
-            it_name = str(it.get("name") or "Item")
-            it_unit = str(it.get("unit") or "Unit")
-            it_qty = it.get("qty") or 1
+            it_name = html.escape(str(it.get("name") or "Item"))
+            it_unit = html.escape(str(it.get("unit") or "Unit"))
+            it_qty = html.escape(str(it.get("qty") or 1))
             it_total = float(it.get("total_price") or 0.0)
             total_val += it_total
             lines_html += (
@@ -474,7 +568,7 @@ async def verify_order(order_id: str, request: Request):
                 f"{currency}{it_total:,.2f}</p>"
             )
     elif order_data.get("notes"):
-        lines_html += f"<p style='margin:2px 0;'>{order_data.get('notes')}</p>"
+        lines_html += f"<p style='margin:2px 0;'>{html.escape(str(order_data.get('notes')))}</p>"
 
     receipt_html = (
         f"<div style='background:#fdfcf7; color:#111; padding:16px; border-radius:6px; "
@@ -489,10 +583,10 @@ async def verify_order(order_id: str, request: Request):
         f"</div>"
         f"<div style='font-size:0.8rem; margin-bottom:8px; border-bottom:1px dashed #333; "
         f"padding-bottom:6px;'>"
-        f"<p style='margin:2px 0;'><b>REF CODE:</b> {ref_code}</p>"
+        f"<p style='margin:2px 0;'><b>REF CODE:</b> {ref_esc}</p>"
         f"<p style='margin:2px 0;'><b>CUSTOMER:</b> {customer}</p>"
-        f"<p style='margin:2px 0;'><b>PHONE:</b> {phone or 'N/A'}</p>"
-        f"<p style='margin:2px 0;'><b>VERIFIED BY:</b> {verified_by}</p>"
+        f"<p style='margin:2px 0;'><b>PHONE:</b> {phone_esc}</p>"
+        f"<p style='margin:2px 0;'><b>VERIFIED BY:</b> {verified_by_esc}</p>"
         f"</div>"
         f"<div style='font-size:0.8rem; margin-bottom:8px;'>{lines_html}</div>"
         f"<div style='border-top:1px dashed #333; padding-top:6px; font-size:0.85rem; "
@@ -506,8 +600,8 @@ async def verify_order(order_id: str, request: Request):
 
     msg_doc: Dict[str, Any] = {
         "sender": "System",
-        "customer_phone": phone,
-        "phone": phone,
+        "customer_phone": phone_raw,
+        "phone": phone_raw,
         "message": receipt_html,
         "text": receipt_html,
         "payment_ref": ref_code,
@@ -519,7 +613,8 @@ async def verify_order(order_id: str, request: Request):
 
 
 @app.delete("/api/orders/{order_id}")
-def delete_order(order_id: str):
+def delete_order(order_id: str, request: Request):
+    require_staff(request)
     order_ref = db.collection("orders").document(order_id)
     if not order_ref.get().exists:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -527,10 +622,46 @@ def delete_order(order_id: str):
     return {"ok": True, "id": order_id}
 
 
+def _customer_pin_authorized(phone: str, pin: str) -> bool:
+    clean_pin = pin.strip()
+    if not clean_pin:
+        return False
+    upper_pin = clean_pin.upper()
+
+    for doc in db.collection("orders").where("contact_phone", "==", phone).stream():
+        odata = doc.to_dict() or {}
+        if str(odata.get("customer_pin") or "").strip() == clean_pin:
+            return True
+        if str(odata.get("payment_ref") or "").strip().upper() == upper_pin:
+            return True
+
+    for doc in db.collection("messages").where("customer_phone", "==", phone).stream():
+        mdata = doc.to_dict() or {}
+        if str(mdata.get("customer_pin") or "").strip() == clean_pin:
+            return True
+        if str(mdata.get("payment_ref") or "").strip().upper() == upper_pin:
+            return True
+
+    return False
+
+
 @app.get("/api/messages")
-def get_messages(phone: Optional[str] = Query(default=None)):
-    docs = db.collection("messages").stream()
+def get_messages(
+    request: Request,
+    phone: Optional[str] = Query(default=None),
+    pin: Optional[str] = Query(default=None),
+):
+    staff = parse_staff_token(request)
     clean_phone = (phone or "").strip()
+    clean_pin = (pin or "").strip()
+
+    if not staff:
+        if not clean_phone or not clean_pin:
+            raise HTTPException(status_code=401, detail="Enter your phone number and PIN or Order Ref to view chat")
+        if not _customer_pin_authorized(clean_phone, clean_pin):
+            raise HTTPException(status_code=401, detail="Invalid phone number, PIN, or Order Reference Code")
+
+    docs = db.collection("messages").stream()
     messages: List[Dict[str, Any]] = []
     for doc in docs:
         data = normalize_message(doc.id, doc.to_dict())
@@ -543,15 +674,26 @@ def get_messages(phone: Optional[str] = Query(default=None)):
 
 @app.post("/api/messages")
 async def post_message(
+    request: Request,
     phone: str = Form(...),
     sender: str = Form("Customer"),
     text: str = Form(""),
+    pin: str = Form(""),
     proof_file: Optional[UploadFile] = File(None),
 ):
+    staff = parse_staff_token(request)
     clean_phone = phone.strip()
     clean_text = text.strip()
+    clean_sender = sender.strip() or "Customer"
+
     if not clean_phone:
         raise HTTPException(status_code=400, detail="Phone number is required")
+
+    if clean_sender.lower() == "staff" and not staff:
+        raise HTTPException(status_code=401, detail="Staff login required to send staff replies")
+
+    if not staff and not _customer_pin_authorized(clean_phone, pin):
+        raise HTTPException(status_code=401, detail="Unlock your chat with your phone number and PIN or Order Ref first")
 
     proof_url = upload_to_cloudinary(
         proof_file, folder="sammyreks_receipts", resource_type="image", max_dim=1000
@@ -561,7 +703,7 @@ async def post_message(
         raise HTTPException(status_code=400, detail="Enter a message or attach a receipt image")
 
     msg_doc: Dict[str, Any] = {
-        "sender": sender.strip() or "Customer",
+        "sender": clean_sender,
         "customer_phone": clean_phone,
         "phone": clean_phone,
         "message": clean_text,
@@ -575,7 +717,8 @@ async def post_message(
 
 
 @app.delete("/api/messages/{message_id}/photo")
-def delete_message_photo(message_id: str):
+def delete_message_photo(message_id: str, request: Request):
+    require_staff(request)
     doc_ref = db.collection("messages").document(message_id)
     if not doc_ref.get().exists:
         raise HTTPException(status_code=404, detail="Message not found")
@@ -584,7 +727,8 @@ def delete_message_photo(message_id: str):
 
 
 @app.delete("/api/messages/photos")
-def delete_all_message_photos():
+def delete_all_message_photos(request: Request):
+    require_staff(request)
     docs = db.collection("messages").stream()
     cleared = 0
     for doc in docs:
@@ -596,7 +740,8 @@ def delete_all_message_photos():
 
 
 @app.get("/api/sales")
-def get_sales():
+def get_sales(request: Request):
+    require_staff(request)
     docs = db.collection("sales").stream()
     sales: List[Dict[str, Any]] = []
     for doc in docs:
@@ -609,6 +754,7 @@ def get_sales():
 
 @app.post("/api/sales")
 async def record_sale(request: Request):
+    staff = require_staff(request)
     payload = await request.json()
     product_id = str(payload.get("product_id") or "").strip()
     item_name = str(payload.get("item_name") or "Item").strip()
@@ -617,7 +763,7 @@ async def record_sale(request: Request):
     customer_name = str(payload.get("customer_name") or "Walk-in Customer").strip()
     customer_phone = str(payload.get("customer_phone") or "N/A").strip()
     payment_source = str(payload.get("payment_source") or "Cash").strip()
-    worker = str(payload.get("worker") or "admin").strip()
+    worker = str(payload.get("worker") or staff.get("username") or "admin").strip()
     record_debt = bool(payload.get("record_debt", False))
 
     unit_price = float(payload.get("unit_price") or 0.0)
@@ -684,7 +830,8 @@ async def record_sale(request: Request):
 
 
 @app.get("/api/debtors")
-def get_debtors():
+def get_debtors(request: Request):
+    require_staff(request)
     docs = db.collection("debtors").stream()
     debtors: List[Dict[str, Any]] = []
     for doc in docs:
@@ -697,6 +844,7 @@ def get_debtors():
 
 @app.post("/api/debtors")
 async def add_debtor(request: Request):
+    require_staff(request)
     payload = await request.json()
     doc = {
         "customer": str(payload.get("customer") or "").strip(),
@@ -714,7 +862,8 @@ async def add_debtor(request: Request):
 
 
 @app.post("/api/debtors/{debtor_id}/pay")
-def mark_debtor_paid(debtor_id: str):
+def mark_debtor_paid(debtor_id: str, request: Request):
+    require_staff(request)
     doc_ref = db.collection("debtors").document(debtor_id)
     if not doc_ref.get().exists:
         raise HTTPException(status_code=404, detail="Debtor not found")
@@ -723,7 +872,8 @@ def mark_debtor_paid(debtor_id: str):
 
 
 @app.delete("/api/debtors/{debtor_id}")
-def delete_debtor(debtor_id: str):
+def delete_debtor(debtor_id: str, request: Request):
+    require_staff(request)
     doc_ref = db.collection("debtors").document(debtor_id)
     if not doc_ref.get().exists:
         raise HTTPException(status_code=404, detail="Debtor not found")
@@ -732,7 +882,8 @@ def delete_debtor(debtor_id: str):
 
 
 @app.get("/api/expenses")
-def get_expenses():
+def get_expenses(request: Request):
+    require_staff(request)
     docs = db.collection("expenses").stream()
     expenses: List[Dict[str, Any]] = []
     for doc in docs:
@@ -745,6 +896,7 @@ def get_expenses():
 
 @app.post("/api/expenses")
 async def add_expense(request: Request):
+    require_staff(request)
     payload = await request.json()
     doc = {
         "category": str(payload.get("category") or "Operations").strip(),
@@ -758,7 +910,8 @@ async def add_expense(request: Request):
 
 
 @app.delete("/api/expenses/{expense_id}")
-def delete_expense(expense_id: str):
+def delete_expense(expense_id: str, request: Request):
+    require_staff(request)
     doc_ref = db.collection("expenses").document(expense_id)
     if not doc_ref.get().exists:
         raise HTTPException(status_code=404, detail="Expense not found")
@@ -767,7 +920,8 @@ def delete_expense(expense_id: str):
 
 
 @app.get("/api/workers")
-def get_workers():
+def get_workers(request: Request):
+    require_staff(request)
     docs = db.collection("workers").stream()
     workers: List[Dict[str, Any]] = []
     for doc in docs:
@@ -781,16 +935,18 @@ def get_workers():
 
 @app.post("/api/workers")
 async def add_worker(request: Request):
+    require_staff(request)
     payload = await request.json()
     name = str(payload.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="Worker name is required")
     username = str(payload.get("username") or name.lower().replace(" ", "")).strip()
+    raw_pw = str(payload.get("password") or "")
     doc = {
         "name": name,
         "role": str(payload.get("role") or "Staff").strip(),
         "username": username,
-        "password": str(payload.get("password") or ""),
+        "password": hash_password(raw_pw),
         "timestamp": now_str(),
     }
     doc_id = uuid.uuid4().hex
@@ -799,7 +955,8 @@ async def add_worker(request: Request):
 
 
 @app.delete("/api/workers/{worker_id}")
-def delete_worker(worker_id: str):
+def delete_worker(worker_id: str, request: Request):
+    require_staff(request)
     doc_ref = db.collection("workers").document(worker_id)
     if not doc_ref.get().exists:
         raise HTTPException(status_code=404, detail="Worker not found")
@@ -808,7 +965,8 @@ def delete_worker(worker_id: str):
 
 
 @app.get("/api/analytics")
-def get_analytics():
+def get_analytics(request: Request):
+    require_staff(request)
     products_by_id: Dict[str, Dict[str, Any]] = {}
     products_by_name: Dict[str, Dict[str, Any]] = {}
     for doc in db.collection("products").stream():
@@ -823,7 +981,9 @@ def get_analytics():
         if s.get("record_debt") is True or str(s.get("status") or "").lower() == "debt":
             continue
         qty = max(0.0, float(s.get("qty") or 1.0))
-        row_total = float(s.get("total") if s.get("total") is not None else (float(s.get("unit_price") or 0.0) * qty))
+        row_total = float(
+            s.get("total") if s.get("total") is not None else (float(s.get("unit_price") or 0.0) * qty)
+        )
         total_revenue += row_total
 
         prod = products_by_id.get(str(s.get("product_id") or "")) or products_by_name.get(
@@ -872,6 +1032,7 @@ def get_settings():
 
 @app.post("/api/settings")
 async def save_settings(
+    request: Request,
     business_name: str = Form("Sammyreks Business Center"),
     tagline: str = Form(""),
     active_notice: str = Form(""),
@@ -880,6 +1041,7 @@ async def save_settings(
     extra_settings: str = Form(""),
     broadcast_video_file: Optional[UploadFile] = File(None),
 ):
+    require_staff(request)
     ref = db.collection("settings").document("business")
     existing = ref.get().to_dict() if ref.get().exists else {}
 

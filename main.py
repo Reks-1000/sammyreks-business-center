@@ -1,824 +1,2761 @@
-import base64
-import hashlib
-import hmac
-import json
-import os
-import random
-import uuid
-from datetime import datetime
-from typing import Any, Dict, List, Optional
-
-import cloudinary
-import cloudinary.uploader
-import firebase_admin
-from fastapi import FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
-from firebase_admin import credentials, firestore
-
-app = FastAPI(title="Sammyreks Business Center")
-templates = Jinja2Templates(directory="templates")
-
-MAX_IMAGE_BYTES = 8 * 1024 * 1024
-MAX_VIDEO_BYTES = 50 * 1024 * 1024
-
-
-def init_firestore() -> firestore.Client:
-    if firebase_admin._apps:
-        return firestore.client()
-
-    raw_json = (
-        os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
-        or os.getenv("FIREBASE_CREDENTIALS_JSON")
-        or os.getenv("FIREBASE_SERVICE_ACCOUNT")
-        or ""
-    ).strip()
-
-    key_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
-
-    if raw_json:
-        if (raw_json.startswith("'") and raw_json.endswith("'")) or (
-            raw_json.startswith('"') and raw_json.endswith('"')
-        ):
-            try:
-                decoded_once = json.loads(raw_json)
-                if isinstance(decoded_once, dict):
-                    service_info = decoded_once
-                elif isinstance(decoded_once, str):
-                    service_info = json.loads(decoded_once)
-                else:
-                    raise ValueError("Unexpected JSON structure")
-            except Exception:
-                service_info = json.loads(raw_json[1:-1])
-        else:
-            try:
-                service_info = json.loads(raw_json)
-            except json.JSONDecodeError:
-                decoded_b64 = base64.b64decode(raw_json).decode("utf-8")
-                service_info = json.loads(decoded_b64)
-
-        if not isinstance(service_info, dict):
-            raise ValueError("Firebase service account JSON must decode to an object")
-
-        if isinstance(service_info.get("private_key"), str):
-            service_info["private_key"] = service_info["private_key"].replace("\\n", "\n")
-
-        cred = credentials.Certificate(service_info)
-        firebase_admin.initialize_app(cred)
-    elif key_path and os.path.exists(key_path):
-        cred = credentials.Certificate(key_path)
-        firebase_admin.initialize_app(cred)
-    else:
-        raise RuntimeError(
-            "Missing Firebase credentials. Set FIREBASE_SERVICE_ACCOUNT_JSON in Railway Variables."
-        )
-
-    return firestore.client()
-
-
-def init_cloudinary() -> bool:
-    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
-    api_key = os.getenv("CLOUDINARY_API_KEY", "").strip()
-    api_secret = os.getenv("CLOUDINARY_API_SECRET", "").strip()
-
-    if cloud_name and api_key and api_secret:
-        cloudinary.config(
-            cloud_name=cloud_name,
-            api_key=api_key,
-            api_secret=api_secret,
-            secure=True,
-        )
-        return True
-    return False
-
-
-db = init_firestore()
-cloudinary_ready = init_cloudinary()
-
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-APP_SECRET = os.getenv("APP_SECRET", f"srk-secret-{ADMIN_PASSWORD}")
-
-
-def now_str() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-
-def make_ref() -> str:
-    return f"SRK-{uuid.uuid4().hex[:6].upper()}"
-
-
-def make_pin() -> str:
-    return f"{random.randint(1000, 9999)}"
-
-
-def normalize_phone(phone: str) -> str:
-    digits = "".join(ch for ch in str(phone or "") if ch.isdigit())
-    return digits or str(phone or "").strip()
-
-
-def make_staff_token(username: str, role: str) -> str:
-    payload = f"{username}|{role}"
-    sig = hmac.new(APP_SECRET.encode("utf-8"), payload.encode("utf-8"), hashlib.sha256).hexdigest()
-    raw = f"{payload}|{sig}".encode("utf-8")
-    return base64.urlsafe_b64encode(raw).decode("utf-8")
-
-
-def verify_staff_token(token: Optional[str]) -> Optional[Dict[str, str]]:
-    if not token:
-        return None
-    try:
-        decoded = base64.urlsafe_b64decode(token.encode("utf-8")).decode("utf-8")
-        username, role, sig = decoded.split("|", 2)
-        expected = hmac.new(
-            APP_SECRET.encode("utf-8"), f"{username}|{role}".encode("utf-8"), hashlib.sha256
-        ).hexdigest()
-        if hmac.compare_digest(sig, expected):
-            return {"username": username, "role": role}
-    except Exception:
-        return None
-    return None
-
-
-def get_or_create_customer_pin(phone: str, requested_pin: str = "") -> str:
-    norm = normalize_phone(phone)
-    if not norm:
-        return ""
-    ref = db.collection("customer_profiles").document(norm)
-    snap = ref.get()
-    clean_req = str(requested_pin or "").strip()
-
-    if snap.exists:
-        data = snap.to_dict() or {}
-        existing_pin = str(data.get("pin") or "").strip()
-        if existing_pin:
-            return existing_pin
-
-    pin_to_save = clean_req if (clean_req.isdigit() and len(clean_req) >= 4) else make_pin()
-    ref.set({"phone": norm, "pin": pin_to_save, "updated_at": now_str()}, merge=True)
-    return pin_to_save
-
-
-def verify_customer_access(phone: str, access_code: str) -> bool:
-    norm = normalize_phone(phone)
-    code = str(access_code or "").strip()
-    if not norm or not code:
-        return False
-
-    prof_snap = db.collection("customer_profiles").document(norm).get()
-    if prof_snap.exists:
-        saved_pin = str((prof_snap.to_dict() or {}).get("pin") or "").strip()
-        if saved_pin and hmac.compare_digest(saved_pin, code):
-            return True
-
-    # Also allow unlocking with any valid Order Reference Code (e.g. SRK-4247) belonging to this phone
-    code_upper = code.upper()
-    for doc in db.collection("orders").stream():
-        odata = doc.to_dict() or {}
-        ophone = normalize_phone(odata.get("contact_phone") or odata.get("phone") or "")
-        oref = str(odata.get("payment_ref") or "").strip().upper()
-        if ophone == norm and oref and hmac.compare_digest(oref, code_upper):
-            return True
-
-    return False
-
-
-def normalize_product(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    data = dict(raw or {})
-    price_carton = float(data.get("price_carton") if data.get("price_carton") is not None else (data.get("price") or 0.0))
-    stock_cartons = float(data.get("qty_cartons") if data.get("qty_cartons") is not None else (data.get("stock") or 0.0))
-    image_url = str(data.get("image_url") or data.get("img_data") or "").strip()
-    data["id"] = doc_id
-    data["name"] = str(data.get("name") or "Unnamed Product").strip()
-    data["category"] = str(data.get("category") or "General").strip()
-    data["unit_main_label"] = str(data.get("unit_main_label") or "Carton").strip()
-    data["unit_pack_label"] = str(data.get("unit_pack_label") or "Pack").strip()
-    data["unit_retail_label"] = str(data.get("unit_retail_label") or "Retail Unit").strip()
-    data["price_carton"] = price_carton
-    data["price"] = price_carton
-    data["qty_cartons"] = stock_cartons
-    data["stock"] = stock_cartons
-    data["cost"] = float(data.get("cost") or 0.0)
-    data["price_pack"] = float(data.get("price_pack") or 0.0)
-    data["price_retail"] = float(data.get("price_retail") if data.get("price_retail") is not None else price_carton)
-    data["packs_per_carton"] = max(1, int(data.get("packs_per_carton") or 1))
-    data["units_per_pack"] = max(1, int(data.get("units_per_pack") or 1))
-    data["image_url"] = image_url
-    data["video_url"] = str(data.get("video_url") or "").strip()
-    data["description"] = str(data.get("description") or "").strip()
-    data["shelf"] = str(data.get("shelf") or "").strip()
-    data["expiry"] = str(data.get("expiry") or "").strip()
-    return data
-
-
-def normalize_order(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    data = dict(raw or {})
-    phone = str(data.get("contact_phone") or data.get("phone") or "").strip()
-    customer = str(data.get("customer") or data.get("customer_name") or "Customer").strip()
-    items = data.get("items") if isinstance(data.get("items"), list) else []
-    special_items = data.get("special_items") if isinstance(data.get("special_items"), list) else []
-    data["id"] = doc_id
-    data["customer"] = customer
-    data["customer_name"] = customer
-    data["contact_phone"] = phone
-    data["phone"] = phone
-    data["notes"] = str(data.get("notes") or "").strip()
-    data["items"] = items
-    data["special_items"] = special_items
-    data["order_type"] = str(data.get("order_type") or ("Multi-Item Request" if special_items else "Cart Order")).strip()
-    data["payment_ref"] = str(data.get("payment_ref") or "").strip()
-    data["status"] = str(data.get("status") or "Pending").strip()
-    data["timestamp"] = str(data.get("timestamp") or "").strip()
-    return data
-
-
-def normalize_message(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    data = dict(raw or {})
-    phone = str(data.get("customer_phone") or data.get("phone") or "").strip()
-    body = str(data.get("message") if data.get("message") is not None else (data.get("text") or "")).strip()
-    data["id"] = doc_id
-    data["sender"] = str(data.get("sender") or "Customer").strip()
-    data["customer_phone"] = phone
-    data["phone"] = phone
-    data["message"] = body
-    data["text"] = body
-    data["proof_url"] = str(data.get("proof_url") or "").strip()
-    data["timestamp"] = str(data.get("timestamp") or "").strip()
-    return data
-
-
-def upload_to_cloudinary(
-    file: Optional[UploadFile],
-    folder: str,
-    resource_type: str = "image",
-    max_dim: Optional[int] = None,
-) -> Optional[str]:
-    if not file or not file.filename:
-        return None
-    if not cloudinary_ready:
-        raise HTTPException(
-            status_code=500,
-            detail="Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.",
-        )
-
-    content_type = (file.content_type or "").lower()
-    if resource_type == "image" and content_type and not content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are allowed for this upload.")
-    if resource_type == "video" and content_type and not content_type.startswith("video/"):
-        raise HTTPException(status_code=400, detail="Only video files are allowed for this upload.")
-
-    file.file.seek(0, os.SEEK_END)
-    size_bytes = file.file.tell()
-    max_allowed = MAX_VIDEO_BYTES if resource_type == "video" else MAX_IMAGE_BYTES
-    if size_bytes > max_allowed:
-        limit_mb = max_allowed // (1024 * 1024)
-        raise HTTPException(status_code=400, detail=f"Uploaded file exceeds the {limit_mb}MB limit.")
-
-    upload_kwargs: Dict[str, Any] = {
-        "folder": folder,
-        "resource_type": resource_type,
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sammyreks Business Center</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f6f8fb;
+      color: #1f2937;
     }
-    if resource_type == "image" and max_dim:
-        upload_kwargs["transformation"] = [
-            {"width": max_dim, "height": max_dim, "crop": "limit", "quality": "auto", "fetch_format": "auto"}
-        ]
-
-    file.file.seek(0)
-    result = cloudinary.uploader.upload(file.file, **upload_kwargs)
-    return result.get("secure_url") or result.get("url")
-
-
-@app.get("/", response_class=HTMLResponse)
-def index(request: Request):
-    return templates.TemplateResponse(request, "index.html", {"request": request})
-
-
-@app.post("/api/login")
-async def login(request: Request):
-    payload = await request.json()
-    username = str(payload.get("username", "")).strip()
-    password = str(payload.get("password", ""))
-    mode = str(payload.get("mode", "admin")).strip().lower()
-
-    if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
-        role = "CEO" if mode == "admin" else "Staff"
-        token = make_staff_token(username, role)
-        return {"ok": True, "username": username, "role": role, "token": token}
-
-    worker_docs = db.collection("workers").where("username", "==", username).stream()
-    for doc in worker_docs:
-        w = doc.to_dict() or {}
-        if str(w.get("password", "")) == password:
-            uname = w.get("username") or w.get("name") or username
-            role = w.get("role") or "Staff"
-            token = make_staff_token(uname, role)
-            return {"ok": True, "username": uname, "role": role, "token": token}
-
-    raise HTTPException(status_code=401, detail="Invalid username or password")
-
-
-@app.get("/api/products")
-def get_products():
-    docs = db.collection("products").stream()
-    products = [normalize_product(doc.id, doc.to_dict()) for doc in docs]
-    products.sort(key=lambda x: str(x.get("name", "")).lower())
-    return {"products": products}
-
-
-@app.post("/api/products")
-async def save_product(
-    action_mode: str = Form("create"),
-    existing_product_id: str = Form(""),
-    category: str = Form("General"),
-    main_unit: str = Form("Carton"),
-    sub_unit: str = Form("Pack"),
-    retail_unit: str = Form("Retail Unit"),
-    name: str = Form(...),
-    price_carton: float = Form(0.0),
-    stock_cartons: float = Form(0.0),
-    cost_price_carton: float = Form(0.0),
-    price_pack: float = Form(0.0),
-    packs_per_carton: int = Form(1),
-    shelf_location: str = Form(""),
-    price_retail: float = Form(0.0),
-    retail_per_pack: int = Form(1),
-    expiry_date: str = Form(""),
-    video_link: str = Form(""),
-    description: str = Form(""),
-    image_file: Optional[UploadFile] = File(None),
-    video_file: Optional[UploadFile] = File(None),
-):
-    clean_name = name.strip()
-    if not clean_name:
-        raise HTTPException(status_code=400, detail="Product name is required")
-
-    target_id = existing_product_id.strip() if action_mode == "update" else ""
-    existing_data: Dict[str, Any] = {}
-
-    if target_id:
-        snap = db.collection("products").document(target_id).get()
-        if not snap.exists:
-            raise HTTPException(status_code=404, detail="Selected product not found")
-        existing_data = snap.to_dict() or {}
-    else:
-        target_id = uuid.uuid4().hex
-
-    image_url = upload_to_cloudinary(image_file, folder="sammyreks_products", resource_type="image", max_dim=800)
-    if not image_url:
-        image_url = existing_data.get("image_url") or existing_data.get("img_data") or ""
-
-    uploaded_video_url = upload_to_cloudinary(video_file, folder="sammyreks_videos", resource_type="video")
-    final_video_url = (
-        uploaded_video_url
-        or video_link.strip()
-        or existing_data.get("video_url")
-        or ""
-    )
-
-    product_doc: Dict[str, Any] = {
-        "name": clean_name,
-        "category": category.strip() or "General",
-        "unit_main_label": main_unit.strip() or "Carton",
-        "unit_pack_label": sub_unit.strip() or "Pack",
-        "unit_retail_label": retail_unit.strip() or "Retail Unit",
-        "price_carton": float(price_carton),
-        "price": float(price_carton),
-        "qty_cartons": float(stock_cartons),
-        "stock": float(stock_cartons),
-        "cost": float(cost_price_carton),
-        "price_pack": float(price_pack),
-        "packs_per_carton": max(1, int(packs_per_carton or 1)),
-        "shelf": shelf_location.strip(),
-        "price_retail": float(price_retail),
-        "units_per_pack": max(1, int(retail_per_pack or 1)),
-        "expiry": expiry_date.strip(),
-        "video_url": final_video_url,
-        "description": description.strip(),
-        "image_url": image_url,
-        "updated_at": now_str(),
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid #e5e7eb;
+      min-height: 100vh;
     }
-    if not existing_data:
-        product_doc["created_at"] = now_str()
-
-    db.collection("products").document(target_id).set(product_doc, merge=True)
-    normalized = normalize_product(target_id, {**existing_data, **product_doc})
-    return {"ok": True, "id": target_id, "product": normalized}
-
-
-@app.delete("/api/products/{product_id}")
-def delete_product(product_id: str):
-    doc_ref = db.collection("products").document(product_id)
-    if not doc_ref.get().exists:
-        raise HTTPException(status_code=404, detail="Product not found")
-    doc_ref.delete()
-    return {"ok": True, "id": product_id}
-
-
-@app.get("/api/orders")
-def get_orders():
-    docs = db.collection("orders").stream()
-    orders = [normalize_order(doc.id, doc.to_dict()) for doc in docs]
-    orders.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
-    return {"orders": orders}
-
-
-@app.post("/api/orders")
-async def create_order(request: Request):
-    payload = await request.json()
-    customer = str(payload.get("customer") or payload.get("customer_name") or "Customer").strip()
-    phone = str(payload.get("contact_phone") or payload.get("phone") or "").strip()
-    requested_pin = str(payload.get("pin") or "").strip()
-    notes = str(payload.get("notes") or "").strip()
-    items = payload.get("items") if isinstance(payload.get("items"), list) else []
-    special_items = payload.get("special_items") if isinstance(payload.get("special_items"), list) else []
-    if not phone:
-        raise HTTPException(status_code=400, detail="Phone number is required")
-
-    payment_ref = make_ref()
-    customer_pin = get_or_create_customer_pin(phone, requested_pin)
-    ts = now_str()
-
-    if special_items:
-        req_summary = "; ".join(str(sp.get("item") or sp.get("name") or "") for sp in special_items if sp)
-        order_type = "Multi-Item Request"
-        chat_text = f"Multi-Item Request from {customer} ({phone}): {req_summary}. Ref: {payment_ref}"
-    else:
-        item_parts = []
-        total_sum = 0.0
-        for it in items:
-            it_name = str(it.get("name") or "Item")
-            it_unit = str(it.get("unit") or "Unit")
-            it_qty = it.get("qty") or 1
-            it_total = float(it.get("total_price") or 0.0)
-            total_sum += it_total
-            item_parts.append(f"{it_qty} {it_unit}(s) of {it_name}")
-        items_str = ", ".join(item_parts) if item_parts else "Cart Order"
-        note_str = f" Note: {notes}" if notes else ""
-        order_type = "Cart Order"
-        chat_text = f"Hello! I just submitted an order. Items: {items_str}. Total: ₦{total_sum:,.2f}. My Reference Code is '{payment_ref}'.{note_str}"
-
-    order_doc: Dict[str, Any] = {
-        "order_type": order_type,
-        "customer": customer,
-        "contact_phone": phone,
-        "phone": phone,
-        "notes": notes,
-        "items": items,
-        "special_items": special_items,
-        "payment_ref": payment_ref,
-        "status": "Pending",
-        "timestamp": ts,
+    .product-card .product-img-wrap {
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      background-color: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 6px;
+      border-bottom: 1px solid #eef0f3;
     }
-    order_id = uuid.uuid4().hex
-    db.collection("orders").document(order_id).set(order_doc)
-
-    msg_doc: Dict[str, Any] = {
-        "sender": "Customer",
-        "customer_phone": phone,
-        "phone": phone,
-        "message": chat_text,
-        "text": chat_text,
-        "payment_ref": payment_ref,
-        "timestamp": ts,
+    .product-card .product-img-wrap img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
     }
-    db.collection("messages").document(uuid.uuid4().hex).set(msg_doc)
-
-    return {"ok": True, "id": order_id, "payment_ref": payment_ref, "customer_pin": customer_pin}
-
-
-@app.post("/api/orders/{order_id}/verify")
-async def verify_order(order_id: str, request: Request):
-    order_ref = db.collection("orders").document(order_id)
-    snap = order_ref.get()
-    if not snap.exists:
-        raise HTTPException(status_code=404, detail="Order not found")
-
-    order_data = snap.to_dict() or {}
-    payload = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
-    verified_by = str(payload.get("verified_by") or "admin").strip()
-
-    settings_snap = db.collection("settings").document("business").get()
-    settings_data = settings_snap.to_dict() if settings_snap.exists else {}
-    biz_name = str(settings_data.get("business_name") or "SAMMYREKS BUSINESS CENTER").upper()
-    currency = str(settings_data.get("currency") or "₦")
-
-    customer = str(order_data.get("customer") or order_data.get("customer_name") or "Customer").strip()
-    phone = str(order_data.get("contact_phone") or order_data.get("phone") or "").strip()
-    ref_code = str(order_data.get("payment_ref") or make_ref()).strip()
-    ts = now_str()
-
-    items = order_data.get("items") or []
-    special_items = order_data.get("special_items") or []
-    lines_html = ""
-    total_val = 0.0
-
-    if special_items:
-        for sp in special_items:
-            sp_text = str(sp.get("item") or sp.get("name") or "Requested Item")
-            lines_html += f"<p style='margin:2px 0;'>{sp_text}</p>"
-    elif items:
-        for it in items:
-            it_name = str(it.get("name") or "Item")
-            it_unit = str(it.get("unit") or "Unit")
-            it_qty = it.get("qty") or 1
-            it_total = float(it.get("total_price") or 0.0)
-            total_val += it_total
-            lines_html += f"<p style='margin:2px 0;'>{it_qty} {it_unit}(s) of {it_name} &mdash; {currency}{it_total:,.2f}</p>"
-    elif order_data.get("notes"):
-        lines_html += f"<p style='margin:2px 0;'>{order_data.get('notes')}</p>"
-
-    receipt_html = (
-        f"<div style='background:#fdfcf7; color:#111; padding:16px; border-radius:6px; border:1px solid #dcd6cd; "
-        f"font-family:\"Courier New\", Courier, monospace; max-width:360px; margin:6px 0;'>"
-        f"<div style='text-align:center; border-bottom:1px dashed #333; padding-bottom:8px; margin-bottom:8px;'>"
-        f"<h5 style='margin:0; font-weight:bold;'>{biz_name}</h5>"
-        f"<div style='font-size:0.75rem; color:#444; margin:2px 0;'>OFFICIAL PURCHASE RECEIPT</div>"
-        f"<span style='background:#198754; color:#fff; font-size:0.72rem; padding:2px 6px; border-radius:3px; font-weight:bold;'>PAID &amp; VERIFIED</span>"
-        f"</div>"
-        f"<div style='font-size:0.8rem; margin-bottom:8px; border-bottom:1px dashed #333; padding-bottom:6px;'>"
-        f"<p style='margin:2px 0;'><b>REF CODE:</b> {ref_code}</p>"
-        f"<p style='margin:2px 0;'><b>CUSTOMER:</b> {customer}</p>"
-        f"<p style='margin:2px 0;'><b>PHONE:</b> {phone or 'N/A'}</p>"
-        f"<p style='margin:2px 0;'><b>VERIFIED BY:</b> {verified_by}</p>"
-        f"</div>"
-        f"<div style='font-size:0.8rem; margin-bottom:8px;'>{lines_html}</div>"
-        f"<div style='border-top:1px dashed #333; padding-top:6px; font-size:0.85rem; font-weight:bold;'>"
-        f"TOTAL: {currency}{total_val:,.2f}"
-        f"</div>"
-        f"</div>"
-    )
-
-    order_ref.set({"status": "Verified", "verified_by": verified_by, "verified_at": ts}, merge=True)
-
-    msg_doc: Dict[str, Any] = {
-        "sender": "System",
-        "customer_phone": phone,
-        "phone": phone,
-        "message": receipt_html,
-        "text": receipt_html,
-        "payment_ref": ref_code,
-        "timestamp": ts,
+    .chat-box {
+      max-height: 400px;
+      overflow-y: auto;
+      background: #ffffff;
     }
-    db.collection("messages").document(uuid.uuid4().hex).set(msg_doc)
-
-    return {"ok": True, "id": order_id, "status": "Verified", "payment_ref": ref_code}
-
-
-@app.delete("/api/orders/{order_id}")
-def delete_order(order_id: str):
-    order_ref = db.collection("orders").document(order_id)
-    if not order_ref.get().exists:
-        raise HTTPException(status_code=404, detail="Order not found")
-    order_ref.delete()
-    return {"ok": True, "id": order_id}
-
-
-@app.get("/api/messages")
-def get_messages(
-    phone: Optional[str] = Query(default=None),
-    pin: Optional[str] = Query(default=None),
-    x_staff_token: Optional[str] = Header(default=None),
-):
-    staff_user = verify_staff_token(x_staff_token)
-    clean_phone = (phone or "").strip()
-    norm_target = normalize_phone(clean_phone)
-
-    if not staff_user:
-        if not norm_target or not (pin or "").strip():
-            raise HTTPException(
-                status_code=401,
-                detail="Enter both your Phone Number and your 4-digit Chat PIN (or Order Reference Code) to access your private chat.",
-            )
-        if not verify_customer_access(norm_target, pin or ""):
-            raise HTTPException(
-                status_code=403,
-                detail="Invalid Phone Number or PIN / Reference Code.",
-            )
-
-    docs = db.collection("messages").stream()
-    messages: List[Dict[str, Any]] = []
-    for doc in docs:
-        data = normalize_message(doc.id, doc.to_dict())
-        if norm_target and normalize_phone(data["customer_phone"]) != norm_target:
-            continue
-        messages.append(data)
-    messages.sort(key=lambda x: str(x.get("timestamp", "")))
-    return {"messages": messages}
-
-
-@app.post("/api/messages")
-async def post_message(
-    phone: str = Form(...),
-    pin: str = Form(""),
-    sender: str = Form("Customer"),
-    text: str = Form(""),
-    proof_file: Optional[UploadFile] = File(None),
-    x_staff_token: Optional[str] = Header(default=None),
-):
-    staff_user = verify_staff_token(x_staff_token)
-    clean_phone = phone.strip()
-    clean_text = text.strip()
-    if not clean_phone:
-        raise HTTPException(status_code=400, detail="Phone number is required")
-
-    customer_pin = ""
-    if not staff_user:
-        norm = normalize_phone(clean_phone)
-        prof_snap = db.collection("customer_profiles").document(norm).get()
-        if prof_snap.exists:
-            if not verify_customer_access(norm, pin):
-                raise HTTPException(
-                    status_code=403,
-                    detail="Please enter your valid 4-digit Chat PIN (or Order Ref) for this phone number before sending.",
-                )
-            customer_pin = str((prof_snap.to_dict() or {}).get("pin") or "")
-        else:
-            customer_pin = get_or_create_customer_pin(clean_phone, pin)
-
-    proof_url = upload_to_cloudinary(proof_file, folder="sammyreks_receipts", resource_type="image", max_dim=1000)
-
-    if not clean_text and not proof_url:
-        raise HTTPException(status_code=400, detail="Enter a message or attach a receipt image")
-
-    final_sender = "Staff" if staff_user else "Customer"
-    msg_doc: Dict[str, Any] = {
-        "sender": final_sender,
-        "customer_phone": clean_phone,
-        "phone": clean_phone,
-        "message": clean_text,
-        "text": clean_text,
-        "proof_url": proof_url or "",
-        "timestamp": now_str(),
+    .nav-pill-btn.active {
+      font-weight: 600;
     }
-    msg_id = uuid.uuid4().hex
-    db.collection("messages").document(msg_id).set(msg_doc)
-    return {"ok": True, "id": msg_id, "proof_url": proof_url, "customer_pin": customer_pin}
+    .broadcast-player {
+      max-height: 360px;
+      width: 100%;
+      object-fit: contain;
+      background: #000000;
+      border-radius: 6px;
+    }
+    .product-ad-player {
+      max-height: 420px;
+      width: 100%;
+      background: #000000;
+      border-radius: 6px;
+    }
+    .order-entry {
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .order-entry:hover {
+      border-color: #0d6efd !important;
+      background-color: #f8fbff !important;
+    }
+    .thermal-paper {
+      font-family: "Courier New", Courier, monospace;
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+      background: #ffffff;
+      color: #111827;
+      border: 1px dashed #6b7280;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .store-footer {
+      border-top: 1px solid #e5e7eb;
+      color: #6b7280;
+      font-size: 0.85rem;
+    }
+    #customerSection.has-bottom-dock {
+      padding-bottom: 104px;
+    }
+    #customerTabs.bottom-tab-dock {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1030;
+      margin: 0 !important;
+      padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
+      background: #ffffff;
+      border-top: 2px solid #dbe3ee;
+      box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.12);
+      display: flex !important;
+      flex-wrap: nowrap;
+      gap: 6px !important;
+    }
+    #customerTabs.bottom-tab-dock .nav-item {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    #customerTabs.bottom-tab-dock .nav-link {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 54px;
+      padding: 6px 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.15;
+      text-align: center;
+      color: #1e293b;
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      white-space: normal;
+      word-break: break-word;
+      transition: all 0.15s ease;
+    }
+    #customerTabs.bottom-tab-dock .nav-link i {
+      margin-right: 0 !important;
+      font-size: 1.05rem;
+      color: #0d6efd;
+    }
+    #customerTabs.bottom-tab-dock .nav-link.active {
+      color: #ffffff;
+      background-color: #0d6efd;
+      border-color: #0d6efd;
+      box-shadow: 0 3px 10px rgba(13, 110, 253, 0.32);
+    }
+    #customerTabs.bottom-tab-dock .nav-link.active i {
+      color: #ffffff;
+    }
+    .dock-cart-pill {
+      position: absolute;
+      top: 3px;
+      right: 5px;
+      font-size: 0.65rem;
+      padding: 2px 5px;
+      border-radius: 999px;
+      background: #198754;
+      color: #ffffff;
+      font-weight: 700;
+      line-height: 1;
+    }
+    @media (min-width: 768px) {
+      #customerTabs.bottom-tab-dock {
+        padding: 10px 24px;
+        gap: 12px !important;
+      }
+      #customerTabs.bottom-tab-dock .nav-link {
+        min-height: 44px;
+        flex-direction: row;
+        gap: 8px;
+        font-size: 0.9rem;
+        padding: 9px 14px;
+      }
+      #customerTabs.bottom-tab-dock .nav-link i {
+        font-size: 0.95rem;
+      }
+      .dock-cart-pill {
+        position: static;
+        font-size: 0.75rem;
+        padding: 3px 7px;
+      }
+    }
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #thermalReceiptModal,
+      #thermalReceiptModal * {
+        visibility: visible !important;
+      }
+      #thermalReceiptModal {
+        position: static !important;
+        left: 0 !important;
+        top: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Staff / Admin Sidebar (Hidden in Customer Storefront Mode) -->
+      <aside id="staffSidebarCol" class="col-lg-3 col-xl-2 sidebar p-3 d-none">
+        <div class="mb-3">
+          <h4 class="fw-bold mb-1"><i class="fa-solid fa-store text-primary me-2"></i>Staff Portal</h4>
+          <small class="text-muted" id="sidebarBusinessName">Sammyreks Business Center</small>
+        </div>
 
+        <div class="mb-2">
+          <span id="authBadge" class="badge bg-secondary">Staff Mode</span>
+        </div>
 
-@app.post("/api/sales")
-async def record_sale(request: Request):
-    payload = await request.json()
-    product_id = str(payload.get("product_id") or "").strip()
-    item_name = str(payload.get("item_name") or "Item").strip()
-    unit_type = str(payload.get("unit_type") or "Carton").strip()
-    qty = max(1.0, float(payload.get("qty") or 1))
-    customer_name = str(payload.get("customer_name") or "Walk-in Customer").strip()
-    customer_phone = str(payload.get("customer_phone") or "N/A").strip()
-    payment_source = str(payload.get("payment_source") or "Cash").strip()
-    worker = str(payload.get("worker") or "admin").strip()
-    record_debt = bool(payload.get("record_debt", False))
+        <form id="loginForm" class="border rounded p-3 bg-light mb-3">
+          <label class="form-label small fw-semibold">Portal Access</label>
+          <select id="loginMode" class="form-select form-select-sm mb-2">
+            <option value="admin">Admin Login</option>
+            <option value="staff">Staff Login</option>
+          </select>
 
-    unit_price = float(payload.get("unit_price") or 0.0)
-    total = float(payload.get("total") or (unit_price * qty))
-    payment_ref = make_ref()
-    ts = now_str()
+          <input type="text" id="loginUsername" class="form-control form-control-sm mb-2" value="admin" placeholder="Username" required />
+          <input type="password" id="loginPassword" class="form-control form-control-sm mb-2" placeholder="Password" required />
 
-    if product_id:
-        prod_ref = db.collection("products").document(product_id)
-        prod_snap = prod_ref.get()
-        if prod_snap.exists:
-            pdata = prod_snap.to_dict() or {}
-            m_lbl = str(pdata.get("unit_main_label") or "Carton")
-            p_lbl = str(pdata.get("unit_pack_label") or "Pack")
-            packs_per_carton = max(1.0, float(pdata.get("packs_per_carton") or 1))
-            units_per_pack = max(1.0, float(pdata.get("units_per_pack") or 1))
+          <button type="submit" id="loginBtn" class="btn btn-primary btn-sm w-100">
+            <i class="fa-solid fa-right-to-bracket me-1"></i>Login
+          </button>
+          <button type="button" id="logoutBtn" class="btn btn-outline-secondary btn-sm w-100 mt-2 d-none">
+            <i class="fa-solid fa-right-from-bracket me-1"></i>Logout
+          </button>
+        </form>
 
-            if unit_type == m_lbl:
-                deduct_cartons = qty
-            elif unit_type == p_lbl:
-                deduct_cartons = qty / packs_per_carton
-            else:
-                deduct_cartons = qty / (packs_per_carton * units_per_pack)
+        <div class="d-grid gap-1">
+          <button type="button" class="btn btn-outline-dark btn-sm text-start nav-pill-btn active" data-action="switch-section" data-section="customerSection">
+            <i class="fa-solid fa-bag-shopping me-2"></i>Back to Storefront
+          </button>
+          <button type="button" class="btn btn-outline-primary btn-sm text-start nav-pill-btn" data-action="switch-section" data-section="staffSection">
+            <i class="fa-solid fa-gauge-high me-2"></i>Management Panel
+          </button>
+        </div>
 
-            current_stock = float(
-                pdata.get("qty_cartons") if pdata.get("qty_cartons") is not None else (pdata.get("stock") or 0)
-            )
-            new_stock = max(0.0, current_stock - deduct_cartons)
-            prod_ref.set({"qty_cartons": new_stock, "stock": new_stock, "updated_at": ts}, merge=True)
+        <hr />
+        <div class="small text-muted">
+          <div>v24.0 | 2026</div>
+        </div>
+      </aside>
 
-    if record_debt:
-        debt_doc = {
-            "customer": customer_name,
-            "phone": customer_phone,
-            "amount": total,
-            "items_bought": f"{item_name} ({qty} {unit_type})",
-            "payment_ref": payment_ref,
-            "worker": worker,
-            "timestamp": ts,
+      <!-- Main Content Area (Full Width for Customers) -->
+      <main id="mainContentCol" class="col-12 p-3 p-md-4">
+        <!-- Live Feedback Banner -->
+        <div id="appFeedbackBanner" class="alert alert-info d-none d-flex align-items-center justify-content-between py-2 px-3 mb-3" role="alert">
+          <span id="appFeedbackText"></span>
+          <button type="button" class="btn-close btn-sm" data-action="dismiss-banner" aria-label="Close"></button>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- CUSTOMER SECTION                                                 -->
+        <!-- ================================================================ -->
+        <section id="customerSection" class="has-bottom-dock">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+            <div>
+              <h1 class="h4 fw-bold mb-0" id="businessTitleDisplay">Sammyreks Business Center</h1>
+              <small class="text-muted" id="businessTaglineDisplay">Quality products, fast orders &amp; live support</small>
+            </div>
+            <button type="button" id="topCartSummaryBtn" class="btn btn-success btn-sm px-3" data-action="switch-customer-tab" data-tab="cartTab">
+              <i class="fa-solid fa-cart-shopping me-1"></i>Cart (<span id="cartCountBadge">0</span>) &bull; <span id="cartTotalBadge">&#8358;0.00</span>
+            </button>
+          </div>
+
+          <!-- Always-Visible Customer Notice & Broadcast Video -->
+          <div id="customerNoticeAlert" class="alert alert-primary py-2 px-3 mb-3 d-none"></div>
+
+          <div id="customerBroadcastCard" class="card shadow-sm mb-3 d-none">
+            <div class="card-body py-2">
+              <div class="small fw-semibold text-primary mb-2">
+                <i class="fa-solid fa-video me-1"></i>Featured Announcement
+              </div>
+              <div id="customerBroadcastPlayerWrap"></div>
+            </div>
+          </div>
+
+          <!-- Tab 1: Shop & Cart -->
+          <div id="shopTab" class="customer-tab-pane">
+            <div class="row g-2 mb-3">
+              <div class="col-md-4">
+                <select id="shopCategorySelect" class="form-select">
+                  <option value="All Categories">All Categories</option>
+                </select>
+              </div>
+              <div class="col-md-8">
+                <input type="text" id="shopSearchInput" class="form-control" placeholder="Search products..." />
+              </div>
+            </div>
+            <div class="row g-3" id="productsGrid">
+              <div class="col-12 text-muted">Loading products...</div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Multi-Item Request -->
+          <div id="requestTab" class="customer-tab-pane d-none">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Multi-Item Request</h5>
+                <form id="multiRequestForm" class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Your Full Name</label>
+                    <input type="text" id="reqName" class="form-control" placeholder="Your name" required />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Your Phone Number</label>
+                    <input type="text" id="reqPhone" class="form-control" placeholder="e.g. 08012345678" required />
+                  </div>
+                  <div class="col-md-4" id="reqPinFieldWrap">
+                    <label class="form-label" id="reqPinLabel">4-Digit Chat PIN (Leave blank — auto-generated)</label>
+                    <input type="password" id="reqPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Items Needed &amp; Quantities</label>
+                    <textarea id="reqItemsText" class="form-control" rows="3" placeholder="List items, sizes, or quantities you need..." required></textarea>
+                  </div>
+                  <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-paper-plane me-1"></i>Send Request to Private Chat
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Private Live Chat & Receipts -->
+          <div id="chatTab" class="customer-tab-pane d-none">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                  <div>
+                    <h5 class="card-title mb-0"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Private Order Portfolio, Chat &amp; Receipts</h5>
+                    <small class="text-muted" id="chatHelperSubtitle">First time here? Place an order in Checkout or Request first—your private chat unlocks automatically with your new PIN!</small>
+                  </div>
+                  <button type="button" id="lockChatBtn" class="btn btn-outline-secondary btn-sm d-none" data-action="lock-customer-chat">
+                    <i class="fa-solid fa-lock me-1"></i>Lock Session
+                  </button>
+                </div>
+
+                <!-- Optional Bank / Payment Info Box from Settings -->
+                <div id="chatPaymentInfoAlert" class="alert alert-warning py-2 px-3 small d-none"></div>
+
+                <!-- Credential Banner after placing an order -->
+                <div id="customerCredentialNotice" class="alert alert-success py-2 px-3 small d-none"></div>
+
+                <!-- Unlock Portfolio Form -->
+                <form id="unlockChatForm" class="row g-2 mb-3">
+                  <div class="col-md-5">
+                    <input type="text" id="chatPhoneFilter" class="form-control" placeholder="Your registered phone number" required />
+                  </div>
+                  <div class="col-md-4">
+                    <input type="password" id="chatPinFilter" class="form-control" placeholder="4-Digit Chat PIN or Order Ref (e.g. SRK-4247)" required />
+                  </div>
+                  <div class="col-md-3 d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-unlock-keyhole me-1"></i>Unlock My Chat
+                    </button>
+                  </div>
+                </form>
+
+                <div id="chatMessagesBox" class="border rounded p-3 mb-3 chat-box">
+                  <div class="text-muted small py-3 text-center">
+                    <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
+                    <span id="chatLockedPlaceholderText">Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.</span>
+                  </div>
+                </div>
+
+                <form id="chatSendForm" enctype="multipart/form-data" class="row g-2 d-none">
+                  <div class="col-md-7">
+                    <input type="text" name="text" id="chatSendText" class="form-control" placeholder="Write a message to support..." />
+                  </div>
+                  <div class="col-md-3">
+                    <input type="file" name="proof_file" id="chatProofFile" class="form-control" accept="image/*" />
+                  </div>
+                  <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-success">
+                      <i class="fa-solid fa-paper-plane me-1"></i>Send
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 4: View Cart & Checkout -->
+          <div id="cartTab" class="customer-tab-pane d-none">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-cart-shopping me-2 text-primary"></i>Your Cart &amp; Order Checkout</h5>
+
+                <!-- Optional Bank / Payment Info Box from Settings -->
+                <div id="checkoutPaymentInfoAlert" class="alert alert-info py-2 px-3 small d-none"></div>
+
+                <div id="cartItemsContainer" class="mb-3">
+                  <p class="text-muted">Your cart is empty.</p>
+                </div>
+                <form id="customerOrderForm" class="row g-3">
+                  <div class="col-md-3">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" id="orderCustomerName" class="form-control" placeholder="Your full name" required />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Customer Phone Number</label>
+                    <input type="text" id="orderPhone" class="form-control" placeholder="e.g. 08012345678" required />
+                  </div>
+                  <div class="col-md-3" id="orderPinFieldWrap">
+                    <label class="form-label" id="orderPinLabel">4-Digit Chat PIN (Leave blank — auto-generated)</label>
+                    <input type="password" id="orderPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Delivery / Order Note</label>
+                    <input type="text" id="orderNote" class="form-control" placeholder="Optional note..." />
+                  </div>
+                  <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-check me-1"></i>Submit Order to Private Chat
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" data-action="clear-cart">
+                      <i class="fa-solid fa-trash me-1"></i>Clear Cart
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Discreet Store Footer -->
+          <footer class="store-footer mt-5 pt-3 pb-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div id="footerCopyrightText">&copy; <span id="footerBusinessName">Sammyreks Business Center</span>. All rights reserved.</div>
+            <button type="button" class="btn btn-link btn-sm text-decoration-none text-muted p-0" data-action="open-staff-portal">
+              Staff Sign-In
+            </button>
+          </footer>
+
+          <!-- Stationary Mobile-Friendly Bottom Navigation Tabs -->
+          <ul class="nav nav-pills bottom-tab-dock" id="customerTabs">
+            <li class="nav-item" id="navItemShopTab">
+              <button type="button" class="nav-link active" data-action="switch-customer-tab" data-tab="shopTab">
+                <i class="fa-solid fa-shop"></i>
+                <span class="dock-short-label d-md-none" id="dockShortShop">Shop</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullShop">Shop &amp; Cart</span>
+              </button>
+            </li>
+            <li class="nav-item" id="navItemRequestTab">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="requestTab">
+                <i class="fa-solid fa-list-check"></i>
+                <span class="dock-short-label d-md-none" id="dockShortRequest">Request</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullRequest">Multi-Item Request</span>
+              </button>
+            </li>
+            <li class="nav-item" id="navItemChatTab">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="chatTab">
+                <i class="fa-solid fa-comments"></i>
+                <span class="dock-short-label d-md-none" id="dockShortChat">Chat &amp; Receipts</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullChat">Live Chat &amp; Receipts</span>
+              </button>
+            </li>
+            <li class="nav-item" id="navItemCartTab">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="cartTab">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span class="dock-short-label d-md-none" id="dockShortCart">Checkout</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullCart">View Cart &amp; Checkout</span>
+                <span class="dock-cart-pill" id="dockCartCountBadge">0</span>
+              </button>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ================================================================ -->
+        <!-- STAFF / ADMIN SECTION                                            -->
+        <!-- ================================================================ -->
+        <section id="staffSection" class="d-none">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-toolbox me-2 text-primary"></i>Staff &amp; Admin Workspace</h2>
+            <span class="badge bg-success" id="staffSessionLabel">Logged In</span>
+          </div>
+
+          <ul class="nav nav-tabs mb-3" id="staffTabs">
+            <li class="nav-item">
+              <button type="button" class="nav-link active" data-action="switch-staff-tab" data-tab="inventoryTab">
+                <i class="fa-solid fa-boxes-stacked me-1"></i>Add / Update Item &amp; Inventory
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="posTab">
+                <i class="fa-solid fa-cash-register me-1"></i>POS Sale
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="staffOrdersChatTab">
+                <i class="fa-solid fa-comments me-1"></i>Orders &amp; Live Chat
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="recordsTab">
+                <i class="fa-solid fa-book me-1"></i>Debtors, Expenses &amp; Workers
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="settingsTab">
+                <i class="fa-solid fa-gear me-1"></i>Overall App Settings
+              </button>
+            </li>
+          </ul>
+
+          <!-- Staff Tab 1: Add / Update Item & Inventory Table -->
+          <div id="inventoryTab" class="staff-tab-pane">
+            <div class="card shadow-sm mb-4">
+              <div class="card-body">
+                <h5 class="card-title mb-3"><i class="fa-solid fa-pen-to-square me-2 text-primary"></i>Add / Update Item</h5>
+
+                <form id="addProductForm" enctype="multipart/form-data">
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold d-block">Action</label>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="action_mode" id="actionAddNew" value="create" checked />
+                      <label class="form-check-label" for="actionAddNew">Add New Item</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="action_mode" id="actionUpdateExisting" value="update" />
+                      <label class="form-check-label" for="actionUpdateExisting">Update Existing Item</label>
+                    </div>
+                  </div>
+
+                  <div id="existingProductSelectorWrap" class="mb-3 d-none">
+                    <label class="form-label fw-semibold">Select Existing Product to Update</label>
+                    <select id="existingProductSelect" name="existing_product_id" class="form-select">
+                      <option value="">-- Choose saved product --</option>
+                    </select>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold">Upload Product Image</label>
+                      <input type="file" name="image_file" id="prodImageFile" class="form-control" accept="image/png,image/jpeg,image/webp,image/*" />
+                      <div class="form-text">PNG, JPG, WEBP</div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold">Upload Direct MP4 Video File</label>
+                      <input type="file" name="video_file" id="prodVideoFile" class="form-control" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" />
+                      <div class="form-text">MP4, MOV, WEBM, MKV</div>
+                    </div>
+                  </div>
+
+                  <div class="alert alert-info py-2 small">
+                    <i class="fa-solid fa-pen me-1"></i><strong>Category &amp; Box Headings:</strong> Type any category name of your choice below.
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Product Category</label>
+                    <input type="text" name="category" id="prodCategory" class="form-control" value="General" />
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Main Unit Name (e.g. Carton)</label>
+                      <input type="text" name="main_unit" id="prodMainUnit" class="form-control" value="Carton" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Sub-Unit Name (e.g. Pack)</label>
+                      <input type="text" name="sub_unit" id="prodSubUnit" class="form-control" value="Pack" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Retail Name (e.g. Piece)</label>
+                      <input type="text" name="retail_unit" id="prodRetailUnit" class="form-control" value="Retail Unit" />
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Product Name</label>
+                      <input type="text" name="name" id="prodName" class="form-control" placeholder="Product Name" required />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Price (Per Carton)</label>
+                      <input type="number" step="0.01" name="price_carton" id="prodPriceCarton" class="form-control" value="0.00" required />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Total Stock (Cartons)</label>
+                      <input type="number" step="0.01" name="stock_cartons" id="prodStockCartons" class="form-control" value="0.00" required />
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Cost Price (Per Carton)</label>
+                      <input type="number" step="0.01" name="cost_price_carton" id="prodCostCarton" class="form-control" value="0.00" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Price (Per Pack)</label>
+                      <input type="number" step="0.01" name="price_pack" id="prodPricePack" class="form-control" value="0.00" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Count of Packs in 1 Carton</label>
+                      <input type="number" min="1" name="packs_per_carton" id="prodPacksPerCarton" class="form-control" value="1" />
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Shelf Location</label>
+                      <input type="text" name="shelf_location" id="prodShelfLocation" class="form-control" placeholder="Shelf Location" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Price (Per Retail Unit)</label>
+                      <input type="number" step="0.01" name="price_retail" id="prodPriceRetail" class="form-control" value="0.00" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Count of Retail Units in 1 Pack</label>
+                      <input type="number" min="1" name="retail_per_pack" id="prodRetailPerPack" class="form-control" value="1" />
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Expiry Date</label>
+                    <input type="date" name="expiry_date" id="prodExpiryDate" class="form-control" />
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">OR YouTube / Cloud Video Link</label>
+                    <input type="url" name="video_link" id="prodVideoLink" class="form-control" placeholder="https://..." />
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Product Description</label>
+                    <textarea name="description" id="prodDescription" class="form-control" rows="3" placeholder="Product Description"></textarea>
+                  </div>
+
+                  <button type="submit" id="saveProductBtn" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Save Product Data
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="card-title mb-0"><i class="fa-solid fa-table me-2 text-secondary"></i>Saved Inventory</h5>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-products">
+                    <i class="fa-solid fa-rotate-right me-1"></i>Refresh
+                  </button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered table-hover align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Product Name</th>
+                        <th>Category</th>
+                        <th>Price (Per Carton)</th>
+                        <th>Total Stock (Cartons)</th>
+                        <th>Cost Price (Per Carton)</th>
+                        <th>Price (Per Pack)</th>
+                        <th>Price (Per Retail Unit)</th>
+                        <th>Count of Packs in 1 Carton</th>
+                        <th>Count of Retail Units in 1 Pack</th>
+                        <th>Shelf Location</th>
+                        <th>Expiry Date</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminProductsTableBody">
+                      <tr><td colspan="12" class="text-muted">No inventory items loaded yet.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Tab 2: POS Sale -->
+          <div id="posTab" class="staff-tab-pane d-none">
+            <div class="card shadow-sm mb-3">
+              <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-cash-register me-1 text-success"></i>Record POS Sale</h5>
+                <form id="posSaleForm" class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Search &amp; Select Item</label>
+                    <select id="posProductSelect" class="form-select"></select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Selling Unit</label>
+                    <select id="posUnitSelect" class="form-select"></select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" id="posQty" class="form-control" value="1" min="1" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" id="posCustomerName" class="form-control" value="Walk-in Customer" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Customer WhatsApp Number</label>
+                    <input type="text" id="posPhone" class="form-control" placeholder="e.g. 08012345678" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Payment Gateway / Source</label>
+                    <select id="posPaymentMethod" class="form-select">
+                      <option value="Moniepoint MFB">Moniepoint MFB</option>
+                      <option value="OPay">OPay</option>
+                      <option value="Access Bank">Access Bank</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Transfer">Transfer</option>
+                    </select>
+                  </div>
+                  <div class="col-12">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="posSendReceiptToWhatsApp" />
+                      <label class="form-check-label small fw-semibold" for="posSendReceiptToWhatsApp">
+                        Send receipt to Customer WhatsApp for future evidence (when customer chooses &amp; WhatsApp number is provided)
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
+                    <button type="submit" class="btn btn-success">
+                      <i class="fa-solid fa-check-circle me-1"></i>Cash Sale &amp; Generate Receipt
+                    </button>
+                    <button type="button" class="btn btn-warning" data-action="pos-debt">
+                      <i class="fa-solid fa-book me-1"></i>Record Debt
+                    </button>
+                    <span class="ms-auto fw-bold">Total: <span id="posTotalPreview">&#8358;0.00</span></span>
+                  </div>
+                </form>
+                <div id="posReceiptBox" class="mt-3"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Tab 3: Orders & Live Chat -->
+          <div id="staffOrdersChatTab" class="staff-tab-pane d-none">
+            <div class="row g-3">
+              <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <h5 class="card-title mb-0"><i class="fa-solid fa-receipt me-1 text-primary"></i>Cart Orders &amp; Multi-Item Requests</h5>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-staff-orders-chat">
+                        <i class="fa-solid fa-rotate-right me-1"></i>Refresh
+                      </button>
+                    </div>
+                    <div class="small text-muted mb-2">Click any order card to load that customer's Live Chat &amp; payment proofs.</div>
+                    <div id="staffOrdersBox" class="chat-box border rounded p-2">
+                      <div class="text-muted small">Loading customer orders and multi-item requests...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                      <h5 class="card-title mb-0"><i class="fa-solid fa-comments me-1 text-success"></i>Live Chat &amp; Receipts</h5>
+                      <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-all-chat-photos" title="Remove stored chat images to free storage">
+                        <i class="fa-solid fa-images me-1"></i>Delete All Chat Photos
+                      </button>
+                    </div>
+                    <div class="row g-2 mb-3">
+                      <div class="col-md-8">
+                        <input type="text" id="staffChatPhoneFilter" class="form-control form-control-sm" placeholder="Filter by customer phone (leave blank for all)" />
+                      </div>
+                      <div class="col-md-4 d-grid">
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-action="load-staff-chat">
+                          <i class="fa-solid fa-rotate me-1"></i>Load Chat
+                        </button>
+                      </div>
+                    </div>
+
+                    <div id="staffChatMessagesBox" class="border rounded p-3 mb-3 chat-box">
+                      <div class="text-muted small">Loading customer chats and payment receipts...</div>
+                    </div>
+
+                    <form id="staffChatSendForm" class="row g-2">
+                      <div class="col-md-4">
+                        <input type="text" id="staffChatSendPhone" class="form-control form-control-sm" placeholder="Customer phone" required />
+                      </div>
+                      <div class="col-md-6">
+                        <input type="text" id="staffChatSendText" class="form-control form-control-sm" placeholder="Reply to customer..." required />
+                      </div>
+                      <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-success btn-sm">
+                          <i class="fa-solid fa-paper-plane me-1"></i>Reply
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Tab 4: Debtors, Expenses & Workers -->
+          <div id="recordsTab" class="staff-tab-pane d-none">
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <h6 class="fw-bold">Add Debtor</h6>
+                    <form id="debtorForm">
+                      <input type="text" id="debtorName" class="form-control form-control-sm mb-2" placeholder="Customer name" required />
+                      <input type="text" id="debtorPhone" class="form-control form-control-sm mb-2" placeholder="Phone" required />
+                      <input type="number" step="0.01" id="debtorAmount" class="form-control form-control-sm mb-2" placeholder="Amount owed (&#8358;)" required />
+                      <input type="text" id="debtorNote" class="form-control form-control-sm mb-2" placeholder="Note / Items bought" />
+                      <button type="submit" class="btn btn-warning btn-sm w-100">Save Debtor</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <h6 class="fw-bold">Add Expense</h6>
+                    <form id="expenseForm">
+                      <input type="text" id="expenseTitle" class="form-control form-control-sm mb-2" placeholder="Expense title / category" required />
+                      <input type="number" step="0.01" id="expenseAmount" class="form-control form-control-sm mb-2" placeholder="Amount (&#8358;)" required />
+                      <input type="text" id="expenseCategory" class="form-control form-control-sm mb-2" value="Operations" />
+                      <input type="text" id="expenseNote" class="form-control form-control-sm mb-2" placeholder="Note" />
+                      <button type="submit" class="btn btn-danger btn-sm w-100">Save Expense</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <h6 class="fw-bold">Add Worker / Staff</h6>
+                    <form id="workerForm">
+                      <input type="text" id="workerName" class="form-control form-control-sm mb-2" placeholder="Full name" required />
+                      <input type="text" id="workerRole" class="form-control form-control-sm mb-2" value="Staff" />
+                      <input type="text" id="workerUsername" class="form-control form-control-sm mb-2" placeholder="Login username" />
+                      <input type="password" id="workerPassword" class="form-control form-control-sm mb-2" placeholder="Login password" />
+                      <button type="submit" class="btn btn-dark btn-sm w-100">Save Worker</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Tab 5: Overall App Settings -->
+          <div id="settingsTab" class="staff-tab-pane d-none">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <div>
+                    <h5 class="card-title mb-0"><i class="fa-solid fa-sliders me-1 text-primary"></i>Overall App Settings (No GitHub Needed)</h5>
+                    <small class="text-muted">Control storefront text, bottom navigation tabs, payment info, PIN guidance, and product display directly here.</small>
+                  </div>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-action="reset-extra-settings">
+                    <i class="fa-solid fa-rotate-left me-1"></i>Reset UI Toggles to Default
+                  </button>
+                </div>
+
+                <form id="settingsForm" enctype="multipart/form-data">
+                  <!-- Group 1: Branding & Announcements -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">1. Branding, Currency &amp; Announcements</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-5">
+                      <label class="form-label">Business Name</label>
+                      <input type="text" name="business_name" id="setBusinessName" class="form-control" value="Sammyreks Business Center" required />
+                    </div>
+                    <div class="col-md-5">
+                      <label class="form-label">Tagline</label>
+                      <input type="text" name="tagline" id="setTagline" class="form-control" placeholder="Quality products, fast orders &amp; live support" />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label">Currency</label>
+                      <input type="text" id="setCurrency" class="form-control" value="&#8358;" maxlength="5" />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label">Top Storefront Notice Banner</label>
+                      <input type="text" name="active_notice" id="setNotice" class="form-control" placeholder="e.g. Free delivery within Calabar on orders above ₦20,000!" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Upload Broadcast Video File</label>
+                      <input type="file" name="broadcast_video_file" id="setBroadcastVideoFile" class="form-control" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">OR Broadcast Video Link</label>
+                      <input type="text" name="broadcast_video_url" id="setBroadcastVideo" class="form-control" placeholder="https://..." />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Footer Copyright Text (Optional override)</label>
+                      <input type="text" id="setFooterText" class="form-control" placeholder="Leave blank to use default business copyright" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Thermal Receipt Footer Message</label>
+                      <input type="text" id="setReceiptFooter" class="form-control" value="Thank you for your patronage!" />
+                    </div>
+                  </div>
+
+                  <!-- Group 2: Bottom Navigation & Mobile Dock Controls -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">2. Bottom Navigation Tabs &amp; Mobile Dock</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabShop" checked />
+                        <label class="form-check-label" for="setShowTabShop">Show <strong>Shop</strong> Tab</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabRequest" checked />
+                        <label class="form-check-label" for="setShowTabRequest">Show <strong>Request</strong> Tab</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabChat" checked />
+                        <label class="form-check-label" for="setShowTabChat">Show <strong>Chat &amp; Receipts</strong></label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabCart" checked />
+                        <label class="form-check-label" for="setShowTabCart">Show <strong>Checkout</strong> Tab</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowDockCartBadge" checked />
+                        <label class="form-check-label" for="setShowDockCartBadge">Show Live Cart Count Badge</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTopCartBtn" checked />
+                        <label class="form-check-label" for="setShowTopCartBtn">Show Top Header Cart Button</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Custom Mobile Tab Names (Shop | Request | Chat | Checkout)</label>
+                      <input type="text" id="setMobileTabLabels" class="form-control form-control-sm" value="Shop | Request | Chat &amp; Receipts | Checkout" />
+                    </div>
+                  </div>
+
+                  <!-- Group 3: Shop Display & Product Cards -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">3. Shop Display &amp; Product Cards</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowWatchAd" checked />
+                        <label class="form-check-label" for="setShowWatchAd">Show <strong>Watch Ad</strong> Buttons</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowStockOnCards" checked />
+                        <label class="form-check-label" for="setShowStockOnCards">Show Stock Count on Cards</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setHideOutOfStock" />
+                        <label class="form-check-label" for="setHideOutOfStock">Hide Out-of-Stock Items</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small mb-1">Search Box Placeholder</label>
+                      <input type="text" id="setSearchPlaceholder" class="form-control form-control-sm" value="Search products..." />
+                    </div>
+                  </div>
+
+                  <!-- Group 4: Checkout, Payment Info & PIN Guidance -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">4. Checkout, Bank Details &amp; Automatic PIN Help</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                      <label class="form-label">Bank Account / Transfer Details (Shown in Checkout &amp; Chat)</label>
+                      <textarea id="setPaymentInstructions" class="form-control" rows="2" placeholder="e.g. Moniepoint MFB | 1234567890 | Sammyreks Business Center — Upload receipt in Chat after transfer."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Customer PIN Helper Message (Shown on Chat Tab)</label>
+                      <textarea id="setChatHelperSubtitle" class="form-control" rows="2">First time here? Place an order in Checkout or Request first—your private chat unlocks automatically with your new PIN!</textarea>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setAutoPinMode" checked />
+                        <label class="form-check-label" for="setAutoPinMode">Auto-Generate PIN (Hide manual PIN confusion)</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">PIN Field Label (When Manual PIN is Shown)</label>
+                      <input type="text" id="setPinFieldLabel" class="form-control form-control-sm" value="4-Digit Chat PIN (Leave blank — auto-generated)" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Order Note Placeholder</label>
+                      <input type="text" id="setOrderNotePlaceholder" class="form-control form-control-sm" value="Optional delivery address or note..." />
+                    </div>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary px-4">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Save All App Settings
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Product Advert Modal -->
+  <div class="modal fade" id="productAdModal" tabindex="-1" aria-labelledby="productAdModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="productAdModalLabel">Product Advert</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="productAdModalBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thermal Receipt Modal -->
+  <div class="modal fade" id="thermalReceiptModal" tabindex="-1" aria-labelledby="thermalReceiptModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header no-print">
+          <h5 class="modal-title" id="thermalReceiptModalLabel"><i class="fa-solid fa-receipt me-2"></i>Thermal Receipt</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="thermalReceiptBody"></div>
+        <div class="modal-footer no-print flex-wrap gap-2">
+          <button type="button" class="btn btn-success btn-sm d-none" id="modalSendReceiptWhatsAppBtn" data-action="send-modal-receipt-whatsapp">
+            <i class="fa-brands fa-whatsapp me-1"></i>Send Receipt to WhatsApp
+          </button>
+          <button type="button" class="btn btn-dark btn-sm" data-action="print-thermal-receipt">
+            <i class="fa-solid fa-print me-1"></i>Print Receipt
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const EXTRA_SETTINGS_STORAGE_KEY = "sammyreks_extra_app_settings_v1";
+    const DELETED_CHAT_PHOTOS_KEY = "sammyreks_deleted_chat_photo_ids_v1";
+
+    const DEFAULT_EXTRA_SETTINGS = {
+      showTabShop: true,
+      showTabRequest: true,
+      showTabChat: true,
+      showTabCart: true,
+      showDockCartBadge: true,
+      showTopCartBtn: true,
+      mobileTabLabels: "Shop | Request | Chat & Receipts | Checkout",
+      showWatchAd: true,
+      showStockOnCards: true,
+      hideOutOfStock: false,
+      searchPlaceholder: "Search products...",
+      paymentInstructions: "",
+      chatHelperSubtitle: "First time here? Place an order in Checkout or Request first—your private chat unlocks automatically with your new PIN!",
+      autoPinMode: true,
+      pinFieldLabel: "4-Digit Chat PIN (Leave blank — auto-generated)",
+      orderNotePlaceholder: "Optional delivery address or note...",
+      footerText: "",
+      receiptFooter: "Thank you for your patronage!",
+    };
+
+    const state = {
+      products: [],
+      cart: [],
+      ordersFeed: [],
+      staffMessagesFeed: [],
+      deletedPhotoIds: new Set(),
+      pendingWhatsAppReceipt: null,
+      isLoggedIn: false,
+      user: null,
+      staffToken: "",
+      customerAuth: {
+        unlocked: false,
+        phone: "",
+        pin: "",
+      },
+      currency: "\u20a6",
+      businessName: "Sammyreks Business Center",
+      extraSettings: { ...DEFAULT_EXTRA_SETTINGS },
+      busyKeys: new Set(),
+      lastSubmitAt: new Map(),
+    };
+
+    const productAdModalEl = document.getElementById("productAdModal");
+    const productAdModal = new bootstrap.Modal(productAdModalEl);
+    const thermalReceiptModal = new bootstrap.Modal(document.getElementById("thermalReceiptModal"));
+
+    productAdModalEl.addEventListener("hidden.bs.modal", () => {
+      document.getElementById("productAdModalBody").innerHTML = "";
+    });
+
+    function readDeletedPhotoIds() {
+      try {
+        const raw = localStorage.getItem(DELETED_CHAT_PHOTOS_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return new Set(Array.isArray(arr) ? arr.map(String) : []);
+      } catch (_) {
+        return new Set();
+      }
+    }
+
+    function saveDeletedPhotoIds(idSet) {
+      try {
+        localStorage.setItem(DELETED_CHAT_PHOTOS_KEY, JSON.stringify(Array.from(idSet)));
+      } catch (_) {}
+    }
+
+    function readLocalExtraSettings() {
+      try {
+        const raw = localStorage.getItem(EXTRA_SETTINGS_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function saveLocalExtraSettings(cfg) {
+      try {
+        localStorage.setItem(EXTRA_SETTINGS_STORAGE_KEY, JSON.stringify(cfg));
+      } catch (_) {}
+    }
+
+    function applyExtraSettingsToUI() {
+      const cfg = { ...DEFAULT_EXTRA_SETTINGS, ...(state.extraSettings || {}) };
+      state.extraSettings = cfg;
+
+      document.getElementById("setCurrency").value = state.currency || "\u20a6";
+      document.getElementById("setFooterText").value = cfg.footerText || "";
+      document.getElementById("setReceiptFooter").value = cfg.receiptFooter || "Thank you for your patronage!";
+      document.getElementById("setShowTabShop").checked = Boolean(cfg.showTabShop);
+      document.getElementById("setShowTabRequest").checked = Boolean(cfg.showTabRequest);
+      document.getElementById("setShowTabChat").checked = Boolean(cfg.showTabChat);
+      document.getElementById("setShowTabCart").checked = Boolean(cfg.showTabCart);
+      document.getElementById("setShowDockCartBadge").checked = Boolean(cfg.showDockCartBadge);
+      document.getElementById("setShowTopCartBtn").checked = Boolean(cfg.showTopCartBtn);
+      document.getElementById("setMobileTabLabels").value = cfg.mobileTabLabels || DEFAULT_EXTRA_SETTINGS.mobileTabLabels;
+      document.getElementById("setShowWatchAd").checked = Boolean(cfg.showWatchAd);
+      document.getElementById("setShowStockOnCards").checked = Boolean(cfg.showStockOnCards);
+      document.getElementById("setHideOutOfStock").checked = Boolean(cfg.hideOutOfStock);
+      document.getElementById("setSearchPlaceholder").value = cfg.searchPlaceholder || "Search products...";
+      document.getElementById("setPaymentInstructions").value = cfg.paymentInstructions || "";
+      document.getElementById("setChatHelperSubtitle").value = cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle;
+      document.getElementById("setAutoPinMode").checked = Boolean(cfg.autoPinMode);
+      document.getElementById("setPinFieldLabel").value = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
+      document.getElementById("setOrderNotePlaceholder").value = cfg.orderNotePlaceholder || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder;
+
+      document.getElementById("navItemShopTab").classList.toggle("d-none", !cfg.showTabShop);
+      document.getElementById("navItemRequestTab").classList.toggle("d-none", !cfg.showTabRequest);
+      document.getElementById("navItemChatTab").classList.toggle("d-none", !cfg.showTabChat);
+      document.getElementById("navItemCartTab").classList.toggle("d-none", !cfg.showTabCart);
+      document.getElementById("dockCartCountBadge").classList.toggle("d-none", !cfg.showDockCartBadge);
+      document.getElementById("topCartSummaryBtn").classList.toggle("d-none", !cfg.showTopCartBtn);
+
+      const parts = String(cfg.mobileTabLabels || "").split("|").map((s) => s.trim());
+      if (parts[0]) document.getElementById("dockShortShop").textContent = parts[0];
+      if (parts[1]) document.getElementById("dockShortRequest").textContent = parts[1];
+      if (parts[2]) document.getElementById("dockShortChat").textContent = parts[2];
+      if (parts[3]) document.getElementById("dockShortCart").textContent = parts[3];
+
+      document.getElementById("shopSearchInput").placeholder = cfg.searchPlaceholder || "Search products...";
+      document.getElementById("orderNote").placeholder = cfg.orderNotePlaceholder || "Optional note...";
+      document.getElementById("chatHelperSubtitle").textContent = cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle;
+
+      const hideManualPin = Boolean(cfg.autoPinMode);
+      document.getElementById("reqPinFieldWrap").classList.toggle("d-none", hideManualPin);
+      document.getElementById("orderPinFieldWrap").classList.toggle("d-none", hideManualPin);
+      if (hideManualPin) {
+        document.getElementById("reqPin").value = "";
+        document.getElementById("orderPin").value = "";
+      } else {
+        document.getElementById("reqPinLabel").textContent = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
+        document.getElementById("orderPinLabel").textContent = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
+      }
+
+      const payText = String(cfg.paymentInstructions || "").trim();
+      const checkoutPayBox = document.getElementById("checkoutPaymentInfoAlert");
+      const chatPayBox = document.getElementById("chatPaymentInfoAlert");
+      if (payText) {
+        checkoutPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
+        chatPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
+        checkoutPayBox.classList.remove("d-none");
+        chatPayBox.classList.remove("d-none");
+      } else {
+        checkoutPayBox.classList.add("d-none");
+        chatPayBox.classList.add("d-none");
+      }
+
+      const footerWrap = document.getElementById("footerCopyrightText");
+      if (cfg.footerText && cfg.footerText.trim()) {
+        footerWrap.textContent = cfg.footerText.trim();
+      } else {
+        footerWrap.innerHTML = `&copy; <span id="footerBusinessName">${escapeHtml(state.businessName)}</span>. All rights reserved.`;
+      }
+    }
+
+    function syncLayoutChrome() {
+      const sidebarCol = document.getElementById("staffSidebarCol");
+      const mainCol = document.getElementById("mainContentCol");
+      const bottomDock = document.getElementById("customerTabs");
+      const customerSec = document.getElementById("customerSection");
+      const showSidebar = Boolean(state.isLoggedIn);
+      const isCustomerVisible = !customerSec.classList.contains("d-none");
+
+      sidebarCol.classList.toggle("d-none", !showSidebar);
+      bottomDock.classList.toggle("d-none", !isCustomerVisible);
+      customerSec.classList.toggle("has-bottom-dock", isCustomerVisible);
+
+      if (showSidebar) {
+        mainCol.className = "col-lg-9 col-xl-10 p-3 p-md-4";
+      } else {
+        mainCol.className = "col-12 p-3 p-md-4";
+      }
+    }
+
+    function showBanner(message, type = "info") {
+      if (!state.isLoggedIn && type !== "danger" && type !== "warning") {
+        return;
+      }
+      const banner = document.getElementById("appFeedbackBanner");
+      const textEl = document.getElementById("appFeedbackText");
+      banner.className = `alert alert-${type} d-flex align-items-center justify-content-between py-2 px-3 mb-3`;
+      banner.classList.remove("d-none");
+      textEl.innerHTML = `<i class="fa-solid ${type === "danger" ? "fa-triangle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info"} me-2"></i>${escapeHtml(message)}`;
+    }
+
+    async function apiRequest(url, options = {}) {
+      const headers = new Headers(options.headers || {});
+      if (state.staffToken) {
+        headers.set("X-Staff-Token", state.staffToken);
+      }
+      let response;
+      try {
+        response = await fetch(url, { ...options, headers });
+      } catch (_) {
+        throw new Error("Network issue while reaching the server. Please check your connection and try again.");
+      }
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.detail || data.message || `Request failed (${response.status})`);
+      }
+      return data;
+    }
+
+    function setButtonBusy(btn, busy, busyLabel = "Working...") {
+      if (!btn) return;
+      if (busy) {
+        if (!btn.dataset.origHtml) btn.dataset.origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i>${escapeHtml(busyLabel)}`;
+      } else {
+        btn.disabled = false;
+        if (btn.dataset.origHtml) btn.innerHTML = btn.dataset.origHtml;
+      }
+    }
+
+    async function runGuardedAction(lockKey, cooldownMs, submitBtn, busyLabel, fn) {
+      const now = Date.now();
+      const prevTime = state.lastSubmitAt.get(lockKey) || 0;
+      if (state.busyKeys.has(lockKey) || (cooldownMs > 0 && now - prevTime < cooldownMs)) {
+        return;
+      }
+      state.busyKeys.add(lockKey);
+      state.lastSubmitAt.set(lockKey, now);
+      setButtonBusy(submitBtn, true, busyLabel);
+      try {
+        await fn();
+      } finally {
+        state.busyKeys.delete(lockKey);
+        setButtonBusy(submitBtn, false);
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function decodeHtmlEntities(str) {
+      const txt = document.createElement("textarea");
+      txt.innerHTML = String(str ?? "");
+      return txt.value;
+    }
+
+    function normalizeProductClient(p) {
+      const item = p || {};
+      const priceCarton = Number(item.price_carton ?? item.price ?? 0);
+      const stockCartons = Number(item.qty_cartons ?? item.stock ?? 0);
+      return {
+        ...item,
+        id: String(item.id ?? ""),
+        name: String(item.name ?? "Unnamed Product"),
+        category: String(item.category ?? "General"),
+        unit_main_label: String(item.unit_main_label ?? "Carton"),
+        unit_pack_label: String(item.unit_pack_label ?? "Pack"),
+        unit_retail_label: String(item.unit_retail_label ?? "Retail Unit"),
+        price_carton: priceCarton,
+        price: priceCarton,
+        qty_cartons: stockCartons,
+        stock: stockCartons,
+        cost: Number(item.cost ?? 0),
+        price_pack: Number(item.price_pack ?? 0),
+        price_retail: Number(item.price_retail ?? priceCarton),
+        packs_per_carton: Math.max(1, Number(item.packs_per_carton ?? 1)),
+        units_per_pack: Math.max(1, Number(item.units_per_pack ?? 1)),
+        image_url: String(item.image_url ?? item.img_data ?? ""),
+        video_url: String(item.video_url ?? ""),
+        description: String(item.description ?? ""),
+        shelf: String(item.shelf ?? ""),
+        expiry: String(item.expiry ?? ""),
+      };
+    }
+
+    function normalizeOrderClient(o) {
+      const item = o || {};
+      const phone = String(item.contact_phone ?? item.phone ?? "").trim();
+      const customer = String(item.customer ?? item.customer_name ?? "Customer").trim();
+      const items = Array.isArray(item.items) ? item.items : [];
+      const specialItems = Array.isArray(item.special_items) ? item.special_items : [];
+      return {
+        ...item,
+        id: String(item.id ?? ""),
+        customer,
+        customer_name: customer,
+        contact_phone: phone,
+        phone,
+        notes: String(item.notes ?? "").trim(),
+        items,
+        special_items: specialItems,
+        order_type: String(item.order_type ?? (specialItems.length ? "Multi-Item Request" : "Cart Order")),
+        payment_ref: String(item.payment_ref ?? "").trim(),
+        status: String(item.status ?? "Pending").trim(),
+        timestamp: String(item.timestamp ?? "").trim(),
+      };
+    }
+
+    function normalizeMessageClient(m) {
+      const item = m || {};
+      const phone = String(item.customer_phone ?? item.phone ?? "").trim();
+      const body = String(item.message ?? item.text ?? "").trim();
+      const msgId = String(item.id ?? "");
+      const rawProof = String(item.proof_url ?? "").trim();
+      const isPhotoCleared = state.deletedPhotoIds.has(msgId);
+      return {
+        ...item,
+        id: msgId,
+        sender: String(item.sender ?? "Customer").trim(),
+        customer_phone: phone,
+        phone,
+        message: body,
+        text: body,
+        proof_url: isPhotoCleared ? "" : rawProof,
+        photo_cleared: isPhotoCleared || !rawProof,
+        timestamp: String(item.timestamp ?? "").trim(),
+      };
+    }
+
+    function formatWhatsAppPhone(rawPhone) {
+      const digits = String(rawPhone || "").replace(/\D/g, "");
+      if (!digits) return "";
+      if (digits.startsWith("234") && digits.length >= 13) {
+        return digits;
+      }
+      if (digits.startsWith("0") && digits.length === 11) {
+        return "234" + digits.slice(1);
+      }
+      return digits;
+    }
+
+    function buildWhatsAppReceiptMessage({ title, ref, customer, phone, timestamp, lines, total }) {
+      const footerText = state.extraSettings.receiptFooter || "Thank you for your patronage!";
+      const rows = [
+        `*${state.businessName}*`,
+        `*${title || "RECEIPT"}*`,
+        "------------------------------",
+        `Customer: ${customer || "Customer"}`,
+        phone ? `Phone: ${phone}` : "",
+        ref ? `Ref: ${ref}` : "",
+        timestamp ? `Date: ${timestamp}` : "",
+        ...(lines || []),
+        total ? `*Total: ${total}*` : "",
+        "------------------------------",
+        footerText,
+      ].filter(Boolean);
+      return rows.join("\n");
+    }
+
+    function sendReceiptToCustomerWhatsApp({ phone, receiptMessage }) {
+      const cleanPhone = String(phone || "").trim();
+      const waDigits = formatWhatsAppPhone(cleanPhone);
+      if (!cleanPhone || cleanPhone.toUpperCase() === "N/A" || !waDigits) {
+        throw new Error("Enter a valid customer WhatsApp number before sending a receipt to WhatsApp.");
+      }
+      const waUrl = `https://wa.me/${encodeURIComponent(waDigits)}?text=${encodeURIComponent(receiptMessage)}`;
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+    }
+
+    function openThermalReceipt({ title = "RECEIPT", ref = "", customer = "Customer", phone = "", timestamp = "", lines = [], total = "", allowWhatsAppSend = true }) {
+      const linesHtml = lines.map((l) => `<div>${escapeHtml(l)}</div>`).join("");
+      const receiptFooterText = state.extraSettings.receiptFooter || "Thank you for your patronage!";
+      const cleanPhone = String(phone || "").trim();
+      const waDigits = formatWhatsAppPhone(cleanPhone);
+      const canSendWhatsApp = Boolean(allowWhatsAppSend && cleanPhone && cleanPhone.toUpperCase() !== "N/A" && waDigits);
+
+      state.pendingWhatsAppReceipt = canSendWhatsApp
+        ? {
+            phone: cleanPhone,
+            receiptMessage: buildWhatsAppReceiptMessage({ title, ref, customer, phone: cleanPhone, timestamp, lines, total }),
+          }
+        : null;
+
+      const waBtn = document.getElementById("modalSendReceiptWhatsAppBtn");
+      waBtn.classList.toggle("d-none", !canSendWhatsApp);
+
+      document.getElementById("thermalReceiptBody").innerHTML = `
+        <div class="thermal-paper">
+          <div class="text-center fw-bold">${escapeHtml(state.businessName)}</div>
+          <div class="text-center small">${escapeHtml(title)}</div>
+          <hr class="my-2" />
+          <div><strong>Customer:</strong> ${escapeHtml(customer)}</div>
+          <div><strong>Phone:</strong> ${escapeHtml(cleanPhone || "N/A")}</div>
+          ${ref ? `<div><strong>Ref:</strong> ${escapeHtml(ref)}</div>` : ""}
+          ${timestamp ? `<div><strong>Date:</strong> ${escapeHtml(timestamp)}</div>` : ""}
+          <hr class="my-2" />
+          ${linesHtml}
+          <hr class="my-2" />
+          ${total ? `<div class="fw-bold">TOTAL: ${escapeHtml(total)}</div>` : ""}
+          <div class="text-center small mt-2">${escapeHtml(receiptFooterText)}</div>
+        </div>
+      `;
+      thermalReceiptModal.show();
+    }
+
+    async function deleteSingleChatPhoto(msgId) {
+      const cleanId = String(msgId || "").trim();
+      if (!cleanId) return;
+      state.deletedPhotoIds.add(cleanId);
+      saveDeletedPhotoIds(state.deletedPhotoIds);
+
+      try {
+        await apiRequest(`/api/messages/${encodeURIComponent(cleanId)}/photo`, { method: "DELETE" });
+      } catch (_) {
+        try {
+          await apiRequest(`/api/messages/${encodeURIComponent(cleanId)}/delete-photo`, { method: "POST" });
+        } catch (_) {}
+      }
+
+      await loadStaffChatMessages();
+      if (state.customerAuth.unlocked) {
+        await loadCustomerPrivateChat();
+      }
+      showBanner("Chat photo removed to save storage.", "success");
+    }
+
+    async function deleteAllChatPhotos() {
+      const photoMsgs = (state.staffMessagesFeed || []).filter(
+        (m) => m.id && m.proof_url && String(m.proof_url).startsWith("http")
+      );
+      if (!photoMsgs.length) {
+        showBanner("No active chat photos found to delete.", "info");
+        return;
+      }
+
+      for (const m of photoMsgs) {
+        state.deletedPhotoIds.add(String(m.id));
+      }
+      saveDeletedPhotoIds(state.deletedPhotoIds);
+
+      try {
+        await apiRequest("/api/messages/photos", { method: "DELETE" });
+      } catch (_) {
+        for (const m of photoMsgs) {
+          try {
+            await apiRequest(`/api/messages/${encodeURIComponent(m.id)}/photo`, { method: "DELETE" });
+          } catch (_) {}
         }
-        db.collection("debtors").document(uuid.uuid4().hex).set(debt_doc)
+      }
 
-    sale_doc = {
-        "product_id": product_id,
-        "item_name": item_name,
-        "unit_type": unit_type,
-        "qty": qty,
-        "unit_price": unit_price,
-        "total": total,
-        "customer_name": customer_name,
-        "customer_phone": customer_phone,
-        "payment_source": payment_source,
-        "worker": worker,
-        "record_debt": record_debt,
-        "payment_ref": payment_ref,
-        "timestamp": ts,
+      await loadStaffChatMessages();
+      if (state.customerAuth.unlocked) {
+        await loadCustomerPrivateChat();
+      }
+      showBanner(`Removed ${photoMsgs.length} chat photo(s) to free up storage.`, "success");
     }
-    db.collection("sales").document(uuid.uuid4().hex).set(sale_doc)
 
-    return {"ok": True, "receipt": sale_doc}
-
-
-@app.post("/api/debtors")
-async def add_debtor(request: Request):
-    payload = await request.json()
-    doc = {
-        "customer": str(payload.get("customer") or "").strip(),
-        "phone": str(payload.get("phone") or "").strip(),
-        "amount": float(payload.get("amount") or 0.0),
-        "items_bought": str(payload.get("items_bought") or "").strip(),
-        "timestamp": now_str(),
+    function hasValidVideoUrl(videoUrl) {
+      const clean = String(videoUrl ?? "").trim();
+      return Boolean(clean && !["none", "nan", "null"].includes(clean.toLowerCase()));
     }
-    if not doc["customer"] or not doc["phone"]:
-        raise HTTPException(status_code=400, detail="Customer name and phone are required")
-    doc_id = uuid.uuid4().hex
-    db.collection("debtors").document(doc_id).set(doc)
-    return {"ok": True, "id": doc_id}
 
-
-@app.post("/api/expenses")
-async def add_expense(request: Request):
-    payload = await request.json()
-    doc = {
-        "category": str(payload.get("category") or "Operations").strip(),
-        "amount": float(payload.get("amount") or 0.0),
-        "note": str(payload.get("note") or "").strip(),
-        "timestamp": now_str(),
+    function getYouTubeEmbedUrl(url) {
+      const raw = String(url ?? "").trim();
+      const watchMatch = raw.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{6,})/);
+      if (watchMatch && watchMatch[1]) {
+        return `https://www.youtube.com/embed/${watchMatch[1]}`;
+      }
+      return null;
     }
-    doc_id = uuid.uuid4().hex
-    db.collection("expenses").document(doc_id).set(doc)
-    return {"ok": True, "id": doc_id}
 
-
-@app.post("/api/workers")
-async def add_worker(request: Request):
-    payload = await request.json()
-    name = str(payload.get("name") or "").strip()
-    if not name:
-        raise HTTPException(status_code=400, detail="Worker name is required")
-    username = str(payload.get("username") or name.lower().replace(" ", "")).strip()
-    doc = {
-        "name": name,
-        "role": str(payload.get("role") or "Staff").strip(),
-        "username": username,
-        "password": str(payload.get("password") or ""),
-        "timestamp": now_str(),
+    function openProductAd(prod) {
+      const cleanUrl = String(prod.video_url ?? "").trim();
+      document.getElementById("productAdModalLabel").textContent = `${prod.name || "Product"} \u2014 Advert`;
+      const ytEmbed = getYouTubeEmbedUrl(cleanUrl);
+      document.getElementById("productAdModalBody").innerHTML = ytEmbed
+        ? `
+          <div class="ratio ratio-16x9">
+            <iframe src="${escapeHtml(ytEmbed)}" title="${escapeHtml(prod.name || "Product Ad")}" allowfullscreen></iframe>
+          </div>
+        `
+        : `
+          <video class="product-ad-player" controls autoplay preload="metadata" playsinline>
+            <source src="${escapeHtml(cleanUrl)}" />
+            Your browser does not support video playback.
+          </video>
+        `;
+      productAdModal.show();
     }
-    doc_id = uuid.uuid4().hex
-    db.collection("workers").document(doc_id).set(doc)
-    return {"ok": True, "id": doc_id}
 
+    function renderBroadcastVideo(videoUrl) {
+      const card = document.getElementById("customerBroadcastCard");
+      const wrap = document.getElementById("customerBroadcastPlayerWrap");
+      const cleanUrl = String(videoUrl ?? "").trim();
 
-@app.get("/api/settings")
-def get_settings():
-    snap = db.collection("settings").document("business").get()
-    settings = snap.to_dict() if snap.exists else {}
-    return {"settings": settings or {"business_name": "Sammyreks Business Center", "currency": "₦"}}
+      if (!hasValidVideoUrl(cleanUrl)) {
+        card.classList.add("d-none");
+        wrap.innerHTML = "";
+        return;
+      }
 
-
-@app.post("/api/settings")
-async def save_settings(
-    business_name: str = Form("Sammyreks Business Center"),
-    tagline: str = Form(""),
-    active_notice: str = Form(""),
-    broadcast_video_url: str = Form(""),
-    currency: str = Form("₦"),
-    broadcast_video_file: Optional[UploadFile] = File(None),
-):
-    ref = db.collection("settings").document("business")
-    existing = ref.get().to_dict() if ref.get().exists else {}
-
-    uploaded_video = upload_to_cloudinary(broadcast_video_file, folder="sammyreks_videos", resource_type="video")
-    final_video = (
-        uploaded_video
-        or broadcast_video_url.strip()
-        or existing.get("broadcast_video_url")
-        or ""
-    )
-
-    doc = {
-        "business_name": business_name.strip() or "Sammyreks Business Center",
-        "tagline": tagline.strip(),
-        "active_notice": active_notice.strip(),
-        "broadcast_video_url": final_video,
-        "currency": currency.strip() or "₦",
-        "updated_at": now_str(),
+      const ytEmbed = getYouTubeEmbedUrl(cleanUrl);
+      if (ytEmbed) {
+        wrap.innerHTML = `
+          <div class="ratio ratio-16x9" style="max-width:640px;">
+            <iframe src="${escapeHtml(ytEmbed)}" title="Broadcast Video" allowfullscreen></iframe>
+          </div>
+        `;
+      } else {
+        wrap.innerHTML = `
+          <video class="broadcast-player" controls preload="metadata" playsinline>
+            <source src="${escapeHtml(cleanUrl)}" />
+            Your browser does not support video playback.
+          </video>
+        `;
+      }
+      card.classList.remove("d-none");
     }
-    ref.set(doc, merge=True)
-    return {"ok": True, "settings": doc}
 
+    function getPriceForUnit(prod, unitName) {
+      const mLbl = prod.unit_main_label || "Carton";
+      const pLbl = prod.unit_pack_label || "Pack";
+      if (unitName === mLbl) return Number(prod.price_carton ?? prod.price ?? 0);
+      if (unitName === pLbl) return Number(prod.price_pack ?? 0);
+      return Number(prod.price_retail ?? prod.price_carton ?? prod.price ?? 0);
+    }
 
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    if isinstance(exc, HTTPException):
-        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-    return JSONResponse(status_code=500, content={"detail": str(exc)})
+    function updateCartSummary() {
+      const count = state.cart.reduce((sum, item) => sum + Number(item.qty || 1), 0);
+      const total = state.cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
+      document.getElementById("cartCountBadge").textContent = count;
+      document.getElementById("dockCartCountBadge").textContent = count;
+      document.getElementById("cartTotalBadge").textContent = `${state.currency}${total.toFixed(2)}`;
+
+      const container = document.getElementById("cartItemsContainer");
+      if (!state.cart.length) {
+        container.innerHTML = `<p class="text-muted">Your cart is empty.</p>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <ul class="list-group">
+          ${state.cart.map((item, idx) => `
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <div>
+                <strong>${escapeHtml(item.name)}</strong> <span class="badge bg-light text-dark border">${escapeHtml(item.unit || "Unit")}</span>
+                <div class="small text-muted">${state.currency}${Number(item.price).toFixed(2)} &times; ${item.qty}</div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-cart-item" data-index="${idx}">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </li>
+          `).join("")}
+        </ul>
+        <div class="mt-2 fw-bold">Total: ${state.currency}${total.toFixed(2)}</div>
+      `;
+    }
+
+    function toggleUpdateMode() {
+      const isUpdate = document.getElementById("actionUpdateExisting").checked;
+      document.getElementById("existingProductSelectorWrap").classList.toggle("d-none", !isUpdate);
+    }
+
+    document.getElementById("actionAddNew").addEventListener("change", toggleUpdateMode);
+    document.getElementById("actionUpdateExisting").addEventListener("change", toggleUpdateMode);
+
+    document.getElementById("existingProductSelect").addEventListener("change", (e) => {
+      const prod = state.products.find((p) => String(p.id) === String(e.target.value));
+      if (!prod) return;
+      document.getElementById("prodName").value = prod.name || "";
+      document.getElementById("prodCategory").value = prod.category || "General";
+      document.getElementById("prodMainUnit").value = prod.unit_main_label || "Carton";
+      document.getElementById("prodSubUnit").value = prod.unit_pack_label || "Pack";
+      document.getElementById("prodRetailUnit").value = prod.unit_retail_label || "Retail Unit";
+      document.getElementById("prodPriceCarton").value = Number(prod.price_carton ?? prod.price ?? 0).toFixed(2);
+      document.getElementById("prodStockCartons").value = Number(prod.qty_cartons ?? prod.stock ?? 0).toFixed(2);
+      document.getElementById("prodCostCarton").value = Number(prod.cost ?? 0).toFixed(2);
+      document.getElementById("prodPricePack").value = Number(prod.price_pack ?? 0).toFixed(2);
+      document.getElementById("prodPacksPerCarton").value = prod.packs_per_carton ?? 1;
+      document.getElementById("prodShelfLocation").value = prod.shelf || "";
+      document.getElementById("prodPriceRetail").value = Number(prod.price_retail ?? 0).toFixed(2);
+      document.getElementById("prodRetailPerPack").value = prod.units_per_pack ?? 1;
+      document.getElementById("prodExpiryDate").value = prod.expiry || "";
+      document.getElementById("prodVideoLink").value = prod.video_url || "";
+      document.getElementById("prodDescription").value = prod.description || "";
+    });
+
+    function syncPosUnitOptions() {
+      const prod = state.products.find((p) => String(p.id) === String(document.getElementById("posProductSelect").value));
+      const unitSel = document.getElementById("posUnitSelect");
+      if (!prod) {
+        unitSel.innerHTML = `<option value="Carton">Carton</option>`;
+        updatePosTotalPreview();
+        return;
+      }
+      const units = [prod.unit_main_label || "Carton", prod.unit_pack_label || "Pack", prod.unit_retail_label || "Retail Unit"];
+      unitSel.innerHTML = units.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
+      updatePosTotalPreview();
+    }
+
+    function updatePosTotalPreview() {
+      const prod = state.products.find((p) => String(p.id) === String(document.getElementById("posProductSelect").value));
+      const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
+      const unit = document.getElementById("posUnitSelect").value;
+      const unitPrice = prod ? getPriceForUnit(prod, unit) : 0;
+      document.getElementById("posTotalPreview").textContent = `${state.currency}${(unitPrice * qty).toFixed(2)}`;
+    }
+
+    document.getElementById("posProductSelect").addEventListener("change", syncPosUnitOptions);
+    document.getElementById("posUnitSelect").addEventListener("change", updatePosTotalPreview);
+    document.getElementById("posQty").addEventListener("input", updatePosTotalPreview);
+
+    function renderProducts() {
+      const grid = document.getElementById("productsGrid");
+      const tbody = document.getElementById("adminProductsTableBody");
+      const posSelect = document.getElementById("posProductSelect");
+      const existingSelect = document.getElementById("existingProductSelect");
+      const catSelect = document.getElementById("shopCategorySelect");
+      const cfg = state.extraSettings;
+
+      const prevCat = catSelect.value;
+      const cats = ["All Categories", ...Array.from(new Set(state.products.map((p) => p.category || "General"))).sort()];
+      catSelect.innerHTML = cats.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+      if (cats.includes(prevCat)) catSelect.value = prevCat;
+
+      const queryText = document.getElementById("shopSearchInput").value.trim().toLowerCase();
+      const filtered = state.products.filter((p) => {
+        const okCat = catSelect.value === "All Categories" || (p.category || "General") === catSelect.value;
+        const okSearch = !queryText || String(p.name || "").toLowerCase().includes(queryText);
+        const okStock = !cfg.hideOutOfStock || Number(p.qty_cartons ?? p.stock ?? 0) > 0;
+        return okCat && okSearch && okStock;
+      });
+
+      if (!filtered.length) {
+        grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products match your selection right now.</div></div>`;
+      } else {
+        grid.innerHTML = filtered.map((p) => {
+          const imgSrc = p.image_url || "";
+          const mLbl = p.unit_main_label || "Carton";
+          const pLbl = p.unit_pack_label || "Pack";
+          const rLbl = p.unit_retail_label || "Retail Unit";
+          const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
+          const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+          const hasAd = cfg.showWatchAd && hasValidVideoUrl(p.video_url);
+          const imgHtml = imgSrc
+            ? `<div class="product-img-wrap"><img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(p.name)}" loading="lazy" /></div>`
+            : `<div class="product-img-wrap text-muted"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
+
+          const metaLine = cfg.showStockOnCards
+            ? `Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}`
+            : `${escapeHtml(p.category || "General")}`;
+
+          return `
+            <div class="col-6 col-md-4 col-lg-3">
+              <div class="card h-100 shadow-sm product-card">
+                ${imgHtml}
+                <div class="card-body d-flex flex-column">
+                  <h6 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h6>
+                  <div class="text-primary fw-semibold mb-1">${state.currency}${displayPrice.toFixed(2)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
+                  <div class="small text-muted mb-2">${metaLine}</div>
+                  <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
+                  ${hasAd ? `
+                    <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" data-action="watch-ad" data-id="${escapeHtml(p.id)}">
+                      <i class="fa-solid fa-play me-1"></i>Watch Ad
+                    </button>
+                  ` : ""}
+                  <div class="row g-1 mb-2">
+                    <div class="col-7">
+                      <select class="form-select form-select-sm card-unit-sel">
+                        <option value="${escapeHtml(rLbl)}">${escapeHtml(rLbl)} (${state.currency}${Number(p.price_retail ?? displayPrice).toFixed(2)})</option>
+                        <option value="${escapeHtml(pLbl)}">${escapeHtml(pLbl)} (${state.currency}${Number(p.price_pack ?? displayPrice).toFixed(2)})</option>
+                        <option value="${escapeHtml(mLbl)}">${escapeHtml(mLbl)} (${state.currency}${Number(p.price_carton ?? displayPrice).toFixed(2)})</option>
+                      </select>
+                    </div>
+                    <div class="col-5">
+                      <input type="number" min="1" value="1" class="form-control form-control-sm card-qty-inp" />
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-primary btn-sm w-100" data-action="add-to-cart" data-id="${escapeHtml(p.id)}">
+                    <i class="fa-solid fa-cart-plus me-1"></i>Add to Cart
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join("");
+      }
+
+      if (!state.products.length) {
+        tbody.innerHTML = `<tr><td colspan="12" class="text-muted">No inventory items yet.</td></tr>`;
+        posSelect.innerHTML = `<option value="">No products available</option>`;
+        existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>`;
+        syncPosUnitOptions();
+        return;
+      }
+
+      tbody.innerHTML = state.products.map((p) => {
+        const pCarton = Number(p.price_carton ?? p.price ?? 0);
+        const stockCartons = Number(p.qty_cartons ?? p.stock ?? 0);
+        const cCarton = Number(p.cost ?? 0);
+        const pPack = Number(p.price_pack ?? 0);
+        const pRetail = Number(p.price_retail ?? 0);
+        const packsCount = Number(p.packs_per_carton ?? 1);
+        const retailCount = Number(p.units_per_pack ?? 1);
+
+        return `
+          <tr>
+            <td class="fw-semibold">${escapeHtml(p.name)}</td>
+            <td>${escapeHtml(p.category || "General")}</td>
+            <td>${state.currency}${pCarton.toFixed(2)}</td>
+            <td>${stockCartons.toFixed(2)}</td>
+            <td>${state.currency}${cCarton.toFixed(2)}</td>
+            <td>${state.currency}${pPack.toFixed(2)}</td>
+            <td>${state.currency}${pRetail.toFixed(2)}</td>
+            <td>${packsCount}</td>
+            <td>${retailCount}</td>
+            <td>${escapeHtml(p.shelf || "-")}</td>
+            <td>${escapeHtml(p.expiry || "-")}</td>
+            <td>
+              <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      const prevPos = posSelect.value;
+      posSelect.innerHTML = state.products.map((p) => {
+        const priceVal = Number(p.price_carton ?? p.price ?? 0);
+        const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+        return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${state.currency}${priceVal.toFixed(2)} &bull; Stock: ${stockVal.toFixed(2)})</option>`;
+      }).join("");
+      if (prevPos) posSelect.value = prevPos;
+
+      const prevExisting = existingSelect.value;
+      existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>` + state.products.map((p) =>
+        `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${escapeHtml(p.category || "General")})</option>`
+      ).join("");
+      if (prevExisting) existingSelect.value = prevExisting;
+
+      syncPosUnitOptions();
+    }
+
+    document.getElementById("shopCategorySelect").addEventListener("change", renderProducts);
+    document.getElementById("shopSearchInput").addEventListener("input", renderProducts);
+
+    async function loadProducts() {
+      try {
+        const res = await apiRequest("/api/products");
+        const rawList = res.products || res.data || [];
+        state.products = rawList.map(normalizeProductClient);
+        renderProducts();
+      } catch (err) {
+        showBanner(`Could not load products: ${err.message}`, "danger");
+      }
+    }
+
+    async function loadSettings() {
+      const localExtra = readLocalExtraSettings();
+      state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS, ...localExtra };
+      try {
+        const res = await apiRequest("/api/settings");
+        const s = res.settings || res.data || {};
+        if (s.business_name) {
+          state.businessName = s.business_name;
+          document.title = s.business_name;
+          document.getElementById("businessTitleDisplay").textContent = s.business_name;
+          document.getElementById("sidebarBusinessName").textContent = s.business_name;
+          document.getElementById("setBusinessName").value = s.business_name;
+        }
+        if (s.tagline) {
+          document.getElementById("businessTaglineDisplay").textContent = s.tagline;
+          document.getElementById("setTagline").value = s.tagline;
+        }
+        if (s.currency) state.currency = s.currency;
+        document.getElementById("setNotice").value = s.active_notice || "";
+        document.getElementById("setBroadcastVideo").value = s.broadcast_video_url || "";
+
+        if (s.extra_settings) {
+          const parsedExtra = typeof s.extra_settings === "string"
+            ? JSON.parse(s.extra_settings || "{}")
+            : s.extra_settings;
+          if (parsedExtra && typeof parsedExtra === "object") {
+            state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS, ...localExtra, ...parsedExtra };
+            saveLocalExtraSettings(state.extraSettings);
+          }
+        }
+
+        const noticeEl = document.getElementById("customerNoticeAlert");
+        if (s.active_notice && s.active_notice.trim()) {
+          noticeEl.textContent = s.active_notice.trim();
+          noticeEl.classList.remove("d-none");
+        } else {
+          noticeEl.classList.add("d-none");
+        }
+
+        renderBroadcastVideo(s.broadcast_video_url || "");
+      } catch (_) {}
+
+      applyExtraSettingsToUI();
+      renderProducts();
+      updateCartSummary();
+    }
+
+    function renderChatList(container, msgs, emptyText, { allowPhotoDelete = false } = {}) {
+      if (!msgs.length) {
+        container.innerHTML = `<div class="text-muted small">${escapeHtml(emptyText)}</div>`;
+        return;
+      }
+
+      container.innerHTML = msgs.map((rawMsg) => {
+        const m = normalizeMessageClient(rawMsg);
+        const hasPhoto = Boolean(m.proof_url && String(m.proof_url).startsWith("http"));
+        const proofImg = hasPhoto
+          ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
+          : (m.photo_cleared && rawMsg.proof_url
+              ? `<div class="mt-1 small fst-italic text-muted"><i class="fa-solid fa-image-slash me-1"></i>Photo removed to free storage</div>`
+              : "");
+        const deletePhotoBtn = allowPhotoDelete && hasPhoto && m.id
+          ? `<button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 ms-1" data-action="delete-chat-photo" data-msg-id="${escapeHtml(m.id)}" title="Delete this photo"><i class="fa-solid fa-trash-can me-1"></i>Delete Photo</button>`
+          : "";
+
+        const rawText = m.message || m.text || "";
+        const decodedText = decodeHtmlEntities(rawText).trim();
+        const isSystemReceipt =
+          m.sender === "System" &&
+          (decodedText.startsWith("<") || rawText.trim().startsWith("<"));
+        const bodyHtml = isSystemReceipt ? decodedText : escapeHtml(rawText);
+
+        return `
+          <div class="border-bottom pb-2 mb-2">
+            <div class="d-flex justify-content-between align-items-center small gap-2">
+              <strong>${escapeHtml(m.sender || "Customer")}</strong>
+              <div class="d-flex align-items-center gap-1">
+                <span class="text-muted">${escapeHtml(m.customer_phone || m.phone || "")} &bull; ${escapeHtml(m.timestamp || "")}</span>
+                ${deletePhotoBtn}
+              </div>
+            </div>
+            <div>${bodyHtml}</div>
+            ${proofImg}
+          </div>
+        `;
+      }).join("");
+    }
+
+    function lockCustomerChatView() {
+      state.customerAuth = { unlocked: false, phone: "", pin: "" };
+      document.getElementById("chatSendForm").classList.add("d-none");
+      document.getElementById("lockChatBtn").classList.add("d-none");
+      document.getElementById("customerCredentialNotice").classList.add("d-none");
+      document.getElementById("chatMessagesBox").innerHTML = `
+        <div class="text-muted small py-3 text-center">
+          <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
+          Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.
+        </div>
+      `;
+    }
+
+    async function loadCustomerPrivateChat() {
+      const phone = (state.customerAuth.phone || document.getElementById("chatPhoneFilter").value).trim();
+      const pin = (state.customerAuth.pin || document.getElementById("chatPinFilter").value).trim();
+      const box = document.getElementById("chatMessagesBox");
+
+      if (!phone || !pin) {
+        lockCustomerChatView();
+        return;
+      }
+
+      try {
+        const query = `?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`;
+        const res = await apiRequest(`/api/messages${query}`);
+        const msgs = (res.messages || res.data || []).map(normalizeMessageClient);
+
+        state.customerAuth = { unlocked: true, phone, pin };
+        document.getElementById("chatSendForm").classList.remove("d-none");
+        document.getElementById("lockChatBtn").classList.remove("d-none");
+
+        renderChatList(box, msgs, `No messages or receipts found for ${phone}.`, { allowPhotoDelete: false });
+      } catch (err) {
+        lockCustomerChatView();
+        showBanner(err.message, "danger");
+      }
+    }
+
+    async function loadStaffOrders() {
+      const box = document.getElementById("staffOrdersBox");
+      try {
+        const res = await apiRequest("/api/orders");
+        const rawOrders = (res.orders || res.data || []).map(normalizeOrderClient);
+
+        const seenKeys = new Set();
+        const orders = rawOrders.filter((o) => {
+          const key = `${o.payment_ref || ""}|${o.timestamp || ""}|${o.contact_phone || o.phone || ""}`;
+          if (o.payment_ref && seenKeys.has(key)) return false;
+          seenKeys.add(key);
+          return true;
+        });
+
+        state.ordersFeed = orders;
+
+        if (!orders.length) {
+          box.innerHTML = `<div class="text-muted small p-2">No cart orders or multi-item requests yet.</div>`;
+          return;
+        }
+
+        box.innerHTML = orders.map((o, idx) => {
+          const phoneVal = o.contact_phone || o.phone || "";
+          const customerVal = o.customer || o.customer_name || "Customer";
+          const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
+          const badgeLabel = o.order_type || (hasSpecial ? "Multi-Item Request" : "Cart Order");
+          const badgeClass = hasSpecial ? "bg-info text-dark" : "bg-primary";
+          const isVerified = String(o.status || "").toLowerCase() === "verified";
+
+          let detailsHtml = "";
+          if (hasSpecial) {
+            detailsHtml = o.special_items
+              .map((sp) => `<div class="small">${escapeHtml(sp.item || sp.name || "")}</div>`)
+              .join("");
+          } else if (Array.isArray(o.items) && o.items.length > 0) {
+            const totalVal = o.items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
+            detailsHtml = o.items
+              .map((it) => `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) &times; ${escapeHtml(it.qty || 1)} &mdash; ${state.currency}${Number(it.total_price || 0).toFixed(2)}</div>`)
+              .join("") + `<div class="small fw-bold mt-1">Total: ${state.currency}${totalVal.toFixed(2)}</div>`;
+          }
+
+          const hasStructuredItems = hasSpecial || (Array.isArray(o.items) && o.items.length > 0);
+          const noteHtml = o.notes
+            ? `<div class="${hasStructuredItems ? "small text-secondary mt-1" : "small"}">${hasStructuredItems ? "Note: " : ""}${escapeHtml(o.notes)}</div>`
+            : "";
+
+          return `
+            <div class="border rounded p-2 mb-2 bg-light order-entry" data-action="select-order-phone" data-phone="${escapeHtml(phoneVal)}">
+              <div class="d-flex justify-content-between align-items-center small mb-1 gap-1">
+                <strong>${escapeHtml(customerVal)} (${escapeHtml(phoneVal)})</strong>
+                <div class="d-flex gap-1">
+                  ${isVerified ? `<span class="badge bg-success">Verified</span>` : `<span class="badge bg-warning text-dark">Pending</span>`}
+                  <span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
+                </div>
+              </div>
+              <div class="small text-muted mb-1">${escapeHtml(o.timestamp || "")}${o.payment_ref ? ` &bull; Ref: ${escapeHtml(o.payment_ref)}` : ""}</div>
+              ${detailsHtml}
+              ${noteHtml}
+              <div class="mt-2 d-flex flex-wrap gap-1">
+                <button type="button" class="btn btn-outline-dark btn-sm" data-action="open-order-receipt" data-order-index="${idx}">
+                  <i class="fa-solid fa-print me-1"></i>Receipt
+                </button>
+                <button type="button" class="btn btn-outline-success btn-sm" data-action="send-order-receipt-whatsapp" data-order-index="${idx}" data-phone="${escapeHtml(phoneVal)}">
+                  <i class="fa-brands fa-whatsapp me-1"></i>Send to WhatsApp
+                </button>
+                <button type="button" class="btn btn-success btn-sm" data-action="verify-send-receipt" data-order-id="${escapeHtml(o.id)}" data-phone="${escapeHtml(phoneVal)}">
+                  <i class="fa-solid fa-check-double me-1"></i>Verify &amp; Send
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-order" data-order-id="${escapeHtml(o.id)}">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        }).join("");
+      } catch (err) {
+        box.innerHTML = `<div class="text-danger small p-2">Failed to load orders: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    async function loadStaffChatMessages() {
+      const phone = document.getElementById("staffChatPhoneFilter").value.trim();
+      const box = document.getElementById("staffChatMessagesBox");
+      try {
+        const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
+        const res = await apiRequest(`/api/messages${query}`);
+        const msgs = (res.messages || res.data || []).map(normalizeMessageClient);
+        state.staffMessagesFeed = msgs;
+        renderChatList(box, msgs, "No chat messages or receipts found.", { allowPhotoDelete: true });
+      } catch (err) {
+        box.innerHTML = `<div class="text-danger small">Failed to load chat: ${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    function openStaffPortalLogin() {
+      document.getElementById("staffSidebarCol").classList.remove("d-none");
+      document.getElementById("mainContentCol").className = "col-lg-9 col-xl-10 p-3 p-md-4";
+      document.getElementById("loginUsername").focus();
+      showBanner("Enter your staff or admin credentials on the left to sign in.", "info");
+    }
+
+    function switchSection(sectionId) {
+      if (sectionId === "staffSection" && !state.isLoggedIn) {
+        openStaffPortalLogin();
+        return;
+      }
+      document.getElementById("customerSection").classList.toggle("d-none", sectionId !== "customerSection");
+      document.getElementById("staffSection").classList.toggle("d-none", sectionId !== "staffSection");
+      document.querySelectorAll(".nav-pill-btn").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.section === sectionId);
+      });
+      syncLayoutChrome();
+    }
+
+    function switchCustomerTab(tabId) {
+      document.querySelectorAll(".customer-tab-pane").forEach((pane) => {
+        pane.classList.toggle("d-none", pane.id !== tabId);
+      });
+      document.querySelectorAll("#customerTabs .nav-link").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.tab === tabId);
+      });
+      if (tabId === "chatTab") {
+        if (state.customerAuth.unlocked) {
+          loadCustomerPrivateChat();
+        } else {
+          lockCustomerChatView();
+        }
+      }
+    }
+
+    function switchStaffTab(tabId) {
+      document.querySelectorAll(".staff-tab-pane").forEach((pane) => {
+        pane.classList.toggle("d-none", pane.id !== tabId);
+      });
+      document.querySelectorAll("#staffTabs .nav-link").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.tab === tabId);
+      });
+      if (tabId === "staffOrdersChatTab") {
+        loadStaffOrders();
+        loadStaffChatMessages();
+      }
+    }
+
+    function buildOrderReceiptPayload(o) {
+      const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
+      let lines = [];
+      let totalStr = "";
+      if (hasSpecial) {
+        lines = o.special_items.map((sp) => `${sp.item || sp.name || "Requested Item"}`);
+      } else if (Array.isArray(o.items) && o.items.length > 0) {
+        lines = o.items.map((it) => `${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${state.currency}${Number(it.total_price || 0).toFixed(2)}`);
+        const sum = o.items.reduce((acc, it) => acc + Number(it.total_price || 0), 0);
+        totalStr = `${state.currency}${sum.toFixed(2)}`;
+      } else if (o.notes) {
+        lines = [o.notes];
+      } else {
+        lines = ["Customer Order"];
+      }
+      if (o.notes && hasSpecial) lines.push(`Note: ${o.notes}`);
+      if (o.notes && Array.isArray(o.items) && o.items.length > 0) lines.push(`Note: ${o.notes}`);
+      return {
+        title: hasSpecial ? "MULTI-ITEM REQUEST RECEIPT" : "CUSTOMER ORDER RECEIPT",
+        ref: o.payment_ref || "",
+        customer: o.customer || o.customer_name || "Customer",
+        phone: o.contact_phone || o.phone || "",
+        timestamp: o.timestamp || "",
+        lines,
+        total: totalStr,
+      };
+    }
+
+    document.getElementById("unlockChatForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("unlock-customer-chat", 600, btn, "Unlocking...", async () => {
+        state.customerAuth.phone = document.getElementById("chatPhoneFilter").value.trim();
+        state.customerAuth.pin = document.getElementById("chatPinFilter").value.trim();
+        await loadCustomerPrivateChat();
+      });
+    });
+
+    document.addEventListener("click", async (event) => {
+      const target = event.target.closest("[data-action]");
+      if (!target) return;
+
+      const action = target.dataset.action;
+
+      if (action === "dismiss-banner") {
+        document.getElementById("appFeedbackBanner").classList.add("d-none");
+      } else if (action === "reset-extra-settings") {
+        state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS };
+        saveLocalExtraSettings(state.extraSettings);
+        applyExtraSettingsToUI();
+        renderProducts();
+        showBanner("UI toggles reset to defaults. Click 'Save All App Settings' to sync.", "info");
+      } else if (action === "lock-customer-chat") {
+        document.getElementById("chatPinFilter").value = "";
+        lockCustomerChatView();
+      } else if (action === "open-staff-portal") {
+        openStaffPortalLogin();
+      } else if (action === "switch-section") {
+        switchSection(target.dataset.section);
+      } else if (action === "switch-customer-tab") {
+        switchSection("customerSection");
+        switchCustomerTab(target.dataset.tab);
+      } else if (action === "switch-staff-tab") {
+        switchStaffTab(target.dataset.tab);
+      } else if (action === "load-staff-chat" || action === "refresh-staff-orders-chat") {
+        await runGuardedAction("refresh-orders-chat", 600, target, "Refreshing...", async () => {
+          await loadStaffOrders();
+          await loadStaffChatMessages();
+        });
+      } else if (action === "delete-chat-photo") {
+        event.stopPropagation();
+        const msgId = target.dataset.msgId;
+        await runGuardedAction(`del-photo-${msgId}`, 800, target, "Removing...", async () => {
+          await deleteSingleChatPhoto(msgId);
+        });
+      } else if (action === "delete-all-chat-photos") {
+        event.stopPropagation();
+        await runGuardedAction("del-all-photos", 1500, target, "Cleaning...", async () => {
+          await deleteAllChatPhotos();
+        });
+      } else if (action === "select-order-phone") {
+        const phone = (target.dataset.phone || "").trim();
+        if (phone) {
+          document.getElementById("staffChatPhoneFilter").value = phone;
+          document.getElementById("staffChatSendPhone").value = phone;
+          await loadStaffChatMessages();
+          showBanner(`Loaded chat for ${phone}.`, "info");
+        }
+      } else if (action === "open-order-receipt") {
+        event.stopPropagation();
+        const o = state.ordersFeed[Number(target.dataset.orderIndex)];
+        if (!o) return;
+        openThermalReceipt({ ...buildOrderReceiptPayload(o), allowWhatsAppSend: true });
+      } else if (action === "send-order-receipt-whatsapp") {
+        event.stopPropagation();
+        const o = state.ordersFeed[Number(target.dataset.orderIndex)];
+        const phone = (target.dataset.phone || o?.contact_phone || o?.phone || "").trim();
+        if (!o) return;
+        try {
+          const payload = buildOrderReceiptPayload(o);
+          const receiptMessage = buildWhatsAppReceiptMessage({ ...payload, phone });
+          sendReceiptToCustomerWhatsApp({ phone, receiptMessage });
+          showBanner(`Opened WhatsApp receipt for ${phone}.`, "success");
+        } catch (err) {
+          showBanner(err.message, "warning");
+        }
+      } else if (action === "send-modal-receipt-whatsapp") {
+        if (!state.pendingWhatsAppReceipt) return;
+        try {
+          sendReceiptToCustomerWhatsApp(state.pendingWhatsAppReceipt);
+          showBanner(`Opened WhatsApp receipt for ${state.pendingWhatsAppReceipt.phone}.`, "success");
+        } catch (err) {
+          showBanner(err.message, "warning");
+        }
+      } else if (action === "verify-send-receipt") {
+        event.stopPropagation();
+        const orderId = target.dataset.orderId;
+        const phone = (target.dataset.phone || "").trim();
+        if (!orderId) return;
+        await runGuardedAction(`verify-${orderId}`, 1500, target, "Verifying...", async () => {
+          try {
+            await apiRequest(`/api/orders/${encodeURIComponent(orderId)}/verify`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ verified_by: state.user?.username || "admin" }),
+            });
+            if (phone) {
+              document.getElementById("staffChatPhoneFilter").value = phone;
+              document.getElementById("staffChatSendPhone").value = phone;
+            }
+            await loadStaffOrders();
+            await loadStaffChatMessages();
+            showBanner("Order verified and official receipt sent to customer Live Chat!", "success");
+          } catch (err) {
+            showBanner(`Failed to verify order: ${err.message}`, "danger");
+          }
+        });
+      } else if (action === "delete-order") {
+        event.stopPropagation();
+        const orderId = target.dataset.orderId;
+        if (!orderId) return;
+        await runGuardedAction(`del-order-${orderId}`, 1000, target, "Deleting...", async () => {
+          try {
+            await apiRequest(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE" });
+            await loadStaffOrders();
+            showBanner("Order removed.", "success");
+          } catch (err) {
+            showBanner(`Failed to delete order: ${err.message}`, "danger");
+          }
+        });
+      } else if (action === "open-pos-receipt") {
+        const ref = target.dataset.ref || "";
+        const customer = target.dataset.customer || "Walk-in Customer";
+        const phone = target.dataset.phone || "N/A";
+        const item = target.dataset.item || "Item";
+        const unit = target.dataset.unit || "Unit";
+        const qty = target.dataset.qty || "1";
+        const source = target.dataset.source || "Cash";
+        const total = target.dataset.total || "";
+        openThermalReceipt({
+          title: "POS SALES RECEIPT",
+          ref,
+          customer,
+          phone,
+          timestamp: new Date().toLocaleString(),
+          lines: [`${item} (${unit}) x ${qty}`, `Payment: ${source}`],
+          total,
+          allowWhatsAppSend: true,
+        });
+      } else if (action === "send-pos-receipt-whatsapp") {
+        const ref = target.dataset.ref || "";
+        const customer = target.dataset.customer || "Walk-in Customer";
+        const phone = target.dataset.phone || "";
+        const item = target.dataset.item || "Item";
+        const unit = target.dataset.unit || "Unit";
+        const qty = target.dataset.qty || "1";
+        const source = target.dataset.source || "Cash";
+        const total = target.dataset.total || "";
+        try {
+          const receiptMessage = buildWhatsAppReceiptMessage({
+            title: "POS SALES RECEIPT",
+            ref,
+            customer,
+            phone,
+            timestamp: new Date().toLocaleString(),
+            lines: [`${item} (${unit}) x ${qty}`, `Payment: ${source}`],
+            total,
+          });
+          sendReceiptToCustomerWhatsApp({ phone, receiptMessage });
+          showBanner(`Opened WhatsApp receipt for ${phone}.`, "success");
+        } catch (err) {
+          showBanner(err.message, "warning");
+        }
+      } else if (action === "print-thermal-receipt") {
+        window.print();
+      } else if (action === "watch-ad") {
+        const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
+        if (prod && hasValidVideoUrl(prod.video_url)) {
+          openProductAd(prod);
+        } else {
+          showBanner("No video advert is attached to this product yet.", "warning");
+        }
+      } else if (action === "add-to-cart") {
+        const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
+        if (!prod) return;
+        const card = target.closest(".card");
+        const unit = card ? card.querySelector(".card-unit-sel").value : (prod.unit_retail_label || "Retail Unit");
+        const qty = card ? Math.max(1, Number(card.querySelector(".card-qty-inp").value || 1)) : 1;
+        const unitPrice = getPriceForUnit(prod, unit);
+        const existing = state.cart.find((c) => String(c.id) === String(prod.id) && c.unit === unit);
+        if (existing) {
+          existing.qty += qty;
+        } else {
+          state.cart.push({ id: prod.id, name: prod.name, unit, price: unitPrice, qty });
+        }
+        updateCartSummary();
+        showBanner(`Added ${qty} ${unit}(s) of "${prod.name}" to cart.`, "success");
+      } else if (action === "remove-cart-item") {
+        state.cart.splice(Number(target.dataset.index), 1);
+        updateCartSummary();
+        showBanner("Removed item from cart.", "info");
+      } else if (action === "clear-cart") {
+        state.cart = [];
+        updateCartSummary();
+        showBanner("Cart cleared.", "info");
+      } else if (action === "refresh-products") {
+        await runGuardedAction("refresh-products", 500, target, "Refreshing...", async () => {
+          await loadProducts();
+        });
+      } else if (action === "delete-product") {
+        const prodId = target.dataset.id;
+        await runGuardedAction(`del-prod-${prodId}`, 1000, target, "Deleting...", async () => {
+          try {
+            await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, { method: "DELETE" });
+            await loadProducts();
+            showBanner("Product deleted.", "success");
+          } catch (err) {
+            showBanner(`Failed to delete product: ${err.message}`, "danger");
+          }
+        });
+      } else if (action === "pos-debt") {
+        const prodId = document.getElementById("posProductSelect").value;
+        const prod = state.products.find((p) => String(p.id) === String(prodId));
+        const unitType = document.getElementById("posUnitSelect").value;
+        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
+        const custName = document.getElementById("posCustomerName").value.trim();
+        const phone = document.getElementById("posPhone").value.trim();
+        if (!custName || custName === "Walk-in Customer") {
+          showBanner("Enter the customer's name to record a debt.", "warning");
+          return;
+        }
+        await runGuardedAction("pos-debt", 1200, target, "Saving...", async () => {
+          try {
+            await apiRequest("/api/sales", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                product_id: prodId,
+                item_name: prod ? prod.name : "Item",
+                unit_type: unitType,
+                qty,
+                customer_name: custName,
+                customer_phone: phone,
+                worker: state.user?.username || "admin",
+                record_debt: true,
+              }),
+            });
+            await loadProducts();
+            showBanner(`Debt logged for ${custName}!`, "warning");
+          } catch (err) {
+            showBanner(`Failed to log debt: ${err.message}`, "danger");
+          }
+        });
+      }
+    });
+
+    document.getElementById("staffChatSendForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("staff-chat-send", 1200, btn, "Sending...", async () => {
+        const phone = document.getElementById("staffChatSendPhone").value.trim();
+        const text = document.getElementById("staffChatSendText").value.trim();
+        const fd = new FormData();
+        fd.append("phone", phone);
+        fd.append("sender", "Staff");
+        fd.append("text", text);
+        try {
+          await apiRequest("/api/messages", { method: "POST", body: fd });
+          document.getElementById("staffChatSendText").value = "";
+          document.getElementById("staffChatPhoneFilter").value = phone;
+          await loadStaffChatMessages();
+          showBanner("Reply sent to customer chat!", "success");
+        } catch (err) {
+          showBanner(`Failed to send reply: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("loginBtn");
+      await runGuardedAction("login-submit", 1000, btn, "Logging in...", async () => {
+        const username = document.getElementById("loginUsername").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        const mode = document.getElementById("loginMode").value;
+
+        try {
+          const res = await apiRequest("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password, mode }),
+          });
+          state.isLoggedIn = true;
+          state.user = res;
+          state.staffToken = res.token || "";
+          document.getElementById("authBadge").className = "badge bg-success";
+          document.getElementById("authBadge").textContent = `${res.role || "Admin"}: ${res.username || username}`;
+          document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username}`;
+          document.getElementById("logoutBtn").classList.remove("d-none");
+          document.getElementById("loginPassword").value = "";
+          switchSection("staffSection");
+          await loadProducts();
+          showBanner(`Logged in as ${res.username || username}.`, "success");
+        } catch (err) {
+          showBanner(`Login failed: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      state.isLoggedIn = false;
+      state.user = null;
+      state.staffToken = "";
+      document.getElementById("authBadge").className = "badge bg-secondary";
+      document.getElementById("authBadge").textContent = "Staff Mode";
+      document.getElementById("logoutBtn").classList.add("d-none");
+      switchSection("customerSection");
+      showBanner("Logged out.", "info");
+    });
+
+    document.getElementById("addProductForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("saveProductBtn");
+      await runGuardedAction("save-product", 1500, btn, "Saving...", async () => {
+        const formData = new FormData(e.target);
+        try {
+          await apiRequest("/api/products", { method: "POST", body: formData });
+          e.target.reset();
+          document.getElementById("actionAddNew").checked = true;
+          toggleUpdateMode();
+          document.getElementById("prodCategory").value = "General";
+          document.getElementById("prodMainUnit").value = "Carton";
+          document.getElementById("prodSubUnit").value = "Pack";
+          document.getElementById("prodRetailUnit").value = "Retail Unit";
+          document.getElementById("prodPriceCarton").value = "0.00";
+          document.getElementById("prodStockCartons").value = "0.00";
+          document.getElementById("prodCostCarton").value = "0.00";
+          document.getElementById("prodPricePack").value = "0.00";
+          document.getElementById("prodPacksPerCarton").value = "1";
+          document.getElementById("prodPriceRetail").value = "0.00";
+          document.getElementById("prodRetailPerPack").value = "1";
+          await loadProducts();
+          showBanner("Product inventory saved and synced!", "success");
+        } catch (err) {
+          showBanner(`Failed to save product: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    function revealCustomerCredentialsAndOpenChat(phone, pin, refCode) {
+      const cleanPin = String(pin || "").trim();
+      const cleanRef = String(refCode || "").trim();
+      state.customerAuth = { unlocked: true, phone, pin: cleanPin || cleanRef };
+      document.getElementById("chatPhoneFilter").value = phone;
+      document.getElementById("chatPinFilter").value = cleanPin || cleanRef;
+
+      const noticeEl = document.getElementById("customerCredentialNotice");
+      noticeEl.innerHTML = `
+        <strong><i class="fa-solid fa-key me-1"></i>Save Your Private Access Credentials:</strong>
+        Phone: <strong>${escapeHtml(phone)}</strong> &bull;
+        Chat PIN: <strong>${escapeHtml(cleanPin || "N/A")}</strong>
+        ${cleanRef ? `&bull; Order Ref: <strong>${escapeHtml(cleanRef)}</strong>` : ""}
+        <span class="d-block mt-1">Use your phone number and PIN (or Order Ref) anytime to unlock your private chat and receipts.</span>
+      `;
+      noticeEl.classList.remove("d-none");
+      switchCustomerTab("chatTab");
+    }
+
+    document.getElementById("customerOrderForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!state.cart.length) {
+        showBanner("Add at least one product to your cart before submitting an order.", "warning");
+        return;
+      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("submit-order", 2000, btn, "Submitting...", async () => {
+        const customerName = document.getElementById("orderCustomerName").value.trim();
+        const phone = document.getElementById("orderPhone").value.trim();
+        const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("orderPin").value.trim();
+        const note = document.getElementById("orderNote").value.trim();
+        const mappedItems = state.cart.map((i) => ({
+          name: i.name,
+          unit: i.unit || "Unit",
+          qty: i.qty,
+          total_price: Number(i.price || 0) * Number(i.qty || 1),
+        }));
+
+        try {
+          const res = await apiRequest("/api/orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customer: customerName,
+              contact_phone: phone,
+              pin,
+              notes: note,
+              items: mappedItems,
+            }),
+          });
+          state.cart = [];
+          updateCartSummary();
+          revealCustomerCredentialsAndOpenChat(phone, res.customer_pin, res.payment_ref);
+        } catch (err) {
+          showBanner(`Failed to send order: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    document.getElementById("multiRequestForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("multi-request", 2000, btn, "Sending...", async () => {
+        const customerName = document.getElementById("reqName").value.trim();
+        const phone = document.getElementById("reqPhone").value.trim();
+        const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("reqPin").value.trim();
+        const itemsText = document.getElementById("reqItemsText").value.trim();
+        try {
+          const res = await apiRequest("/api/orders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customer: customerName,
+              contact_phone: phone,
+              pin,
+              special_items: [{ item: itemsText, qty: 1 }],
+            }),
+          });
+          e.target.reset();
+          revealCustomerCredentialsAndOpenChat(phone, res.customer_pin, res.payment_ref);
+        } catch (err) {
+          showBanner(`Failed to send request: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    document.getElementById("chatSendForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!state.customerAuth.unlocked) {
+        showBanner("Please unlock your private chat first.", "warning");
+        return;
+      }
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("customer-chat-send", 1200, btn, "Sending...", async () => {
+        const phone = state.customerAuth.phone;
+        const pin = state.customerAuth.pin;
+        const text = document.getElementById("chatSendText").value.trim();
+        const proofFile = document.getElementById("chatProofFile").files[0];
+        const fd = new FormData();
+        fd.append("phone", phone);
+        fd.append("pin", pin);
+        fd.append("sender", "Customer");
+        fd.append("text", text);
+        if (proofFile) fd.append("proof_file", proofFile);
+
+        try {
+          await apiRequest("/api/messages", { method: "POST", body: fd });
+          document.getElementById("chatSendText").value = "";
+          document.getElementById("chatProofFile").value = "";
+          await loadCustomerPrivateChat();
+        } catch (err) {
+          showBanner(`Failed to send message: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    document.getElementById("posSaleForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("pos-sale", 1500, btn, "Recording...", async () => {
+        const prodId = document.getElementById("posProductSelect").value;
+        const unitType = document.getElementById("posUnitSelect").value;
+        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
+        const prod = state.products.find((p) => String(p.id) === String(prodId));
+        if (!prod) {
+          showBanner("Please select a valid product.", "warning");
+          return;
+        }
+        const unitPrice = getPriceForUnit(prod, unitType);
+        const totalAmount = unitPrice * qty;
+        const custName = document.getElementById("posCustomerName").value.trim() || "Walk-in Customer";
+        const custPhone = document.getElementById("posPhone").value.trim() || "N/A";
+        const paySource = document.getElementById("posPaymentMethod").value;
+        const sendWhatsAppOpt = document.getElementById("posSendReceiptToWhatsApp").checked;
+
+        try {
+          const res = await apiRequest("/api/sales", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              product_id: prod.id,
+              item_name: prod.name,
+              unit_type: unitType,
+              qty,
+              unit_price: unitPrice,
+              total: totalAmount,
+              customer_name: custName,
+              customer_phone: custPhone,
+              payment_source: paySource,
+              worker: state.user?.username || "admin",
+              record_debt: false,
+            }),
+          });
+          const rec = res.receipt || {};
+          const refCode = rec.payment_ref || "";
+          const formattedTotal = `${state.currency}${totalAmount.toFixed(2)}`;
+
+          let waStatusHtml = "";
+          if (sendWhatsAppOpt && custPhone && custPhone !== "N/A") {
+            try {
+              const receiptMessage = buildWhatsAppReceiptMessage({
+                title: "POS SALES RECEIPT",
+                ref: refCode,
+                customer: custName,
+                phone: custPhone,
+                timestamp: new Date().toLocaleString(),
+                lines: [`${prod.name} (${unitType}) x ${qty}`, `Payment: ${paySource}`],
+                total: formattedTotal,
+              });
+              sendReceiptToCustomerWhatsApp({ phone: custPhone, receiptMessage });
+              waStatusHtml = `<div class="text-success mt-1"><i class="fa-brands fa-whatsapp me-1"></i>Opened WhatsApp receipt for ${escapeHtml(custPhone)}.</div>`;
+            } catch (waErr) {
+              waStatusHtml = `<div class="text-warning mt-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>${escapeHtml(waErr.message)}</div>`;
+            }
+          }
+
+          document.getElementById("posReceiptBox").innerHTML = `
+            <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${formattedTotal}</strong>
+                ${waStatusHtml}
+              </div>
+              <div class="d-flex gap-1">
+                <button type="button" class="btn btn-success btn-sm" data-action="send-pos-receipt-whatsapp" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+                  <i class="fa-brands fa-whatsapp me-1"></i>Send to WhatsApp
+                </button>
+                <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+                  <i class="fa-solid fa-print me-1"></i>Thermal Receipt
+                </button>
+              </div>
+            </div>
+          `;
+          await loadProducts();
+          showBanner(`Recorded sale of ${formattedTotal} and updated stock.`, "success");
+        } catch (err) {
+          showBanner(`Failed to record sale: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    document.getElementById("debtorForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("save-debtor", 1200, btn, "Saving...", async () => {
+        try {
+          await apiRequest("/api/debtors", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customer: document.getElementById("debtorName").value.trim(),
+              phone: document.getElementById("debtorPhone").value.trim(),
+              amount: Number(document.getElementById("debtorAmount").value),
+              items_bought: document.getElementById("debtorNote").value.trim(),
+            }),
+          });
+          e.target.reset();
+          showBanner("Debtor saved.", "success");
+        } catch (err) {
+          showBanner(`Failed to save debtor: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    document.getElementById("expenseForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("save-expense", 1200, btn, "Saving...", async () => {
+        try {
+          await apiRequest("/api/expenses", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              category: document.getElementById("expenseCategory").value.trim() || document.getElementById("expenseTitle").value.trim() || "Operations",
+              amount: Number(document.getElementById("expenseAmount").value),
+              note: document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim(),
+            }),
+          });
+          e.target.reset();
+          document.getElementById("expenseCategory").value = "Operations";
+          showBanner("Expense saved.", "success");
+        } catch (err) {
+          showBanner(`Failed to save expense: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    document.getElementById("workerForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("save-worker", 1200, btn, "Saving...", async () => {
+        try {
+          await apiRequest("/api/workers", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: document.getElementById("workerName").value.trim(),
+              role: document.getElementById("workerRole").value.trim() || "Staff",
+              password: document.getElementById("workerPassword").value,
+            }),
+          });
+          e.target.reset();
+          document.getElementById("workerRole").value = "Staff";
+          showBanner("Worker saved.", "success");
+        } catch (err) {
+          showBanner(`Failed to save worker: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    document.getElementById("settingsForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("save-settings", 1500, btn, "Saving...", async () => {
+        const currencyVal = document.getElementById("setCurrency").value.trim() || "\u20a6";
+        state.currency = currencyVal;
+
+        const nextExtra = {
+          showTabShop: document.getElementById("setShowTabShop").checked,
+          showTabRequest: document.getElementById("setShowTabRequest").checked,
+          showTabChat: document.getElementById("setShowTabChat").checked,
+          showTabCart: document.getElementById("setShowTabCart").checked,
+          showDockCartBadge: document.getElementById("setShowDockCartBadge").checked,
+          showTopCartBtn: document.getElementById("setShowTopCartBtn").checked,
+          mobileTabLabels: document.getElementById("setMobileTabLabels").value.trim() || DEFAULT_EXTRA_SETTINGS.mobileTabLabels,
+          showWatchAd: document.getElementById("setShowWatchAd").checked,
+          showStockOnCards: document.getElementById("setShowStockOnCards").checked,
+          hideOutOfStock: document.getElementById("setHideOutOfStock").checked,
+          searchPlaceholder: document.getElementById("setSearchPlaceholder").value.trim() || "Search products...",
+          paymentInstructions: document.getElementById("setPaymentInstructions").value.trim(),
+          chatHelperSubtitle: document.getElementById("setChatHelperSubtitle").value.trim() || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle,
+          autoPinMode: document.getElementById("setAutoPinMode").checked,
+          pinFieldLabel: document.getElementById("setPinFieldLabel").value.trim() || DEFAULT_EXTRA_SETTINGS.pinFieldLabel,
+          orderNotePlaceholder: document.getElementById("setOrderNotePlaceholder").value.trim() || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder,
+          footerText: document.getElementById("setFooterText").value.trim(),
+          receiptFooter: document.getElementById("setReceiptFooter").value.trim() || "Thank you for your patronage!",
+        };
+
+        state.extraSettings = nextExtra;
+        saveLocalExtraSettings(nextExtra);
+
+        const fd = new FormData(e.target);
+        fd.append("currency", currencyVal);
+        fd.append("extra_settings", JSON.stringify(nextExtra));
+
+        try {
+          await apiRequest("/api/settings", { method: "POST", body: fd });
+          document.getElementById("setBroadcastVideoFile").value = "";
+          await loadSettings();
+          showBanner("All app settings saved and applied!", "success");
+        } catch (err) {
+          applyExtraSettingsToUI();
+          renderProducts();
+          updateCartSummary();
+          showBanner(`Failed to save settings to server: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    (async function initApp() {
+      state.deletedPhotoIds = readDeletedPhotoIds();
+      syncLayoutChrome();
+      lockCustomerChatView();
+      updateCartSummary();
+      await loadSettings();
+      await loadProducts();
+    })();
+  </script>
+</body>
+</html>

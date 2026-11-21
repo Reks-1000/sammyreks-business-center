@@ -7,55 +7,63 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
   <style>
-    :root {
-      --brand-primary: #198754;
-      --brand-dark: #102a1d;
-    }
     body {
       background-color: #f4f6f9;
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
-    .navbar-brand {
-      font-weight: 700;
-      letter-spacing: 0.3px;
+    .store-header {
+      background: #141a1f;
+      color: #fff;
+      border-bottom: 3px solid #198754;
     }
     .product-card {
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-      border: 1px solid #e3e8ee;
-      border-radius: 12px;
-      overflow: hidden;
+      border: 1px solid #dfe5ec;
+      border-radius: 10px;
       background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
     .product-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
     }
-    .product-img {
-      height: 185px;
+    .product-media-box {
       width: 100%;
-      object-fit: cover;
-      background: #eef2f5;
+      aspect-ratio: 4 / 3;
+      background: #eef2f6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-top-left-radius: 10px;
+      border-top-right-radius: 10px;
     }
-    .ticker-banner {
-      background: linear-gradient(90deg, #f0fdf4 0%, #ffffff 100%);
-      border: 1px solid #bbf7d0;
+    .product-media-box img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      padding: 6px;
+    }
+    .rotating-tip-bar {
+      background: #ffffff;
+      border: 1px solid #d1e7dd;
       border-left: 4px solid #198754;
-      border-radius: 10px;
+      border-radius: 8px;
     }
-    .ticker-text-fade {
-      transition: opacity 0.25s ease;
+    .tip-fade {
+      transition: opacity 0.2s ease;
     }
     .chat-box {
-      max-height: 400px;
+      max-height: 390px;
       overflow-y: auto;
       background: #f8fafc;
       border: 1px solid #dee2e6;
-      border-radius: 10px;
+      border-radius: 8px;
       padding: 12px;
     }
     .chat-bubble {
-      padding: 10px 14px;
-      border-radius: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
       margin-bottom: 10px;
       max-width: 85%;
       word-wrap: break-word;
@@ -77,24 +85,23 @@
       max-width: 95%;
     }
     .stat-card {
-      border-radius: 12px;
+      border-radius: 10px;
       border: 1px solid #e3e8ee;
       background: #fff;
     }
   </style>
 </head>
 <body>
-  <!-- Top Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
-    <div class="container">
-      <a class="navbar-brand d-flex align-items-center gap-2" href="#">
-        <i class="bi bi-shop text-success"></i>
-        <span id="navBizName">Sammyreks Business Center</span>
-      </a>
+  <!-- Static Top Bar (Not Sticky) -->
+  <header class="store-header py-3 mb-3">
+    <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2">
+      <div>
+        <h4 class="mb-0 fw-bold" id="navBizName">Sammyreks Business Center</h4>
+        <small class="text-light opacity-75" id="navTagline"></small>
+      </div>
       <div class="d-flex align-items-center gap-2">
-        <span id="navTagline" class="text-light small d-none d-md-inline me-2"></span>
         <button class="btn btn-outline-light btn-sm" id="btnShowStorefront" onclick="switchMainView('store')">
-          <i class="bi bi-bag"></i> Storefront
+          <i class="bi bi-shop"></i> Storefront
         </button>
         <button class="btn btn-success btn-sm" id="btnStaffLoginModal" data-bs-toggle="modal" data-bs-target="#staffLoginModal">
           <i class="bi bi-shield-lock"></i> Staff Login
@@ -107,47 +114,48 @@
         </button>
       </div>
     </div>
-  </nav>
+  </header>
 
-  <div class="container my-4">
+  <div class="container pb-5">
     <!-- Storefront Active Notice -->
-    <div id="customerNoticeAlert" class="alert alert-warning d-none shadow-sm mb-3" role="alert">
+    <div id="customerNoticeAlert" class="alert alert-warning d-none mb-3" role="alert">
       <i class="bi bi-megaphone-fill me-2"></i>
       <span id="customerNoticeText"></span>
     </div>
 
-    <!-- Automated 5-Second Rotating Ticker (Zero Database/API Cost) -->
-    <div id="customerTickerBanner" class="ticker-banner py-2 px-3 mb-3 d-flex align-items-center justify-content-between gap-2 shadow-sm">
+    <!-- Rotating Motivational / Educational Tip Strip (Zero Extra DB/API Cost) -->
+    <div id="customerTickerBanner" class="rotating-tip-bar px-3 py-2 mb-3 d-flex align-items-center justify-content-between gap-2">
       <div class="d-flex align-items-center gap-2 overflow-hidden">
         <span class="badge bg-success flex-shrink-0" id="customerTickerBadge">Did You Know?</span>
-        <span id="customerTickerText" class="small fw-medium text-dark ticker-text-fade"></span>
+        <span id="customerTickerText" class="small fw-medium text-dark tip-fade"></span>
       </div>
-      <span class="text-muted small d-none d-sm-inline flex-shrink-0">
-        <i class="bi bi-lightning-charge-fill text-warning"></i> Tip
-      </span>
+      <span class="text-muted small flex-shrink-0" id="customerTickerTimerLabel"><i class="bi bi-arrow-repeat"></i> 10s</span>
     </div>
 
     <!-- Broadcast Video Banner -->
-    <div id="broadcastVideoContainer" class="card mb-4 d-none shadow-sm border-0">
+    <div id="broadcastVideoContainer" class="card mb-4 d-none border-0 shadow-sm">
       <div class="card-body p-3">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="fw-bold text-success"><i class="bi bi-play-circle-fill me-1"></i> Featured Store Broadcast</span>
-        </div>
+        <div class="fw-bold text-success mb-2"><i class="bi bi-play-circle-fill me-1"></i> Store Broadcast</div>
         <div id="broadcastVideoWrapper" class="ratio ratio-16x9 rounded overflow-hidden bg-dark"></div>
       </div>
     </div>
 
     <!-- ==================== CUSTOMER STOREFRONT VIEW ==================== -->
     <div id="storefrontView">
-      <ul class="nav nav-pills mb-4 gap-2" id="storeTabs" role="tablist">
+      <ul class="nav nav-tabs mb-3" id="storeTabs" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link active" id="tab-catalog" data-bs-toggle="pill" data-bs-target="#pane-catalog" type="button">
-            <i class="bi bi-grid"></i> Products Catalog
+            <i class="bi bi-grid"></i> Products
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-video-adverts" data-bs-toggle="pill" data-bs-target="#pane-video-adverts" type="button">
+            <i class="bi bi-film"></i> Item Video Adverts <span class="badge bg-success ms-1" id="videoAdvertsCount">0</span>
           </button>
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-cart" data-bs-toggle="pill" data-bs-target="#pane-cart" type="button">
-            <i class="bi bi-cart3"></i> Cart &amp; Checkout <span class="badge bg-danger ms-1" id="cartBadge">0</span>
+            <i class="bi bi-cart3"></i> Cart <span class="badge bg-danger ms-1" id="cartBadge">0</span>
           </button>
         </li>
         <li class="nav-item" role="presentation">
@@ -163,11 +171,11 @@
       </ul>
 
       <div class="tab-content">
-        <!-- 1. Catalog Pane -->
+        <!-- 1. Products Catalog Pane -->
         <div class="tab-pane fade show active" id="pane-catalog">
           <div class="row g-2 mb-3">
             <div class="col-md-6">
-              <input type="text" id="catalogSearchInput" class="form-control" placeholder="Search products by name, category, or vendor..." oninput="renderCatalog()" />
+              <input type="text" id="catalogSearchInput" class="form-control" placeholder="Search product, category, or brand..." oninput="renderCatalog()" />
             </div>
             <div class="col-md-4">
               <select id="catalogCategoryFilter" class="form-select" onchange="renderCatalog()">
@@ -183,12 +191,17 @@
           <div id="catalogGrid" class="row g-3"></div>
         </div>
 
-        <!-- 2. Cart & Checkout Pane -->
+        <!-- 2. Item Video Adverts Tab Pane -->
+        <div class="tab-pane fade" id="pane-video-adverts">
+          <div id="videoAdvertsGrid" class="row g-3"></div>
+        </div>
+
+        <!-- 3. Cart & Checkout Pane -->
         <div class="tab-pane fade" id="pane-cart">
           <div class="row g-4">
             <div class="col-lg-7">
-              <div class="card shadow-sm border-0">
-                <div class="card-header bg-white fw-bold">Your Shopping Cart</div>
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold">Shopping Cart</div>
                 <div class="card-body">
                   <div id="cartItemsContainer"></div>
                   <hr />
@@ -200,8 +213,8 @@
               </div>
             </div>
             <div class="col-lg-5">
-              <div class="card shadow-sm border-0">
-                <div class="card-header bg-white fw-bold">Checkout Details</div>
+              <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold">Checkout</div>
                 <div class="card-body">
                   <div class="mb-3">
                     <label class="form-label">Your Name</label>
@@ -212,16 +225,16 @@
                     <input type="text" id="checkoutCustomerPhone" class="form-control" placeholder="e.g. 08012345678" />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">Custom 4-Digit Chat PIN (Optional)</label>
-                    <input type="text" id="checkoutCustomerPin" maxlength="8" class="form-control" placeholder="Leave blank to auto-generate" />
+                    <label class="form-label">Custom Chat PIN (Optional)</label>
+                    <input type="text" id="checkoutCustomerPin" maxlength="8" class="form-control" placeholder="Leave blank for auto-PIN" />
                   </div>
                   <div class="mb-3">
-                    <label class="form-label">Delivery / Order Notes</label>
-                    <textarea id="checkoutNotes" class="form-control" rows="2" placeholder="Address or special instructions..."></textarea>
+                    <label class="form-label">Notes</label>
+                    <textarea id="checkoutNotes" class="form-control" rows="2" placeholder="Delivery details or notes..."></textarea>
                   </div>
                   <div id="bankDetailsBox" class="alert alert-info small d-none"></div>
                   <button class="btn btn-success w-100 fw-bold" onclick="submitCartOrder()">
-                    <i class="bi bi-check2-circle"></i> Submit Order &amp; Get Reference
+                    <i class="bi bi-check2-circle"></i> Submit Order
                   </button>
                   <div id="orderConfirmationBox" class="alert alert-success mt-3 d-none"></div>
                 </div>
@@ -230,10 +243,10 @@
           </div>
         </div>
 
-        <!-- 3. Multi-Item Special Request Pane -->
+        <!-- 4. Multi-Item Special Request Pane -->
         <div class="tab-pane fade" id="pane-request">
-          <div class="card shadow-sm border-0" style="max-width: 680px;">
-            <div class="card-header bg-white fw-bold">Request Custom or Bulk Items</div>
+          <div class="card border-0 shadow-sm" style="max-width: 680px;">
+            <div class="card-header bg-white fw-bold">Multi-Item Request</div>
             <div class="card-body">
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
@@ -247,24 +260,24 @@
               </div>
               <div class="mb-3">
                 <label class="form-label">Items Needed (One per line)</label>
-                <textarea id="reqItemsList" class="form-control" rows="4" placeholder="e.g.&#10;5 Cartons of Milo 400g&#10;2 Bags of Rice 50kg"></textarea>
+                <textarea id="reqItemsList" class="form-control" rows="4" placeholder="Enter each requested item on its own line..."></textarea>
               </div>
               <div class="mb-3">
                 <label class="form-label">Additional Notes</label>
-                <input type="text" id="reqNotes" class="form-control" placeholder="Preferred brand, delivery time, etc." />
+                <input type="text" id="reqNotes" class="form-control" placeholder="Optional notes..." />
               </div>
               <button class="btn btn-primary fw-bold" onclick="submitSpecialRequest()">
-                <i class="bi bi-send"></i> Send Multi-Item Request
+                <i class="bi bi-send"></i> Send Request
               </button>
               <div id="reqConfirmationBox" class="alert alert-success mt-3 d-none"></div>
             </div>
           </div>
         </div>
 
-        <!-- 4. Customer Chat & Receipts Pane -->
+        <!-- 5. Customer Chat & Receipts Pane -->
         <div class="tab-pane fade" id="pane-chat">
-          <div class="card shadow-sm border-0">
-            <div class="card-header bg-white fw-bold">Order Chat, Payment Proof &amp; Official Receipts</div>
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white fw-bold">Chat, Payment Proof &amp; Receipts</div>
             <div class="card-body">
               <div class="row g-2 mb-3 align-items-end">
                 <div class="col-md-4">
@@ -272,33 +285,31 @@
                   <input type="text" id="chatPhoneInput" class="form-control" placeholder="080..." />
                 </div>
                 <div class="col-md-4">
-                  <label class="form-label small mb-1">Chat PIN or Order Ref (e.g. SRK-XXXXXX)</label>
-                  <input type="password" id="chatPinInput" class="form-control" placeholder="Enter PIN or Order Ref" />
+                  <label class="form-label small mb-1">Chat PIN or Order Ref</label>
+                  <input type="password" id="chatPinInput" class="form-control" placeholder="PIN or SRK-XXXXXX" />
                 </div>
                 <div class="col-md-4 d-grid">
                   <button class="btn btn-dark" onclick="unlockCustomerChat()">
-                    <i class="bi bi-unlock"></i> Load My Chat &amp; Receipts
+                    <i class="bi bi-unlock"></i> Load Chat &amp; Receipts
                   </button>
                 </div>
               </div>
 
               <div id="customerChatBox" class="chat-box mb-3">
                 <div class="text-muted text-center py-4 small">
-                  Enter your phone number and PIN (or Order Reference Code) above to view your messages and verified receipts.
+                  Enter your phone number and PIN (or Order Reference Code) to view messages and receipts.
                 </div>
               </div>
 
               <form id="customerChatForm" class="row g-2 align-items-center" onsubmit="sendCustomerMessage(event)">
                 <div class="col-md-6">
-                  <input type="text" id="customerChatText" class="form-control" placeholder="Type a message to support..." />
+                  <input type="text" id="customerChatText" class="form-control" placeholder="Type message..." />
                 </div>
                 <div class="col-md-4">
                   <input type="file" id="customerProofFile" class="form-control" accept="image/*" />
                 </div>
                 <div class="col-md-2 d-grid">
-                  <button type="submit" class="btn btn-success">
-                    <i class="bi bi-send"></i> Send
-                  </button>
+                  <button type="submit" class="btn btn-success"><i class="bi bi-send"></i> Send</button>
                 </div>
               </form>
             </div>
@@ -311,11 +322,11 @@
     <div id="staffPanelView" class="d-none">
       <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <div>
-          <h4 class="mb-0 fw-bold">Management Dashboard</h4>
-          <small class="text-muted">Logged in as <span id="staffLoggedUser" class="fw-bold"></span> (<span id="staffLoggedRole"></span>)</small>
+          <h4 class="mb-0 fw-bold">Management Panel</h4>
+          <small class="text-muted">User: <span id="staffLoggedUser" class="fw-bold"></span> (<span id="staffLoggedRole"></span>)</small>
         </div>
         <button class="btn btn-outline-dark btn-sm" onclick="refreshAllStaffData()">
-          <i class="bi bi-arrow-clockwise"></i> Sync All Data
+          <i class="bi bi-arrow-clockwise"></i> Sync Data
         </button>
       </div>
 
@@ -332,12 +343,10 @@
       </ul>
 
       <div class="tab-content">
-        <!-- Staff Orders -->
         <div class="tab-pane fade show active" id="staff-orders">
           <div id="staffOrdersList" class="row g-3"></div>
         </div>
 
-        <!-- Staff Chats -->
         <div class="tab-pane fade" id="staff-chat">
           <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
             <select id="staffChatPhoneSelect" class="form-select" style="max-width: 300px;" onchange="renderStaffChatMessages()">
@@ -353,7 +362,7 @@
               <input type="text" id="staffReplyPhone" class="form-control" placeholder="Customer Phone" required />
             </div>
             <div class="col-md-7">
-              <input type="text" id="staffReplyText" class="form-control" placeholder="Type reply to customer..." required />
+              <input type="text" id="staffReplyText" class="form-control" placeholder="Reply to customer..." required />
             </div>
             <div class="col-md-2 d-grid">
               <button type="submit" class="btn btn-primary">Send Reply</button>
@@ -361,17 +370,16 @@
           </form>
         </div>
 
-        <!-- Staff POS & Sales -->
         <div class="tab-pane fade" id="staff-pos">
           <div class="row g-4">
             <div class="col-lg-5">
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold">Record Walk-in / Direct Sale</div>
+                <div class="card-header bg-white fw-bold">Record Sale</div>
                 <div class="card-body">
                   <div class="mb-2">
                     <label class="form-label small">Product</label>
                     <select id="posProductSelect" class="form-select" onchange="updatePosPrice()">
-                      <option value="">-- Custom / Select Product --</option>
+                      <option value="">-- Select Product --</option>
                     </select>
                   </div>
                   <div class="row g-2 mb-2">
@@ -409,7 +417,7 @@
                     </div>
                   </div>
                   <div class="mb-2">
-                    <label class="form-label small">Payment Method</label>
+                    <label class="form-label small">Payment Source</label>
                     <select id="posPaymentSource" class="form-select">
                       <option value="Cash">Cash</option>
                       <option value="Bank Transfer">Bank Transfer</option>
@@ -418,20 +426,18 @@
                   </div>
                   <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" id="posRecordDebtCheck" />
-                    <label class="form-check-label small" for="posRecordDebtCheck">Record as Unpaid Credit / Debt</label>
+                    <label class="form-check-label small" for="posRecordDebtCheck">Record as Debt</label>
                   </div>
-                  <button class="btn btn-success w-100 fw-bold" onclick="submitPosSale()">Complete Sale</button>
+                  <button class="btn btn-success w-100 fw-bold" onclick="submitPosSale()">Save Sale</button>
                 </div>
               </div>
             </div>
             <div class="col-lg-7">
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold">Recent Sales Log</div>
+                <div class="card-header bg-white fw-bold">Sales History</div>
                 <div class="card-body table-responsive">
                   <table class="table table-sm align-middle">
-                    <thead>
-                      <tr><th>Item</th><th>Qty</th><th>Total</th><th>Customer</th><th>Method</th><th>Date</th></tr>
-                    </thead>
+                    <thead><tr><th>Item</th><th>Qty</th><th>Total</th><th>Customer</th><th>Source</th><th>Date</th></tr></thead>
                     <tbody id="salesHistoryTableBody"></tbody>
                   </table>
                 </div>
@@ -440,7 +446,6 @@
           </div>
         </div>
 
-        <!-- Staff Inventory -->
         <div class="tab-pane fade" id="staff-inventory">
           <div class="row g-4">
             <div class="col-lg-5">
@@ -449,14 +454,14 @@
                 <div class="card-body">
                   <form id="productForm" onsubmit="saveProductForm(event)">
                     <div class="mb-2">
-                      <label class="form-label small">Mode</label>
+                      <label class="form-label small">Action</label>
                       <select id="prodActionMode" name="action_mode" class="form-select" onchange="toggleProductEditSelect()">
                         <option value="create">Create New Product</option>
                         <option value="update">Update Existing Product</option>
                       </select>
                     </div>
                     <div class="mb-2 d-none" id="prodExistingSelectWrap">
-                      <label class="form-label small">Select Product to Edit</label>
+                      <label class="form-label small">Existing Product</label>
                       <select id="prodExistingSelect" name="existing_product_id" class="form-select" onchange="populateProductForm()"></select>
                     </div>
                     <div class="row g-2 mb-2">
@@ -526,11 +531,11 @@
                       <input type="file" id="prodImageFile" name="image_file" class="form-control" accept="image/*" />
                     </div>
                     <div class="mb-2">
-                      <label class="form-label small">Product Video File (Optional)</label>
+                      <label class="form-label small">Item Video Advert File</label>
                       <input type="file" id="prodVideoFile" name="video_file" class="form-control" accept="video/*" />
                     </div>
                     <div class="mb-3">
-                      <label class="form-label small">Or Video URL</label>
+                      <label class="form-label small">Or Item Video Advert URL</label>
                       <input type="text" id="prodVideoLink" name="video_link" class="form-control" placeholder="https://..." />
                     </div>
                     <button type="submit" class="btn btn-primary w-100 fw-bold">Save Product</button>
@@ -543,9 +548,7 @@
                 <div class="card-header bg-white fw-bold">Inventory List</div>
                 <div class="card-body table-responsive">
                   <table class="table table-sm align-middle">
-                    <thead>
-                      <tr><th>Product</th><th>Carton</th><th>Pack</th><th>Retail</th><th>Stock</th><th>Action</th></tr>
-                    </thead>
+                    <thead><tr><th>Product</th><th>Carton</th><th>Pack</th><th>Retail</th><th>Stock</th><th>Action</th></tr></thead>
                     <tbody id="inventoryTableBody"></tbody>
                   </table>
                 </div>
@@ -554,16 +557,15 @@
           </div>
         </div>
 
-        <!-- Staff Debtors -->
         <div class="tab-pane fade" id="staff-debtors">
           <div class="row g-4">
             <div class="col-md-4">
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold">Add Debtor Record</div>
+                <div class="card-header bg-white fw-bold">Add Debtor</div>
                 <div class="card-body">
                   <input type="text" id="debtCustomer" class="form-control mb-2" placeholder="Customer Name *" />
                   <input type="text" id="debtPhone" class="form-control mb-2" placeholder="Phone Number *" />
-                  <input type="number" id="debtAmount" class="form-control mb-2" placeholder="Amount Owed" />
+                  <input type="number" id="debtAmount" class="form-control mb-2" placeholder="Amount" />
                   <input type="text" id="debtItems" class="form-control mb-3" placeholder="Items Bought" />
                   <button class="btn btn-warning w-100 fw-bold" onclick="addDebtorRecord()">Save Debtor</button>
                 </div>
@@ -571,7 +573,7 @@
             </div>
             <div class="col-md-8">
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold">Debtors Ledger</div>
+                <div class="card-header bg-white fw-bold">Debtors List</div>
                 <div class="card-body table-responsive">
                   <table class="table table-sm align-middle">
                     <thead><tr><th>Customer</th><th>Phone</th><th>Amount</th><th>Items</th><th>Status</th><th>Action</th></tr></thead>
@@ -583,23 +585,22 @@
           </div>
         </div>
 
-        <!-- Staff Expenses -->
         <div class="tab-pane fade" id="staff-expenses">
           <div class="row g-4">
             <div class="col-md-4">
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold">Log Business Expense</div>
+                <div class="card-header bg-white fw-bold">Add Expense</div>
                 <div class="card-body">
-                  <input type="text" id="expCategory" class="form-control mb-2" placeholder="Category (e.g. Fuel, Logistics)" />
+                  <input type="text" id="expCategory" class="form-control mb-2" placeholder="Category" />
                   <input type="number" id="expAmount" class="form-control mb-2" placeholder="Amount" />
-                  <input type="text" id="expNote" class="form-control mb-3" placeholder="Note / Description" />
+                  <input type="text" id="expNote" class="form-control mb-3" placeholder="Note" />
                   <button class="btn btn-danger w-100 fw-bold" onclick="addExpenseRecord()">Save Expense</button>
                 </div>
               </div>
             </div>
             <div class="col-md-8">
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold">Expense Records</div>
+                <div class="card-header bg-white fw-bold">Expenses List</div>
                 <div class="card-body table-responsive">
                   <table class="table table-sm align-middle">
                     <thead><tr><th>Category</th><th>Amount</th><th>Note</th><th>Date</th><th>Action</th></tr></thead>
@@ -611,7 +612,6 @@
           </div>
         </div>
 
-        <!-- Admin Analytics -->
         <div class="tab-pane fade" id="staff-analytics">
           <div class="row g-3" id="analyticsCardsRow">
             <div class="col-md-3"><div class="stat-card p-3"><small class="text-muted">Total Revenue</small><h4 id="statRevenue" class="fw-bold text-primary mb-0">₦0.00</h4></div></div>
@@ -621,27 +621,26 @@
           </div>
         </div>
 
-        <!-- Admin Staff Management -->
         <div class="tab-pane fade" id="staff-workers">
           <div class="row g-4">
             <div class="col-md-4">
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold">Add Staff Member</div>
+                <div class="card-header bg-white fw-bold">Add Staff</div>
                 <div class="card-body">
                   <input type="text" id="workerName" class="form-control mb-2" placeholder="Full Name *" />
-                  <input type="text" id="workerUsername" class="form-control mb-2" placeholder="Login Username" />
-                  <input type="password" id="workerPassword" class="form-control mb-2" placeholder="Login Password" />
+                  <input type="text" id="workerUsername" class="form-control mb-2" placeholder="Username" />
+                  <input type="password" id="workerPassword" class="form-control mb-2" placeholder="Password" />
                   <select id="workerRole" class="form-select mb-3">
                     <option value="Staff">Staff</option>
                     <option value="Admin">Admin</option>
                   </select>
-                  <button class="btn btn-dark w-100" onclick="addWorkerAccount()">Create Staff</button>
+                  <button class="btn btn-dark w-100" onclick="addWorkerAccount()">Add Staff</button>
                 </div>
               </div>
             </div>
             <div class="col-md-8">
               <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold">Registered Staff</div>
+                <div class="card-header bg-white fw-bold">Staff Accounts</div>
                 <div class="card-body table-responsive">
                   <table class="table table-sm align-middle">
                     <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Action</th></tr></thead>
@@ -653,7 +652,6 @@
           </div>
         </div>
 
-        <!-- Admin Overall App Settings -->
         <div class="tab-pane fade" id="staff-settings">
           <div class="card border-0 shadow-sm" style="max-width: 720px;">
             <div class="card-header bg-white fw-bold">Overall App Settings</div>
@@ -665,44 +663,63 @@
                     <input type="text" id="setBizName" name="business_name" class="form-control" value="Sammyreks Business Center" />
                   </div>
                   <div class="col-md-4">
-                    <label class="form-label small">Currency Symbol</label>
+                    <label class="form-label small">Currency</label>
                     <input type="text" id="setCurrency" name="currency" class="form-control" value="₦" />
                   </div>
                 </div>
                 <div class="mb-3">
                   <label class="form-label small">Tagline</label>
-                  <input type="text" id="setTagline" name="tagline" class="form-control" placeholder="Quality Wholesale & Retail Store" />
+                  <input type="text" id="setTagline" name="tagline" class="form-control" />
                 </div>
                 <div class="mb-3">
-                  <label class="form-label small">Storefront Active Notice Banner</label>
-                  <input type="text" id="setNotice" name="active_notice" class="form-control" placeholder="Announcement shown to all customers..." />
+                  <label class="form-label small">Active Notice</label>
+                  <input type="text" id="setNotice" name="active_notice" class="form-control" />
                 </div>
                 <div class="mb-3">
-                  <label class="form-label small">Bank Payment Instructions (Shown at Checkout)</label>
-                  <textarea id="setBankInfo" class="form-control" rows="2" placeholder="Bank Name, Account Number, Account Name..."></textarea>
+                  <label class="form-label small">Bank Payment Info</label>
+                  <textarea id="setBankInfo" class="form-control" rows="2"></textarea>
                 </div>
                 <div class="mb-3 p-3 bg-light rounded border">
                   <div class="form-check form-switch mb-2">
                     <input class="form-check-input" type="checkbox" id="setShowRotatingTicker" checked />
                     <label class="form-check-label small fw-bold" for="setShowRotatingTicker">
-                      Show 5-Second Rotating Tips Banner on Storefront
+                      Show Rotating Tips Strip
                     </label>
                   </div>
-                  <label class="form-label small mb-1">Custom Rotating Tips (Separate each tip with <code>|</code>)</label>
-                  <textarea id="setTickerMessages" class="form-control form-control-sm" rows="3" placeholder="Leave blank to use default tips, or enter your own like:&#10;Did You Know?: Carton orders save you extra margin! | Motivation: Consistency builds lasting success."></textarea>
+                  <label class="form-label small mb-1">Custom Rotating Tips (Separate with <code>|</code>)</label>
+                  <textarea id="setTickerMessages" class="form-control form-control-sm" rows="2" placeholder="Optional custom tips separated by |"></textarea>
+                  <div class="mt-2">
+                    <label class="form-label small mb-1" for="setTickerIntervalSec">Seconds Each Tip Stays (e.g. 5–600)</label>
+                    <input type="number" id="setTickerIntervalSec" class="form-control form-control-sm" min="3" max="3600" value="10" style="max-width: 160px;" />
+                  </div>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label small">Featured Broadcast Video URL</label>
-                  <input type="text" id="setBroadcastUrl" name="broadcast_video_url" class="form-control" placeholder="https://..." />
+                  <label class="form-label small">Broadcast Video URL</label>
+                  <input type="text" id="setBroadcastUrl" name="broadcast_video_url" class="form-control" />
                 </div>
                 <div class="mb-3">
-                  <label class="form-label small">Or Upload Broadcast Video File</label>
+                  <label class="form-label small">Or Broadcast Video File</label>
                   <input type="file" id="setBroadcastFile" name="broadcast_video_file" class="form-control" accept="video/*" />
                 </div>
-                <button type="submit" class="btn btn-success fw-bold">Save All Settings</button>
+                <button type="submit" class="btn btn-success fw-bold">Save Settings</button>
               </form>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Item Video Advert Modal -->
+  <div class="modal fade" id="videoAdvertModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="videoAdvertModalTitle">Item Video Advert</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopVideoAdvertModal()"></button>
+        </div>
+        <div class="modal-body">
+          <div id="videoAdvertModalBody" class="ratio ratio-16x9 bg-dark rounded overflow-hidden"></div>
         </div>
       </div>
     </div>
@@ -713,7 +730,7 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title fw-bold">Staff &amp; Admin Login</h5>
+          <h5 class="modal-title fw-bold">Staff Login</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -721,7 +738,7 @@
             <label class="form-label">Login Mode</label>
             <select id="loginModeSelect" class="form-select">
               <option value="admin">Admin / CEO</option>
-              <option value="staff">Staff / Sales Rep</option>
+              <option value="staff">Staff</option>
             </select>
           </div>
           <div class="mb-3">
@@ -745,14 +762,15 @@
       bankDetails: "",
       showRotatingTicker: true,
       tickerMessages: "",
+      tickerIntervalSec: 10,
     };
 
     const DEFAULT_ROTATING_TIPS = [
       { badge: "Did You Know?", text: "Buying in full cartons or packs often lowers your unit cost compared to single retail units." },
       { badge: "Smart Tip", text: "Every order generates a private Chat PIN and Order Reference so your chat and receipts stay protected." },
-      { badge: "Motivation", text: "Small consistent steps every day build businesses and habits that last." },
-      { badge: "Good to Know", text: "After making a transfer, upload your payment screenshot in Chat & Receipts for faster verification." },
-      { badge: "Did You Know?", text: "Need items not listed in the catalog? Use the Multi-Item Request tab to send your custom list." },
+      { badge: "Motivation", text: "Consistent daily progress builds strong businesses and lasting results." },
+      { badge: "Good to Know", text: "After transferring payment, upload your proof screenshot in Chat & Receipts for quick verification." },
+      { badge: "Did You Know?", text: "Check the Item Video Adverts tab to preview product videos before ordering." },
     ];
 
     const state = {
@@ -774,6 +792,12 @@
 
     let _tickerTimerId = null;
     let _tickerIndex = 0;
+
+    function normalizeTickerIntervalSec(rawVal) {
+      const parsed = parseInt(rawVal ?? 10, 10);
+      if (!Number.isFinite(parsed)) return 10;
+      return Math.max(3, Math.min(3600, parsed));
+    }
 
     function escapeHtml(val) {
       return String(val ?? "")
@@ -808,6 +832,58 @@
       return data;
     }
 
+    function buildVideoPlayerHtml(url) {
+      const clean = String(url || "").trim();
+      if (!clean) return "";
+      if (clean.includes("youtube.com") || clean.includes("youtu.be")) {
+        const vidId = clean.split("v=")[1]?.split("&")[0] || clean.split("/").pop();
+        return `<iframe src="https://www.youtube.com/embed/${escapeHtml(vidId)}" allowfullscreen></iframe>`;
+      }
+      return `<video src="${escapeHtml(clean)}" controls class="w-100 h-100"></video>`;
+    }
+
+    function openVideoAdvertModal(productId) {
+      const prod = state.products.find((p) => p.id === productId);
+      if (!prod || !prod.video_url) return;
+      document.getElementById("videoAdvertModalTitle").textContent = `${prod.name} — Video Advert`;
+      document.getElementById("videoAdvertModalBody").innerHTML = buildVideoPlayerHtml(prod.video_url);
+      const modalEl = document.getElementById("videoAdvertModal");
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function stopVideoAdvertModal() {
+      document.getElementById("videoAdvertModalBody").innerHTML = "";
+    }
+
+    function renderVideoAdvertsTab() {
+      const itemsWithVideo = state.products.filter((p) => Boolean((p.video_url || "").trim()));
+      const badge = document.getElementById("videoAdvertsCount");
+      const grid = document.getElementById("videoAdvertsGrid");
+      if (badge) badge.textContent = String(itemsWithVideo.length);
+      if (!grid) return;
+
+      if (!itemsWithVideo.length) {
+        grid.innerHTML = `<div class="col-12 text-muted text-center py-4">No item video adverts available yet.</div>`;
+        return;
+      }
+
+      grid.innerHTML = itemsWithVideo.map((p) => `
+        <div class="col-md-6 col-lg-4">
+          <div class="product-card h-100 p-3 d-flex flex-column">
+            <div class="ratio ratio-16x9 bg-dark rounded overflow-hidden mb-2">
+              ${buildVideoPlayerHtml(p.video_url)}
+            </div>
+            <h6 class="fw-bold mb-1">${escapeHtml(p.name)}</h6>
+            <small class="text-muted mb-2">${escapeHtml(p.category)} &bull; ${fmtMoney(p.price_carton)}</small>
+            <p class="small text-muted flex-grow-1 mb-2">${escapeHtml(p.description || "")}</p>
+            <button class="btn btn-sm btn-outline-success" onclick="openVideoAdvertModal('${p.id}')">
+              <i class="bi bi-arrows-fullscreen"></i> Watch in Large View
+            </button>
+          </div>
+        </div>
+      `).join("");
+    }
+
     function getRotatingTickerItems() {
       const customRaw = String(state.extraSettings?.tickerMessages || "").trim();
       if (customRaw) {
@@ -839,6 +915,7 @@
       const banner = document.getElementById("customerTickerBanner");
       const badgeEl = document.getElementById("customerTickerBadge");
       const textEl = document.getElementById("customerTickerText");
+      const timerLabel = document.getElementById("customerTickerTimerLabel");
       if (!banner || !badgeEl || !textEl) return;
 
       if (_tickerTimerId) {
@@ -857,6 +934,11 @@
         return;
       }
 
+      const intervalSec = normalizeTickerIntervalSec(state.extraSettings?.tickerIntervalSec);
+      if (timerLabel) {
+        timerLabel.innerHTML = `<i class="bi bi-arrow-repeat"></i> ${intervalSec}s`;
+      }
+
       banner.classList.remove("d-none");
       _tickerIndex = 0;
 
@@ -867,12 +949,12 @@
           badgeEl.textContent = current.badge;
           textEl.textContent = current.text;
           textEl.style.opacity = "1";
-        }, 150);
+        }, 120);
         _tickerIndex = (_tickerIndex + 1) % items.length;
       };
 
       showCurrentSlide();
-      _tickerTimerId = setInterval(showCurrentSlide, 5000);
+      _tickerTimerId = setInterval(showCurrentSlide, intervalSec * 1000);
     }
 
     function applyExtraSettingsToUI() {
@@ -888,17 +970,15 @@
       }
 
       const showCheck = document.getElementById("setShowRotatingTicker");
-      if (showCheck) {
-        showCheck.checked = state.extraSettings?.showRotatingTicker !== false;
-      }
+      if (showCheck) showCheck.checked = state.extraSettings?.showRotatingTicker !== false;
       const tickerInput = document.getElementById("setTickerMessages");
-      if (tickerInput) {
-        tickerInput.value = state.extraSettings?.tickerMessages || "";
+      if (tickerInput) tickerInput.value = state.extraSettings?.tickerMessages || "";
+      const intervalInput = document.getElementById("setTickerIntervalSec");
+      if (intervalInput) {
+        intervalInput.value = normalizeTickerIntervalSec(state.extraSettings?.tickerIntervalSec);
       }
       const bankInput = document.getElementById("setBankInfo");
-      if (bankInput) {
-        bankInput.value = state.extraSettings?.bankDetails || "";
-      }
+      if (bankInput) bankInput.value = state.extraSettings?.bankDetails || "";
 
       startFiveSecondTicker();
     }
@@ -924,13 +1004,7 @@
         const vidContainer = document.getElementById("broadcastVideoContainer");
         const vidWrapper = document.getElementById("broadcastVideoWrapper");
         if (s.broadcast_video_url) {
-          const url = s.broadcast_video_url;
-          if (url.includes("youtube.com") || url.includes("youtu.be")) {
-            const vidId = url.split("v=")[1]?.split("&")[0] || url.split("/").pop();
-            vidWrapper.innerHTML = `<iframe src="https://www.youtube.com/embed/${escapeHtml(vidId)}" allowfullscreen></iframe>`;
-          } else {
-            vidWrapper.innerHTML = `<video src="${escapeHtml(url)}" controls class="w-100 h-100"></video>`;
-          }
+          vidWrapper.innerHTML = buildVideoPlayerHtml(s.broadcast_video_url);
           vidContainer.classList.remove("d-none");
         } else {
           vidContainer.classList.add("d-none");
@@ -957,6 +1031,7 @@
         state.products = data.products || [];
         populateCategoryFilter();
         renderCatalog();
+        renderVideoAdvertsTab();
         renderInventoryTable();
         populatePosProducts();
       } catch (err) {
@@ -989,23 +1064,27 @@
       });
 
       if (!filtered.length) {
-        grid.innerHTML = `<div class="col-12 text-center text-muted py-5">No products match your search.</div>`;
+        grid.innerHTML = `<div class="col-12 text-center text-muted py-5">No products found.</div>`;
         return;
       }
 
       grid.innerHTML = filtered.map((p) => {
         const imgHtml = p.image_url
-          ? `<img src="${escapeHtml(p.image_url)}" class="product-img" alt="${escapeHtml(p.name)}" />`
-          : `<div class="product-img d-flex align-items-center justify-content-center text-muted"><i class="bi bi-box-seam fs-1"></i></div>`;
+          ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}" />`
+          : `<i class="bi bi-box-seam fs-1 text-muted"></i>`;
+
+        const videoBtnHtml = p.video_url
+          ? `<button type="button" class="btn btn-sm btn-outline-primary mb-2" onclick="openVideoAdvertModal('${p.id}')"><i class="bi bi-play-btn"></i> Watch Video Advert</button>`
+          : "";
 
         return `
           <div class="col-sm-6 col-md-4 col-lg-3">
             <div class="product-card h-100 d-flex flex-column">
-              ${imgHtml}
+              <div class="product-media-box">${imgHtml}</div>
               <div class="p-3 d-flex flex-column flex-grow-1">
                 <div class="d-flex justify-content-between align-items-start mb-1">
                   <span class="badge bg-light text-dark border">${escapeHtml(p.category)}</span>
-                  <small class="text-muted">${p.qty_cartons > 0 ? `${p.qty_cartons} in stock` : "Out of stock"}</small>
+                  <small class="text-muted">${p.qty_cartons > 0 ? `${p.qty_cartons} left` : "Out of stock"}</small>
                 </div>
                 <h6 class="fw-bold mb-1">${escapeHtml(p.name)}</h6>
                 ${p.vendor_name ? `<small class="text-muted mb-1">Brand: ${escapeHtml(p.vendor_name)}</small>` : ""}
@@ -1015,6 +1094,7 @@
                   ${p.price_pack > 0 ? `<div><strong>${escapeHtml(p.unit_pack_label)}:</strong> ${fmtMoney(p.price_pack)}</div>` : ""}
                   ${p.price_retail > 0 ? `<div><strong>${escapeHtml(p.unit_retail_label)}:</strong> ${fmtMoney(p.price_retail)}</div>` : ""}
                 </div>
+                ${videoBtnHtml}
                 <div class="input-group input-group-sm mt-auto">
                   <select id="unit-${p.id}" class="form-select">
                     <option value="carton">${escapeHtml(p.unit_main_label)}</option>
@@ -1074,7 +1154,7 @@
       totalEl.textContent = fmtMoney(grandTotal);
 
       if (!state.cart.length) {
-        container.innerHTML = `<div class="text-muted text-center py-4">Your cart is currently empty.</div>`;
+        container.innerHTML = `<div class="text-muted text-center py-4">Your cart is empty.</div>`;
         return;
       }
 
@@ -1126,8 +1206,7 @@
         confirmBox.innerHTML = `
           <strong>Order Submitted!</strong><br/>
           Order Ref: <code>${escapeHtml(res.payment_ref)}</code><br/>
-          Your Chat PIN: <code>${escapeHtml(res.customer_pin)}</code><br/>
-          <small>Save your PIN or Order Ref to unlock your Chat &amp; Receipts tab.</small>
+          Chat PIN: <code>${escapeHtml(res.customer_pin)}</code>
         `;
         confirmBox.classList.remove("d-none");
       } catch (err) {
@@ -1227,7 +1306,7 @@
                <a href="${escapeHtml(m.proof_url)}" target="_blank">
                  <img src="${escapeHtml(m.proof_url)}" style="max-height:180px; border-radius:8px;" alt="Proof" />
                </a>
-               ${isStaffView ? `<div class="mt-1"><button class="btn btn-xs btn-outline-danger btn-sm py-0 px-2" onclick="deleteSingleChatPhoto('${m.id}')">Delete Photo</button></div>` : ""}
+               ${isStaffView ? `<div class="mt-1"><button class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteSingleChatPhoto('${m.id}')">Delete Photo</button></div>` : ""}
              </div>`
           : "";
 
@@ -1551,7 +1630,7 @@
       const fd = new FormData(document.getElementById("productForm"));
       try {
         await apiFetch("/api/products", { method: "POST", body: fd });
-        alert("Product saved successfully!");
+        alert("Product saved!");
         document.getElementById("productForm").reset();
         toggleProductEditSelect();
         await loadProducts();
@@ -1752,6 +1831,7 @@
         bankDetails: document.getElementById("setBankInfo").value.trim(),
         showRotatingTicker: document.getElementById("setShowRotatingTicker").checked,
         tickerMessages: document.getElementById("setTickerMessages").value.trim(),
+        tickerIntervalSec: normalizeTickerIntervalSec(document.getElementById("setTickerIntervalSec")?.value),
       };
       fd.append("extra_settings", JSON.stringify(extraPayload));
 

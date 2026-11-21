@@ -80,6 +80,64 @@
       color: #6b7280;
       font-size: 0.85rem;
     }
+    #customerSection.has-bottom-dock {
+      padding-bottom: 92px;
+    }
+    #customerTabs.bottom-tab-dock {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1030;
+      margin: 0 !important;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+      background: rgba(255, 255, 255, 0.97);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid #e5e7eb;
+      box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.08);
+      display: grid !important;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 6px !important;
+    }
+    #customerTabs.bottom-tab-dock .nav-item {
+      min-width: 0;
+    }
+    #customerTabs.bottom-tab-dock .nav-link {
+      width: 100%;
+      height: 100%;
+      padding: 7px 6px;
+      font-size: 0.76rem;
+      line-height: 1.2;
+      text-align: center;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #customerTabs.bottom-tab-dock .nav-link i {
+      margin-right: 0 !important;
+      font-size: 0.95rem;
+    }
+    @media (min-width: 768px) {
+      #customerTabs.bottom-tab-dock {
+        padding: 9px 24px;
+        gap: 10px !important;
+      }
+      #customerTabs.bottom-tab-dock .nav-link {
+        flex-direction: row;
+        gap: 6px;
+        font-size: 0.88rem;
+        padding: 8px 12px;
+      }
+      #customerTabs.bottom-tab-dock .nav-link i {
+        font-size: 0.9rem;
+      }
+    }
     @media print {
       body * {
         visibility: hidden !important;
@@ -142,7 +200,7 @@
 
         <hr />
         <div class="small text-muted">
-          <div>v21.2 | 2026</div>
+          <div>v22.1 | 2026</div>
         </div>
       </aside>
 
@@ -157,7 +215,7 @@
         <!-- ================================================================ -->
         <!-- CUSTOMER SECTION                                                 -->
         <!-- ================================================================ -->
-        <section id="customerSection">
+        <section id="customerSection" class="has-bottom-dock">
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
             <div>
               <h1 class="h4 fw-bold mb-0" id="businessTitleDisplay">Sammyreks Business Center</h1>
@@ -179,30 +237,6 @@
               <div id="customerBroadcastPlayerWrap"></div>
             </div>
           </div>
-
-          <!-- Customer Sub-Tabs -->
-          <ul class="nav nav-pills mb-3 gap-1" id="customerTabs">
-            <li class="nav-item">
-              <button type="button" class="nav-link active" data-action="switch-customer-tab" data-tab="shopTab">
-                <i class="fa-solid fa-shop me-1"></i>Shop &amp; Cart
-              </button>
-            </li>
-            <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="requestTab">
-                <i class="fa-solid fa-list-check me-1"></i>Multi-Item Request
-              </button>
-            </li>
-            <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="chatTab">
-                <i class="fa-solid fa-comments me-1"></i>Live Chat &amp; Receipts
-              </button>
-            </li>
-            <li class="nav-item">
-              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="cartTab">
-                <i class="fa-solid fa-receipt me-1"></i>View Cart &amp; Checkout
-              </button>
-            </li>
-          </ul>
 
           <!-- Tab 1: Shop & Cart -->
           <div id="shopTab" class="customer-tab-pane">
@@ -227,13 +261,17 @@
               <div class="card-body">
                 <h5 class="card-title"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Multi-Item Request</h5>
                 <form id="multiRequestForm" class="row g-3">
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label class="form-label">Your Full Name</label>
                     <input type="text" id="reqName" class="form-control" placeholder="Your name" required />
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <label class="form-label">Your Phone Number</label>
                     <input type="text" id="reqPhone" class="form-control" placeholder="e.g. 08012345678" required />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Create 4-Digit Chat PIN (Optional)</label>
+                    <input type="password" id="reqPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
                   </div>
                   <div class="col-12">
                     <label class="form-label">Items Needed &amp; Quantities</label>
@@ -241,7 +279,7 @@
                   </div>
                   <div class="col-12">
                     <button type="submit" class="btn btn-primary">
-                      <i class="fa-solid fa-paper-plane me-1"></i>Send Request to Live Chat
+                      <i class="fa-solid fa-paper-plane me-1"></i>Send Request to Private Chat
                     </button>
                   </div>
                 </form>
@@ -249,34 +287,50 @@
             </div>
           </div>
 
-          <!-- Tab 3: Live Chat & Receipts -->
+          <!-- Tab 3: Private Live Chat & Receipts -->
           <div id="chatTab" class="customer-tab-pane d-none">
             <div class="card shadow-sm">
               <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-comments me-2 text-success"></i>Live Chat &amp; Receipts</h5>
-                <div class="row g-2 mb-3">
-                  <div class="col-md-8">
-                    <input type="text" id="chatPhoneFilter" class="form-control" placeholder="Enter phone number to load chat & receipts" />
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <div>
+                    <h5 class="card-title mb-0"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Private Order Portfolio, Chat &amp; Receipts</h5>
+                    <small class="text-muted">Protected by your Phone Number and 4-Digit Chat PIN (or Order Reference Code).</small>
                   </div>
-                  <div class="col-md-4 d-grid">
-                    <button type="button" class="btn btn-outline-primary" data-action="load-chat">
-                      <i class="fa-solid fa-rotate me-1"></i>Load Chat
+                  <button type="button" id="lockChatBtn" class="btn btn-outline-secondary btn-sm d-none" data-action="lock-customer-chat">
+                    <i class="fa-solid fa-lock me-1"></i>Lock Session
+                  </button>
+                </div>
+
+                <!-- Credential Banner after placing an order -->
+                <div id="customerCredentialNotice" class="alert alert-success py-2 px-3 small d-none"></div>
+
+                <!-- Unlock Portfolio Form -->
+                <form id="unlockChatForm" class="row g-2 mb-3">
+                  <div class="col-md-5">
+                    <input type="text" id="chatPhoneFilter" class="form-control" placeholder="Your registered phone number" required />
+                  </div>
+                  <div class="col-md-4">
+                    <input type="password" id="chatPinFilter" class="form-control" placeholder="4-Digit Chat PIN or Order Ref (e.g. SRK-4247)" required />
+                  </div>
+                  <div class="col-md-3 d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-unlock-keyhole me-1"></i>Unlock My Chat
                     </button>
                   </div>
-                </div>
+                </form>
 
                 <div id="chatMessagesBox" class="border rounded p-3 mb-3 chat-box">
-                  <div class="text-muted small">Enter a phone number and click Load Chat to view messages and receipts.</div>
+                  <div class="text-muted small py-3 text-center">
+                    <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
+                    Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.
+                  </div>
                 </div>
 
-                <form id="chatSendForm" enctype="multipart/form-data" class="row g-2">
+                <form id="chatSendForm" enctype="multipart/form-data" class="row g-2 d-none">
+                  <div class="col-md-7">
+                    <input type="text" name="text" id="chatSendText" class="form-control" placeholder="Write a message to support..." />
+                  </div>
                   <div class="col-md-3">
-                    <input type="text" name="phone" id="chatSendPhone" class="form-control" placeholder="Phone number" required />
-                  </div>
-                  <div class="col-md-5">
-                    <input type="text" name="text" id="chatSendText" class="form-control" placeholder="Type a message..." />
-                  </div>
-                  <div class="col-md-2">
                     <input type="file" name="proof_file" id="chatProofFile" class="form-control" accept="image/*" />
                   </div>
                   <div class="col-md-2 d-grid">
@@ -298,21 +352,25 @@
                   <p class="text-muted">Your cart is empty.</p>
                 </div>
                 <form id="customerOrderForm" class="row g-3">
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label class="form-label">Customer Name</label>
                     <input type="text" id="orderCustomerName" class="form-control" placeholder="Your full name" required />
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
                     <label class="form-label">Customer Phone Number</label>
                     <input type="text" id="orderPhone" class="form-control" placeholder="e.g. 08012345678" required />
                   </div>
-                  <div class="col-md-4">
+                  <div class="col-md-3">
+                    <label class="form-label">4-Digit Chat PIN (Optional)</label>
+                    <input type="password" id="orderPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
+                  </div>
+                  <div class="col-md-3">
                     <label class="form-label">Delivery / Order Note</label>
                     <input type="text" id="orderNote" class="form-control" placeholder="Optional note..." />
                   </div>
                   <div class="col-12 d-flex gap-2">
                     <button type="submit" class="btn btn-primary">
-                      <i class="fa-solid fa-check me-1"></i>Submit Order to Live Chat
+                      <i class="fa-solid fa-check me-1"></i>Submit Order to Private Chat
                     </button>
                     <button type="button" class="btn btn-outline-danger" data-action="clear-cart">
                       <i class="fa-solid fa-trash me-1"></i>Clear Cart
@@ -330,6 +388,30 @@
               Staff Sign-In
             </button>
           </footer>
+
+          <!-- Stationary Bottom Navigation Tabs -->
+          <ul class="nav nav-pills bottom-tab-dock" id="customerTabs">
+            <li class="nav-item">
+              <button type="button" class="nav-link active" data-action="switch-customer-tab" data-tab="shopTab">
+                <i class="fa-solid fa-shop me-1"></i><span>Shop &amp; Cart</span>
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="requestTab">
+                <i class="fa-solid fa-list-check me-1"></i><span>Multi-Item Request</span>
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="chatTab">
+                <i class="fa-solid fa-comments me-1"></i><span>Live Chat &amp; Receipts</span>
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="cartTab">
+                <i class="fa-solid fa-receipt me-1"></i><span>View Cart &amp; Checkout</span>
+              </button>
+            </li>
+          </ul>
         </section>
 
         <!-- ================================================================ -->
@@ -773,6 +855,12 @@
       ordersFeed: [],
       isLoggedIn: false,
       user: null,
+      staffToken: "",
+      customerAuth: {
+        unlocked: false,
+        phone: "",
+        pin: "",
+      },
       currency: "\u20a6",
       businessName: "Sammyreks Business Center",
       busyKeys: new Set(),
@@ -790,9 +878,15 @@
     function syncLayoutChrome() {
       const sidebarCol = document.getElementById("staffSidebarCol");
       const mainCol = document.getElementById("mainContentCol");
+      const bottomDock = document.getElementById("customerTabs");
+      const customerSec = document.getElementById("customerSection");
       const showSidebar = Boolean(state.isLoggedIn);
+      const isCustomerVisible = !customerSec.classList.contains("d-none");
 
       sidebarCol.classList.toggle("d-none", !showSidebar);
+      bottomDock.classList.toggle("d-none", !isCustomerVisible);
+      customerSec.classList.toggle("has-bottom-dock", isCustomerVisible);
+
       if (showSidebar) {
         mainCol.className = "col-lg-9 col-xl-10 p-3 p-md-4";
       } else {
@@ -812,9 +906,13 @@
     }
 
     async function apiRequest(url, options = {}) {
+      const headers = new Headers(options.headers || {});
+      if (state.staffToken) {
+        headers.set("X-Staff-Token", state.staffToken);
+      }
       let response;
       try {
-        response = await fetch(url, options);
+        response = await fetch(url, { ...options, headers });
       } catch (_) {
         throw new Error("Network issue while reaching the server. Please check your connection and try again.");
       }
@@ -1317,20 +1415,42 @@
       }).join("");
     }
 
-    async function loadChatMessages() {
-      const phone = document.getElementById("chatPhoneFilter").value.trim();
+    function lockCustomerChatView() {
+      state.customerAuth = { unlocked: false, phone: "", pin: "" };
+      document.getElementById("chatSendForm").classList.add("d-none");
+      document.getElementById("lockChatBtn").classList.add("d-none");
+      document.getElementById("customerCredentialNotice").classList.add("d-none");
+      document.getElementById("chatMessagesBox").innerHTML = `
+        <div class="text-muted small py-3 text-center">
+          <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
+          Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.
+        </div>
+      `;
+    }
+
+    async function loadCustomerPrivateChat() {
+      const phone = (state.customerAuth.phone || document.getElementById("chatPhoneFilter").value).trim();
+      const pin = (state.customerAuth.pin || document.getElementById("chatPinFilter").value).trim();
       const box = document.getElementById("chatMessagesBox");
+
+      if (!phone || !pin) {
+        lockCustomerChatView();
+        return;
+      }
+
       try {
-        const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
+        const query = `?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`;
         const res = await apiRequest(`/api/messages${query}`);
         const msgs = (res.messages || res.data || []).map(normalizeMessageClient);
-        renderChatList(
-          box,
-          msgs,
-          `No messages or receipts found${phone ? ` for ${phone}` : ""}.`
-        );
+
+        state.customerAuth = { unlocked: true, phone, pin };
+        document.getElementById("chatSendForm").classList.remove("d-none");
+        document.getElementById("lockChatBtn").classList.remove("d-none");
+
+        renderChatList(box, msgs, `No messages or receipts found for ${phone}.`);
       } catch (err) {
-        showBanner(`Failed to load chat: ${err.message}`, "danger");
+        lockCustomerChatView();
+        showBanner(err.message, "danger");
       }
     }
 
@@ -1451,7 +1571,13 @@
       document.querySelectorAll("#customerTabs .nav-link").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.tab === tabId);
       });
-      if (tabId === "chatTab") loadChatMessages();
+      if (tabId === "chatTab") {
+        if (state.customerAuth.unlocked) {
+          loadCustomerPrivateChat();
+        } else {
+          lockCustomerChatView();
+        }
+      }
     }
 
     function switchStaffTab(tabId) {
@@ -1467,6 +1593,16 @@
       }
     }
 
+    document.getElementById("unlockChatForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("unlock-customer-chat", 600, btn, "Unlocking...", async () => {
+        state.customerAuth.phone = document.getElementById("chatPhoneFilter").value.trim();
+        state.customerAuth.pin = document.getElementById("chatPinFilter").value.trim();
+        await loadCustomerPrivateChat();
+      });
+    });
+
     document.addEventListener("click", async (event) => {
       const target = event.target.closest("[data-action]");
       if (!target) return;
@@ -1475,6 +1611,9 @@
 
       if (action === "dismiss-banner") {
         document.getElementById("appFeedbackBanner").classList.add("d-none");
+      } else if (action === "lock-customer-chat") {
+        document.getElementById("chatPinFilter").value = "";
+        lockCustomerChatView();
       } else if (action === "open-staff-portal") {
         openStaffPortalLogin();
       } else if (action === "switch-section") {
@@ -1607,10 +1746,6 @@
         state.cart = [];
         updateCartSummary();
         showBanner("Cart cleared.", "info");
-      } else if (action === "load-chat") {
-        await runGuardedAction("load-chat", 500, target, "Loading...", async () => {
-          await loadChatMessages();
-        });
       } else if (action === "refresh-products") {
         await runGuardedAction("refresh-products", 500, target, "Refreshing...", async () => {
           await loadProducts();
@@ -1700,6 +1835,7 @@
           });
           state.isLoggedIn = true;
           state.user = res;
+          state.staffToken = res.token || "";
           document.getElementById("authBadge").className = "badge bg-success";
           document.getElementById("authBadge").textContent = `${res.role || "Admin"}: ${res.username || username}`;
           document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username}`;
@@ -1717,6 +1853,7 @@
     document.getElementById("logoutBtn").addEventListener("click", () => {
       state.isLoggedIn = false;
       state.user = null;
+      state.staffToken = "";
       document.getElementById("authBadge").className = "badge bg-secondary";
       document.getElementById("authBadge").textContent = "Staff Mode";
       document.getElementById("logoutBtn").classList.add("d-none");
@@ -1753,6 +1890,25 @@
       });
     });
 
+    function revealCustomerCredentialsAndOpenChat(phone, pin, refCode) {
+      const cleanPin = String(pin || "").trim();
+      const cleanRef = String(refCode || "").trim();
+      state.customerAuth = { unlocked: true, phone, pin: cleanPin || cleanRef };
+      document.getElementById("chatPhoneFilter").value = phone;
+      document.getElementById("chatPinFilter").value = cleanPin || cleanRef;
+
+      const noticeEl = document.getElementById("customerCredentialNotice");
+      noticeEl.innerHTML = `
+        <strong><i class="fa-solid fa-key me-1"></i>Save Your Private Access Credentials:</strong>
+        Phone: <strong>${escapeHtml(phone)}</strong> &bull;
+        Chat PIN: <strong>${escapeHtml(cleanPin || "N/A")}</strong>
+        ${cleanRef ? `&bull; Order Ref: <strong>${escapeHtml(cleanRef)}</strong>` : ""}
+        <span class="d-block mt-1">Use your phone number and PIN (or Order Ref) anytime to unlock your private chat and receipts.</span>
+      `;
+      noticeEl.classList.remove("d-none");
+      switchCustomerTab("chatTab");
+    }
+
     document.getElementById("customerOrderForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!state.cart.length) {
@@ -1763,6 +1919,7 @@
       await runGuardedAction("submit-order", 2000, btn, "Submitting...", async () => {
         const customerName = document.getElementById("orderCustomerName").value.trim();
         const phone = document.getElementById("orderPhone").value.trim();
+        const pin = document.getElementById("orderPin").value.trim();
         const note = document.getElementById("orderNote").value.trim();
         const mappedItems = state.cart.map((i) => ({
           name: i.name,
@@ -1772,22 +1929,20 @@
         }));
 
         try {
-          await apiRequest("/api/orders", {
+          const res = await apiRequest("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               customer: customerName,
               contact_phone: phone,
+              pin,
               notes: note,
               items: mappedItems,
             }),
           });
           state.cart = [];
           updateCartSummary();
-          document.getElementById("chatPhoneFilter").value = phone;
-          document.getElementById("chatSendPhone").value = phone;
-          switchCustomerTab("chatTab");
-          await loadChatMessages();
+          revealCustomerCredentialsAndOpenChat(phone, res.customer_pin, res.payment_ref);
         } catch (err) {
           showBanner(`Failed to send order: ${err.message}`, "danger");
         }
@@ -1800,22 +1955,21 @@
       await runGuardedAction("multi-request", 2000, btn, "Sending...", async () => {
         const customerName = document.getElementById("reqName").value.trim();
         const phone = document.getElementById("reqPhone").value.trim();
+        const pin = document.getElementById("reqPin").value.trim();
         const itemsText = document.getElementById("reqItemsText").value.trim();
         try {
-          await apiRequest("/api/orders", {
+          const res = await apiRequest("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               customer: customerName,
               contact_phone: phone,
+              pin,
               special_items: [{ item: itemsText, qty: 1 }],
             }),
           });
           e.target.reset();
-          document.getElementById("chatPhoneFilter").value = phone;
-          document.getElementById("chatSendPhone").value = phone;
-          switchCustomerTab("chatTab");
-          await loadChatMessages();
+          revealCustomerCredentialsAndOpenChat(phone, res.customer_pin, res.payment_ref);
         } catch (err) {
           showBanner(`Failed to send request: ${err.message}`, "danger");
         }
@@ -1824,14 +1978,20 @@
 
     document.getElementById("chatSendForm").addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (!state.customerAuth.unlocked) {
+        showBanner("Please unlock your private chat first.", "warning");
+        return;
+      }
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("customer-chat-send", 1200, btn, "Sending...", async () => {
-        const phone = document.getElementById("chatSendPhone").value.trim();
+        const phone = state.customerAuth.phone;
+        const pin = state.customerAuth.pin;
         const text = document.getElementById("chatSendText").value.trim();
         const proofFile = document.getElementById("chatProofFile").files[0];
         const fd = new FormData();
         fd.append("phone", phone);
-        fd.append("sender", state.isLoggedIn ? "Staff" : "Customer");
+        fd.append("pin", pin);
+        fd.append("sender", "Customer");
         fd.append("text", text);
         if (proofFile) fd.append("proof_file", proofFile);
 
@@ -1839,8 +1999,7 @@
           await apiRequest("/api/messages", { method: "POST", body: fd });
           document.getElementById("chatSendText").value = "";
           document.getElementById("chatProofFile").value = "";
-          document.getElementById("chatPhoneFilter").value = phone;
-          await loadChatMessages();
+          await loadCustomerPrivateChat();
         } catch (err) {
           showBanner(`Failed to send message: ${err.message}`, "danger");
         }
@@ -1991,6 +2150,7 @@
 
     (async function initApp() {
       syncLayoutChrome();
+      lockCustomerChatView();
       updateCartSummary();
       await loadSettings();
       await loadProducts();

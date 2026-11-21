@@ -106,12 +106,18 @@ def make_ref() -> str:
 
 def normalize_product(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     data = dict(raw or {})
-    price_carton = float(data.get("price_carton") if data.get("price_carton") is not None else (data.get("price") or 0.0))
-    stock_cartons = float(data.get("qty_cartons") if data.get("qty_cartons") is not None else (data.get("stock") or 0.0))
+    price_carton = float(
+        data.get("price_carton") if data.get("price_carton") is not None else (data.get("price") or 0.0)
+    )
+    stock_cartons = float(
+        data.get("qty_cartons") if data.get("qty_cartons") is not None else (data.get("stock") or 0.0)
+    )
     image_url = str(data.get("image_url") or data.get("img_data") or "").strip()
+    vendor_name = str(data.get("vendor_name") or data.get("vendor") or data.get("sponsor") or "").strip()
     data["id"] = doc_id
     data["name"] = str(data.get("name") or "Unnamed Product").strip()
     data["category"] = str(data.get("category") or "General").strip()
+    data["vendor_name"] = vendor_name
     data["unit_main_label"] = str(data.get("unit_main_label") or "Carton").strip()
     data["unit_pack_label"] = str(data.get("unit_pack_label") or "Pack").strip()
     data["unit_retail_label"] = str(data.get("unit_retail_label") or "Retail Unit").strip()
@@ -121,7 +127,9 @@ def normalize_product(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, A
     data["stock"] = stock_cartons
     data["cost"] = float(data.get("cost") or 0.0)
     data["price_pack"] = float(data.get("price_pack") or 0.0)
-    data["price_retail"] = float(data.get("price_retail") if data.get("price_retail") is not None else price_carton)
+    data["price_retail"] = float(
+        data.get("price_retail") if data.get("price_retail") is not None else price_carton
+    )
     data["packs_per_carton"] = max(1, int(data.get("packs_per_carton") or 1))
     data["units_per_pack"] = max(1, int(data.get("units_per_pack") or 1))
     data["image_url"] = image_url
@@ -146,7 +154,9 @@ def normalize_order(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any
     data["notes"] = str(data.get("notes") or "").strip()
     data["items"] = items
     data["special_items"] = special_items
-    data["order_type"] = str(data.get("order_type") or ("Multi-Item Request" if special_items else "Cart Order")).strip()
+    data["order_type"] = str(
+        data.get("order_type") or ("Multi-Item Request" if special_items else "Cart Order")
+    ).strip()
     data["payment_ref"] = str(data.get("payment_ref") or "").strip()
     data["status"] = str(data.get("status") or "Pending").strip()
     data["timestamp"] = str(data.get("timestamp") or "").strip()
@@ -201,7 +211,13 @@ def upload_to_cloudinary(
     }
     if resource_type == "image" and max_dim:
         upload_kwargs["transformation"] = [
-            {"width": max_dim, "height": max_dim, "crop": "limit", "quality": "auto", "fetch_format": "auto"}
+            {
+                "width": max_dim,
+                "height": max_dim,
+                "crop": "limit",
+                "quality": "auto",
+                "fetch_format": "auto",
+            }
         ]
 
     file.file.seek(0)
@@ -251,6 +267,7 @@ async def save_product(
     action_mode: str = Form("create"),
     existing_product_id: str = Form(""),
     category: str = Form("General"),
+    vendor_name: str = Form(""),
     main_unit: str = Form("Carton"),
     sub_unit: str = Form("Pack"),
     retail_unit: str = Form("Retail Unit"),
@@ -284,6 +301,15 @@ async def save_product(
     else:
         target_id = uuid.uuid4().hex
 
+    clean_vendor = vendor_name.strip()
+    if not clean_vendor and existing_data:
+        clean_vendor = str(
+            existing_data.get("vendor_name")
+            or existing_data.get("vendor")
+            or existing_data.get("sponsor")
+            or ""
+        ).strip()
+
     image_url = upload_to_cloudinary(image_file, folder="sammyreks_products", resource_type="image", max_dim=800)
     if not image_url:
         image_url = existing_data.get("image_url") or existing_data.get("img_data") or ""
@@ -299,6 +325,7 @@ async def save_product(
     product_doc: Dict[str, Any] = {
         "name": clean_name,
         "category": category.strip() or "General",
+        "vendor_name": clean_vendor,
         "unit_main_label": main_unit.strip() or "Carton",
         "unit_pack_label": sub_unit.strip() or "Pack",
         "unit_retail_label": retail_unit.strip() or "Retail Unit",
@@ -371,7 +398,10 @@ async def create_order(request: Request):
         items_str = ", ".join(item_parts) if item_parts else "Cart Order"
         note_str = f" Note: {notes}" if notes else ""
         order_type = "Cart Order"
-        chat_text = f"Hello! I just submitted an order. Items: {items_str}. Total: ₦{total_sum:,.2f}. My Reference Code is '{payment_ref}'.{note_str}"
+        chat_text = (
+            f"Hello! I just submitted an order. Items: {items_str}. "
+            f"Total: ₦{total_sum:,.2f}. My Reference Code is '{payment_ref}'.{note_str}"
+        )
 
     order_doc: Dict[str, Any] = {
         "order_type": order_type,
@@ -439,26 +469,34 @@ async def verify_order(order_id: str, request: Request):
             it_qty = it.get("qty") or 1
             it_total = float(it.get("total_price") or 0.0)
             total_val += it_total
-            lines_html += f"<p style='margin:2px 0;'>{it_qty} {it_unit}(s) of {it_name} &mdash; {currency}{it_total:,.2f}</p>"
+            lines_html += (
+                f"<p style='margin:2px 0;'>{it_qty} {it_unit}(s) of {it_name} &mdash; "
+                f"{currency}{it_total:,.2f}</p>"
+            )
     elif order_data.get("notes"):
         lines_html += f"<p style='margin:2px 0;'>{order_data.get('notes')}</p>"
 
     receipt_html = (
-        f"<div style='background:#fdfcf7; color:#111; padding:16px; border-radius:6px; border:1px solid #dcd6cd; "
-        f"font-family:\"Courier New\", Courier, monospace; max-width:360px; margin:6px 0;'>"
-        f"<div style='text-align:center; border-bottom:1px dashed #333; padding-bottom:8px; margin-bottom:8px;'>"
+        f"<div style='background:#fdfcf7; color:#111; padding:16px; border-radius:6px; "
+        f"border:1px solid #dcd6cd; font-family:\"Courier New\", Courier, monospace; "
+        f"max-width:360px; margin:6px 0;'>"
+        f"<div style='text-align:center; border-bottom:1px dashed #333; padding-bottom:8px; "
+        f"margin-bottom:8px;'>"
         f"<h5 style='margin:0; font-weight:bold;'>{biz_name}</h5>"
         f"<div style='font-size:0.75rem; color:#444; margin:2px 0;'>OFFICIAL PURCHASE RECEIPT</div>"
-        f"<span style='background:#198754; color:#fff; font-size:0.72rem; padding:2px 6px; border-radius:3px; font-weight:bold;'>PAID &amp; VERIFIED</span>"
+        f"<span style='background:#198754; color:#fff; font-size:0.72rem; padding:2px 6px; "
+        f"border-radius:3px; font-weight:bold;'>PAID &amp; VERIFIED</span>"
         f"</div>"
-        f"<div style='font-size:0.8rem; margin-bottom:8px; border-bottom:1px dashed #333; padding-bottom:6px;'>"
+        f"<div style='font-size:0.8rem; margin-bottom:8px; border-bottom:1px dashed #333; "
+        f"padding-bottom:6px;'>"
         f"<p style='margin:2px 0;'><b>REF CODE:</b> {ref_code}</p>"
         f"<p style='margin:2px 0;'><b>CUSTOMER:</b> {customer}</p>"
         f"<p style='margin:2px 0;'><b>PHONE:</b> {phone or 'N/A'}</p>"
         f"<p style='margin:2px 0;'><b>VERIFIED BY:</b> {verified_by}</p>"
         f"</div>"
         f"<div style='font-size:0.8rem; margin-bottom:8px;'>{lines_html}</div>"
-        f"<div style='border-top:1px dashed #333; padding-top:6px; font-size:0.85rem; font-weight:bold;'>"
+        f"<div style='border-top:1px dashed #333; padding-top:6px; font-size:0.85rem; "
+        f"font-weight:bold;'>"
         f"TOTAL: {currency}{total_val:,.2f}"
         f"</div>"
         f"</div>"
@@ -515,7 +553,9 @@ async def post_message(
     if not clean_phone:
         raise HTTPException(status_code=400, detail="Phone number is required")
 
-    proof_url = upload_to_cloudinary(proof_file, folder="sammyreks_receipts", resource_type="image", max_dim=1000)
+    proof_url = upload_to_cloudinary(
+        proof_file, folder="sammyreks_receipts", resource_type="image", max_dim=1000
+    )
 
     if not clean_text and not proof_url:
         raise HTTPException(status_code=400, detail="Enter a message or attach a receipt image")
@@ -532,6 +572,39 @@ async def post_message(
     msg_id = uuid.uuid4().hex
     db.collection("messages").document(msg_id).set(msg_doc)
     return {"ok": True, "id": msg_id, "proof_url": proof_url}
+
+
+@app.delete("/api/messages/{message_id}/photo")
+def delete_message_photo(message_id: str):
+    doc_ref = db.collection("messages").document(message_id)
+    if not doc_ref.get().exists:
+        raise HTTPException(status_code=404, detail="Message not found")
+    doc_ref.set({"proof_url": ""}, merge=True)
+    return {"ok": True, "id": message_id}
+
+
+@app.delete("/api/messages/photos")
+def delete_all_message_photos():
+    docs = db.collection("messages").stream()
+    cleared = 0
+    for doc in docs:
+        data = doc.to_dict() or {}
+        if data.get("proof_url"):
+            doc.reference.set({"proof_url": ""}, merge=True)
+            cleared += 1
+    return {"ok": True, "cleared": cleared}
+
+
+@app.get("/api/sales")
+def get_sales():
+    docs = db.collection("sales").stream()
+    sales: List[Dict[str, Any]] = []
+    for doc in docs:
+        item = dict(doc.to_dict() or {})
+        item["id"] = doc.id
+        sales.append(item)
+    sales.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
+    return {"sales": sales}
 
 
 @app.post("/api/sales")
@@ -570,7 +643,9 @@ async def record_sale(request: Request):
                 deduct_cartons = qty / (packs_per_carton * units_per_pack)
 
             current_stock = float(
-                pdata.get("qty_cartons") if pdata.get("qty_cartons") is not None else (pdata.get("stock") or 0)
+                pdata.get("qty_cartons")
+                if pdata.get("qty_cartons") is not None
+                else (pdata.get("stock") or 0)
             )
             new_stock = max(0.0, current_stock - deduct_cartons)
             prod_ref.set({"qty_cartons": new_stock, "stock": new_stock, "updated_at": ts}, merge=True)
@@ -583,6 +658,7 @@ async def record_sale(request: Request):
             "items_bought": f"{item_name} ({qty} {unit_type})",
             "payment_ref": payment_ref,
             "worker": worker,
+            "status": "unpaid",
             "timestamp": ts,
         }
         db.collection("debtors").document(uuid.uuid4().hex).set(debt_doc)
@@ -607,6 +683,18 @@ async def record_sale(request: Request):
     return {"ok": True, "receipt": sale_doc}
 
 
+@app.get("/api/debtors")
+def get_debtors():
+    docs = db.collection("debtors").stream()
+    debtors: List[Dict[str, Any]] = []
+    for doc in docs:
+        item = dict(doc.to_dict() or {})
+        item["id"] = doc.id
+        debtors.append(item)
+    debtors.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
+    return {"debtors": debtors}
+
+
 @app.post("/api/debtors")
 async def add_debtor(request: Request):
     payload = await request.json()
@@ -615,6 +703,7 @@ async def add_debtor(request: Request):
         "phone": str(payload.get("phone") or "").strip(),
         "amount": float(payload.get("amount") or 0.0),
         "items_bought": str(payload.get("items_bought") or "").strip(),
+        "status": "unpaid",
         "timestamp": now_str(),
     }
     if not doc["customer"] or not doc["phone"]:
@@ -622,6 +711,36 @@ async def add_debtor(request: Request):
     doc_id = uuid.uuid4().hex
     db.collection("debtors").document(doc_id).set(doc)
     return {"ok": True, "id": doc_id}
+
+
+@app.post("/api/debtors/{debtor_id}/pay")
+def mark_debtor_paid(debtor_id: str):
+    doc_ref = db.collection("debtors").document(debtor_id)
+    if not doc_ref.get().exists:
+        raise HTTPException(status_code=404, detail="Debtor not found")
+    doc_ref.set({"status": "paid", "paid_at": now_str()}, merge=True)
+    return {"ok": True, "id": debtor_id, "status": "paid"}
+
+
+@app.delete("/api/debtors/{debtor_id}")
+def delete_debtor(debtor_id: str):
+    doc_ref = db.collection("debtors").document(debtor_id)
+    if not doc_ref.get().exists:
+        raise HTTPException(status_code=404, detail="Debtor not found")
+    doc_ref.delete()
+    return {"ok": True, "id": debtor_id}
+
+
+@app.get("/api/expenses")
+def get_expenses():
+    docs = db.collection("expenses").stream()
+    expenses: List[Dict[str, Any]] = []
+    for doc in docs:
+        item = dict(doc.to_dict() or {})
+        item["id"] = doc.id
+        expenses.append(item)
+    expenses.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
+    return {"expenses": expenses}
 
 
 @app.post("/api/expenses")
@@ -636,6 +755,28 @@ async def add_expense(request: Request):
     doc_id = uuid.uuid4().hex
     db.collection("expenses").document(doc_id).set(doc)
     return {"ok": True, "id": doc_id}
+
+
+@app.delete("/api/expenses/{expense_id}")
+def delete_expense(expense_id: str):
+    doc_ref = db.collection("expenses").document(expense_id)
+    if not doc_ref.get().exists:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    doc_ref.delete()
+    return {"ok": True, "id": expense_id}
+
+
+@app.get("/api/workers")
+def get_workers():
+    docs = db.collection("workers").stream()
+    workers: List[Dict[str, Any]] = []
+    for doc in docs:
+        item = dict(doc.to_dict() or {})
+        item.pop("password", None)
+        item["id"] = doc.id
+        workers.append(item)
+    workers.sort(key=lambda x: str(x.get("name", "")).lower())
+    return {"workers": workers}
 
 
 @app.post("/api/workers")
@@ -657,6 +798,71 @@ async def add_worker(request: Request):
     return {"ok": True, "id": doc_id}
 
 
+@app.delete("/api/workers/{worker_id}")
+def delete_worker(worker_id: str):
+    doc_ref = db.collection("workers").document(worker_id)
+    if not doc_ref.get().exists:
+        raise HTTPException(status_code=404, detail="Worker not found")
+    doc_ref.delete()
+    return {"ok": True, "id": worker_id}
+
+
+@app.get("/api/analytics")
+def get_analytics():
+    products_by_id: Dict[str, Dict[str, Any]] = {}
+    products_by_name: Dict[str, Dict[str, Any]] = {}
+    for doc in db.collection("products").stream():
+        p = normalize_product(doc.id, doc.to_dict())
+        products_by_id[p["id"]] = p
+        products_by_name[p["name"].strip().lower()] = p
+
+    total_revenue = 0.0
+    total_profit = 0.0
+    for doc in db.collection("sales").stream():
+        s = doc.to_dict() or {}
+        if s.get("record_debt") is True or str(s.get("status") or "").lower() == "debt":
+            continue
+        qty = max(0.0, float(s.get("qty") or 1.0))
+        row_total = float(s.get("total") if s.get("total") is not None else (float(s.get("unit_price") or 0.0) * qty))
+        total_revenue += row_total
+
+        prod = products_by_id.get(str(s.get("product_id") or "")) or products_by_name.get(
+            str(s.get("item_name") or "").strip().lower()
+        )
+        if prod:
+            packs_per_carton = max(1.0, float(prod.get("packs_per_carton") or 1.0))
+            units_per_pack = max(1.0, float(prod.get("units_per_pack") or 1.0))
+            carton_cost = float(prod.get("cost") or 0.0)
+            pack_cost = carton_cost / packs_per_carton
+            retail_cost = pack_cost / units_per_pack
+            unit_type = str(s.get("unit_type") or "")
+            if unit_type == prod.get("unit_main_label") or unit_type.lower() == "carton":
+                unit_cost = carton_cost
+            elif unit_type == prod.get("unit_pack_label") or unit_type.lower() == "pack":
+                unit_cost = pack_cost
+            else:
+                unit_cost = retail_cost
+            total_profit += row_total - (unit_cost * qty)
+        else:
+            total_profit += row_total
+
+    total_expenses = 0.0
+    for doc in db.collection("expenses").stream():
+        ex = doc.to_dict() or {}
+        total_expenses += float(ex.get("amount") or 0.0)
+
+    net_cashflow = total_profit - total_expenses
+    return {
+        "ok": True,
+        "analytics": {
+            "total_revenue": total_revenue,
+            "total_profit": total_profit,
+            "total_expenses": total_expenses,
+            "net_cashflow": net_cashflow,
+        },
+    }
+
+
 @app.get("/api/settings")
 def get_settings():
     snap = db.collection("settings").document("business").get()
@@ -671,12 +877,15 @@ async def save_settings(
     active_notice: str = Form(""),
     broadcast_video_url: str = Form(""),
     currency: str = Form("₦"),
+    extra_settings: str = Form(""),
     broadcast_video_file: Optional[UploadFile] = File(None),
 ):
     ref = db.collection("settings").document("business")
     existing = ref.get().to_dict() if ref.get().exists else {}
 
-    uploaded_video = upload_to_cloudinary(broadcast_video_file, folder="sammyreks_videos", resource_type="video")
+    uploaded_video = upload_to_cloudinary(
+        broadcast_video_file, folder="sammyreks_videos", resource_type="video"
+    )
     final_video = (
         uploaded_video
         or broadcast_video_url.strip()
@@ -684,7 +893,14 @@ async def save_settings(
         or ""
     )
 
-    doc = {
+    parsed_extra: Any = existing.get("extra_settings")
+    if extra_settings.strip():
+        try:
+            parsed_extra = json.loads(extra_settings)
+        except json.JSONDecodeError:
+            parsed_extra = extra_settings.strip()
+
+    doc: Dict[str, Any] = {
         "business_name": business_name.strip() or "Sammyreks Business Center",
         "tagline": tagline.strip(),
         "active_notice": active_notice.strip(),
@@ -692,8 +908,12 @@ async def save_settings(
         "currency": currency.strip() or "₦",
         "updated_at": now_str(),
     }
+    if parsed_extra is not None:
+        doc["extra_settings"] = parsed_extra
+
     ref.set(doc, merge=True)
-    return {"ok": True, "settings": doc}
+    merged_out = {**existing, **doc}
+    return {"ok": True, "settings": merged_out}
 
 
 @app.exception_handler(Exception)

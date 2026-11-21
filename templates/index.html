@@ -245,7 +245,7 @@
 
         <hr />
         <div class="small text-muted">
-          <div>v24.3 | 2026</div>
+          <div>v24.4 | 2026</div>
         </div>
       </aside>
 
@@ -2319,10 +2319,11 @@
 
         const rawText = m.message || m.text || "";
         const decodedText = decodeHtmlEntities(rawText).trim();
-        const isSystemReceipt =
+        const isTrustedSystemReceipt =
           m.sender === "System" &&
-          (decodedText.startsWith("<") || rawText.trim().startsWith("<"));
-        const bodyHtml = isSystemReceipt ? decodedText : escapeHtml(rawText);
+          decodedText.includes("OFFICIAL PURCHASE RECEIPT") &&
+          decodedText.startsWith("<div ");
+        const bodyHtml = isTrustedSystemReceipt ? decodedText : escapeHtml(rawText);
 
         return `
           <div class="border-bottom pb-2 mb-2">

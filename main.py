@@ -4,12 +4,14 @@ import hmac
 import html
 import json
 import os
+import re
 import secrets
 import time
 import uuid
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import unquote, urlparse
 
 import cloudinary
 import cloudinary.uploader
@@ -335,7 +337,7 @@ def _looks_like_valid_media(header: bytes, resource_type: str) -> bool:
     if resource_type == "video":
         if len(header) >= 12 and header[4:8] == b"ftyp":
             return True
-        if header.startswith(b"\x1a\x45\xdf\xa3"):  # WebM / MKV
+        if header.startswith(b"\x1a\x45\xdf\xa3"):
             return True
         if header.startswith(b"RIFF") and header[8:12] == b"AVI ":
             return True
@@ -343,14 +345,54 @@ def _looks_like_valid_media(header: bytes, resource_type: str) -> bool:
     return True
 
 
+def extract_cloudinary_public_id(url: str) -> Optional[str]:
+    """Extract Cloudinary public_id from a standard Cloudinary delivery URL."""
+    clean = (url or "").strip()
+    if not clean or "res.cloudinary.com" not in clean:
+        return None
+    try:
+        parsed = urlparse(clean)
+        path = unquote(parsed.path or "")
+        match = re.search(r"/(?:image|video|raw)/upload/(?:.+?/)?v\d+/(.+)$", path)
+        if not match:
+            match = re.search(r"/(?:image|video|raw)/upload/(.+)$", path)
+        if not match:
+            return None
+        asset_path = match.group(1)
+        public_id, _ = os.path.splitext(asset_path)
+        return public_id or None
+    except Exception:
+        return None
+
+
+def delete_from_cloudinary(
+    public_id: Optional[str] = None,
+    url: Optional[str] = None,
+    resource_type: str = "image",
+) -> bool:
+    """Safely destroy an old or deleted asset in Cloudinary to free storage."""
+    if not cloudinary_ready:
+        return False
+    target_id = (public_id or "").strip() or extract_cloudinary_public_id(url or "")
+    if not target_id:
+        return False
+    try:
+        res = cloudinary.uploader.destroy(target_id, resource_type=resource_type, invalidate=True)
+        return res.get("result") in {"ok", "not found"}
+    except Exception as exc:
+        print(f"[WARN] Cloudinary destroy failed for {target_id} ({resource_type}): {exc}")
+        return False
+
+
 def upload_to_cloudinary(
     file: Optional[UploadFile],
     folder: str,
     resource_type: str = "image",
     max_dim: Optional[int] = None,
-) -> Optional[str]:
+) -> Tuple[Optional[str], Optional[str]]:
+    """Uploads file to Cloudinary and returns (secure_url, public_id)."""
     if not file or not file.filename:
-        return None
+        return None, None
     if not cloudinary_ready:
         raise HTTPException(
             status_code=500,
@@ -394,7 +436,7 @@ def upload_to_cloudinary(
 
     file.file.seek(0)
     result = cloudinary.uploader.upload(file.file, **upload_kwargs)
-    return result.get("secure_url") or result.get("url")
+    return (result.get("secure_url") or result.get("url")), result.get("public_id")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -490,21 +532,56 @@ async def save_product(
             or ""
         ).strip()
 
-    image_url = upload_to_cloudinary(
+    old_image_url = str(existing_data.get("image_url") or existing_data.get("img_data") or "").strip()
+    old_image_public_id = str(existing_data.get("image_public_id") or "").strip()
+
+    new_image_url, new_image_public_id = upload_to_cloudinary(
         image_file, folder="sammyreks_products", resource_type="image", max_dim=800
     )
-    if not image_url:
-        image_url = existing_data.get("image_url") or existing_data.get("img_data") or ""
+    if new_image_url:
+        if old_image_url and old_image_url != new_image_url:
+            delete_from_cloudinary(
+                public_id=old_image_public_id, url=old_image_url, resource_type="image"
+            )
+        final_image_url = new_image_url
+        final_image_public_id = new_image_public_id or ""
+    else:
+        final_image_url = old_image_url
+        final_image_public_id = old_image_public_id
 
-    uploaded_video_url = upload_to_cloudinary(
+    old_video_url = str(existing_data.get("video_url") or "").strip()
+    old_video_public_id = str(existing_data.get("video_public_id") or "").strip()
+
+    uploaded_video_url, uploaded_video_public_id = upload_to_cloudinary(
         video_file, folder="sammyreks_videos", resource_type="video"
     )
-    final_video_url = (
-        uploaded_video_url
-        or video_link.strip()
-        or existing_data.get("video_url")
-        or ""
-    )
+    clean_video_link = video_link.strip()
+
+    if uploaded_video_url:
+        if old_video_url and old_video_url != uploaded_video_url:
+            delete_from_cloudinary(
+                public_id=old_video_public_id, url=old_video_url, resource_type="video"
+            )
+        final_video_url = uploaded_video_url
+        final_video_public_id = uploaded_video_public_id or ""
+    elif clean_video_link:
+        if old_video_url and old_video_url != clean_video_link:
+            delete_from_cloudinary(
+                public_id=old_video_public_id, url=old_video_url, resource_type="video"
+            )
+        final_video_url = clean_video_link
+        final_video_public_id = (
+            old_video_public_id
+            if clean_video_link == old_video_url
+            else (extract_cloudinary_public_id(clean_video_link) or "")
+        )
+    else:
+        if existing_data and old_video_url:
+            delete_from_cloudinary(
+                public_id=old_video_public_id, url=old_video_url, resource_type="video"
+            )
+        final_video_url = ""
+        final_video_public_id = ""
 
     product_doc: Dict[str, Any] = {
         "name": clean_name,
@@ -525,8 +602,10 @@ async def save_product(
         "units_per_pack": max(1, int(retail_per_pack or 1)),
         "expiry": expiry_date.strip(),
         "video_url": final_video_url,
+        "video_public_id": final_video_public_id,
         "description": description.strip(),
-        "image_url": image_url,
+        "image_url": final_image_url,
+        "image_public_id": final_image_public_id,
         "updated_at": now_str(),
     }
     if not existing_data:
@@ -541,8 +620,22 @@ async def save_product(
 def delete_product(product_id: str, request: Request):
     require_staff(request)
     doc_ref = db.collection("products").document(product_id)
-    if not doc_ref.get().exists:
+    snap = doc_ref.get()
+    if not snap.exists:
         raise HTTPException(status_code=404, detail="Product not found")
+
+    pdata = snap.to_dict() or {}
+    delete_from_cloudinary(
+        public_id=pdata.get("image_public_id"),
+        url=pdata.get("image_url") or pdata.get("img_data"),
+        resource_type="image",
+    )
+    delete_from_cloudinary(
+        public_id=pdata.get("video_public_id"),
+        url=pdata.get("video_url"),
+        resource_type="video",
+    )
+
     doc_ref.delete()
     return {"ok": True, "id": product_id}
 
@@ -819,7 +912,7 @@ async def post_message(
         if not _customer_pin_authorized(clean_phone, pin):
             raise HTTPException(status_code=401, detail="Unlock your chat with your phone number and PIN or Order Ref first")
 
-    proof_url = upload_to_cloudinary(
+    proof_url, proof_public_id = upload_to_cloudinary(
         proof_file, folder="sammyreks_receipts", resource_type="image", max_dim=1000
     )
 
@@ -833,6 +926,7 @@ async def post_message(
         "message": clean_text,
         "text": clean_text,
         "proof_url": proof_url or "",
+        "proof_public_id": proof_public_id or "",
         "timestamp": now_str(),
     }
     msg_id = uuid.uuid4().hex
@@ -844,9 +938,18 @@ async def post_message(
 def delete_message_photo(message_id: str, request: Request):
     require_staff(request)
     doc_ref = db.collection("messages").document(message_id)
-    if not doc_ref.get().exists:
+    snap = doc_ref.get()
+    if not snap.exists:
         raise HTTPException(status_code=404, detail="Message not found")
-    doc_ref.set({"proof_url": ""}, merge=True)
+
+    mdata = snap.to_dict() or {}
+    delete_from_cloudinary(
+        public_id=mdata.get("proof_public_id"),
+        url=mdata.get("proof_url"),
+        resource_type="image",
+    )
+
+    doc_ref.set({"proof_url": "", "proof_public_id": ""}, merge=True)
     return {"ok": True, "id": message_id}
 
 
@@ -857,8 +960,13 @@ def delete_all_message_photos(request: Request):
     cleared = 0
     for doc in docs:
         data = doc.to_dict() or {}
-        if data.get("proof_url"):
-            doc.reference.set({"proof_url": ""}, merge=True)
+        if data.get("proof_url") or data.get("proof_public_id"):
+            delete_from_cloudinary(
+                public_id=data.get("proof_public_id"),
+                url=data.get("proof_url"),
+                resource_type="image",
+            )
+            doc.reference.set({"proof_url": "", "proof_public_id": ""}, merge=True)
             cleared += 1
     return {"ok": True, "cleared": cleared}
 
@@ -1175,15 +1283,39 @@ async def save_settings(
     ref = db.collection("settings").document("business")
     existing = ref.get().to_dict() if ref.get().exists else {}
 
-    uploaded_video = upload_to_cloudinary(
+    old_video = str(existing.get("broadcast_video_url") or "").strip()
+    old_video_public_id = str(existing.get("broadcast_video_public_id") or "").strip()
+
+    uploaded_video, uploaded_video_public_id = upload_to_cloudinary(
         broadcast_video_file, folder="sammyreks_videos", resource_type="video"
     )
-    final_video = (
-        uploaded_video
-        or broadcast_video_url.strip()
-        or existing.get("broadcast_video_url")
-        or ""
-    )
+    clean_link = broadcast_video_url.strip()
+
+    if uploaded_video:
+        if old_video and old_video != uploaded_video:
+            delete_from_cloudinary(
+                public_id=old_video_public_id, url=old_video, resource_type="video"
+            )
+        final_video = uploaded_video
+        final_video_public_id = uploaded_video_public_id or ""
+    elif clean_link:
+        if old_video and old_video != clean_link:
+            delete_from_cloudinary(
+                public_id=old_video_public_id, url=old_video, resource_type="video"
+            )
+        final_video = clean_link
+        final_video_public_id = (
+            old_video_public_id
+            if clean_link == old_video
+            else (extract_cloudinary_public_id(clean_link) or "")
+        )
+    else:
+        if old_video:
+            delete_from_cloudinary(
+                public_id=old_video_public_id, url=old_video, resource_type="video"
+            )
+        final_video = ""
+        final_video_public_id = ""
 
     parsed_extra: Any = existing.get("extra_settings")
     if extra_settings.strip():
@@ -1197,6 +1329,7 @@ async def save_settings(
         "tagline": tagline.strip(),
         "active_notice": active_notice.strip(),
         "broadcast_video_url": final_video,
+        "broadcast_video_public_id": final_video_public_id,
         "currency": currency.strip() or "₦",
         "updated_at": now_str(),
     }

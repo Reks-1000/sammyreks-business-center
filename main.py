@@ -5,7 +5,9 @@ import html
 import json
 import os
 import secrets
+import time
 import uuid
+from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
@@ -22,6 +24,7 @@ templates = Jinja2Templates(directory="templates")
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_VIDEO_BYTES = 50 * 1024 * 1024
+TOKEN_TTL_SECONDS = 60 * 60 * 24  # 24 hours
 
 
 def init_firestore() -> firestore.Client:
@@ -100,8 +103,29 @@ ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 SESSION_SECRET = (
     os.getenv("SESSION_SECRET")
-    or hashlib.sha256(f"{ADMIN_USERNAME}:{ADMIN_PASSWORD}:sammyreks".encode("utf-8")).hexdigest()
+    or hashlib.sha256(f"{ADMIN_USERNAME}:{ADMIN_PASSWORD}:sammyreks-v2".encode("utf-8")).hexdigest()
 )
+
+_attempt_buckets: Dict[str, List[float]] = defaultdict(list)
+
+
+def _check_rate_limit(key: str, max_attempts: int = 15, window_seconds: int = 300) -> None:
+    now = time.time()
+    recent = [t for t in _attempt_buckets[key] if now - t < window_seconds]
+    if len(recent) >= max_attempts:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many attempts. Please wait a few minutes and try again.",
+        )
+    recent.append(now)
+    _attempt_buckets[key] = recent
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    if forwarded:
+        return forwarded
+    return request.client.host if request.client else "unknown"
 
 
 def now_str() -> str:
@@ -116,11 +140,30 @@ def make_pin() -> str:
     return f"{secrets.randbelow(9000) + 1000}"
 
 
+def hash_pin(pin_or_ref: str) -> str:
+    clean = (pin_or_ref or "").strip().upper()
+    return hashlib.sha256(f"{SESSION_SECRET}:pin:{clean}".encode("utf-8")).hexdigest()
+
+
+def verify_pin(candidate: str, stored_value: str) -> bool:
+    clean = (candidate or "").strip()
+    stored = (stored_value or "").strip()
+    if not clean or not stored:
+        return False
+    if len(stored) == 64 and all(ch in "0123456789abcdef" for ch in stored.lower()):
+        return hmac.compare_digest(hash_pin(clean), stored.lower()) or hmac.compare_digest(
+            hash_pin(clean.upper()), stored.lower()
+        )
+    return hmac.compare_digest(clean, stored) or hmac.compare_digest(clean.upper(), stored.upper())
+
+
 def hash_password(plain_password: str) -> str:
     if not plain_password:
         return ""
     salt = secrets.token_hex(8)
-    digest = hashlib.pbkdf2_hmac("sha256", plain_password.encode("utf-8"), salt.encode("utf-8"), 100_000).hex()
+    digest = hashlib.pbkdf2_hmac(
+        "sha256", plain_password.encode("utf-8"), salt.encode("utf-8"), 100_000
+    ).hex()
     return f"pbkdf2${salt}${digest}"
 
 
@@ -140,10 +183,17 @@ def verify_password(plain_password: str, stored_password: str) -> bool:
 
 
 def issue_staff_token(username: str, role: str) -> str:
+    payload = {
+        "u": username,
+        "r": role,
+        "exp": int(time.time()) + TOKEN_TTL_SECONDS,
+    }
     payload_b64 = base64.urlsafe_b64encode(
-        json.dumps({"u": username, "r": role}, separators=(",", ":")).encode("utf-8")
+        json.dumps(payload, separators=(",", ":")).encode("utf-8")
     ).decode("ascii")
-    sig = hmac.new(SESSION_SECRET.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256).hexdigest()
+    sig = hmac.new(
+        SESSION_SECRET.encode("utf-8"), payload_b64.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
     return f"{payload_b64}.{sig}"
 
 
@@ -164,17 +214,28 @@ def parse_staff_token(request: Request) -> Optional[Dict[str, str]]:
     try:
         padded = payload_b64 + "=" * (-len(payload_b64) % 4)
         data = json.loads(base64.urlsafe_b64decode(padded).decode("utf-8"))
-        if isinstance(data, dict) and data.get("u"):
-            return {"username": str(data["u"]), "role": str(data.get("r") or "Staff")}
+        if not isinstance(data, dict) or not data.get("u"):
+            return None
+        exp = data.get("exp")
+        if exp is not None and int(time.time()) > int(exp):
+            return None
+        return {"username": str(data["u"]), "role": str(data.get("r") or "Staff")}
     except Exception:
         return None
-    return None
 
 
 def require_staff(request: Request) -> Dict[str, str]:
     staff = parse_staff_token(request)
     if not staff:
-        raise HTTPException(status_code=401, detail="Staff login required")
+        raise HTTPException(status_code=401, detail="Staff session expired or login required")
+    return staff
+
+
+def require_admin_or_ceo(request: Request) -> Dict[str, str]:
+    staff = require_staff(request)
+    role_upper = staff.get("role", "").strip().upper()
+    if role_upper not in {"CEO", "ADMIN"}:
+        raise HTTPException(status_code=403, detail="Admin or CEO permission required")
     return staff
 
 
@@ -216,6 +277,9 @@ def normalize_product(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, A
 
 def normalize_order(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     data = dict(raw or {})
+    data.pop("customer_pin", None)
+    data.pop("customer_pin_hash", None)
+    data.pop("payment_ref_hash", None)
     phone = str(data.get("contact_phone") or data.get("phone") or "").strip()
     customer = str(data.get("customer") or data.get("customer_name") or "Customer").strip()
     items = data.get("items") if isinstance(data.get("items"), list) else []
@@ -239,6 +303,9 @@ def normalize_order(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any
 
 def normalize_message(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     data = dict(raw or {})
+    data.pop("customer_pin", None)
+    data.pop("customer_pin_hash", None)
+    data.pop("payment_ref_hash", None)
     phone = str(data.get("customer_phone") or data.get("phone") or "").strip()
     body = str(data.get("message") if data.get("message") is not None else (data.get("text") or "")).strip()
     data["id"] = doc_id
@@ -250,6 +317,30 @@ def normalize_message(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, A
     data["proof_url"] = str(data.get("proof_url") or "").strip()
     data["timestamp"] = str(data.get("timestamp") or "").strip()
     return data
+
+
+def _looks_like_valid_media(header: bytes, resource_type: str) -> bool:
+    if not header:
+        return False
+    if resource_type == "image":
+        if header.startswith(b"\x89PNG\r\n\x1a\n"):
+            return True
+        if header.startswith(b"\xff\xd8\xff"):
+            return True
+        if header.startswith(b"RIFF") and header[8:12] == b"WEBP":
+            return True
+        if header.startswith((b"GIF87a", b"GIF89a")):
+            return True
+        return False
+    if resource_type == "video":
+        if len(header) >= 12 and header[4:8] == b"ftyp":
+            return True
+        if header.startswith(b"\x1a\x45\xdf\xa3"):  # WebM / MKV
+            return True
+        if header.startswith(b"RIFF") and header[8:12] == b"AVI ":
+            return True
+        return False
+    return True
 
 
 def upload_to_cloudinary(
@@ -275,9 +366,16 @@ def upload_to_cloudinary(
     file.file.seek(0, os.SEEK_END)
     size_bytes = file.file.tell()
     max_allowed = MAX_VIDEO_BYTES if resource_type == "video" else MAX_IMAGE_BYTES
+    if size_bytes <= 0:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
     if size_bytes > max_allowed:
         limit_mb = max_allowed // (1024 * 1024)
         raise HTTPException(status_code=400, detail=f"Uploaded file exceeds the {limit_mb}MB limit.")
+
+    file.file.seek(0)
+    header = file.file.read(32)
+    if not _looks_like_valid_media(header, resource_type):
+        raise HTTPException(status_code=400, detail=f"Invalid or unsupported {resource_type} file format.")
 
     upload_kwargs: Dict[str, Any] = {
         "folder": folder,
@@ -306,6 +404,7 @@ def index(request: Request):
 
 @app.post("/api/login")
 async def login(request: Request):
+    _check_rate_limit(f"login:{_client_ip(request)}", max_attempts=15, window_seconds=300)
     payload = await request.json()
     username = str(payload.get("username", "")).strip()
     password = str(payload.get("password", ""))
@@ -391,11 +490,15 @@ async def save_product(
             or ""
         ).strip()
 
-    image_url = upload_to_cloudinary(image_file, folder="sammyreks_products", resource_type="image", max_dim=800)
+    image_url = upload_to_cloudinary(
+        image_file, folder="sammyreks_products", resource_type="image", max_dim=800
+    )
     if not image_url:
         image_url = existing_data.get("image_url") or existing_data.get("img_data") or ""
 
-    uploaded_video_url = upload_to_cloudinary(video_file, folder="sammyreks_videos", resource_type="video")
+    uploaded_video_url = upload_to_cloudinary(
+        video_file, folder="sammyreks_videos", resource_type="video"
+    )
     final_video_url = (
         uploaded_video_url
         or video_link.strip()
@@ -455,6 +558,7 @@ def get_orders(request: Request):
 
 @app.post("/api/orders")
 async def create_order(request: Request):
+    _check_rate_limit(f"order:{_client_ip(request)}", max_attempts=20, window_seconds=300)
     payload = await request.json()
     customer = str(payload.get("customer") or payload.get("customer_name") or "Customer").strip()
     phone = str(payload.get("contact_phone") or payload.get("phone") or "").strip()
@@ -491,12 +595,16 @@ async def create_order(request: Request):
             f"Total: ₦{total_sum:,.2f}. My Reference Code is '{payment_ref}'.{note_str}"
         )
 
+    pin_hash = hash_pin(customer_pin)
+    ref_hash = hash_pin(payment_ref)
+
     order_doc: Dict[str, Any] = {
         "order_type": order_type,
         "customer": customer,
         "contact_phone": phone,
         "phone": phone,
-        "customer_pin": customer_pin,
+        "customer_pin_hash": pin_hash,
+        "payment_ref_hash": ref_hash,
         "notes": notes,
         "items": items,
         "special_items": special_items,
@@ -511,7 +619,8 @@ async def create_order(request: Request):
         "sender": "Customer",
         "customer_phone": phone,
         "phone": phone,
-        "customer_pin": customer_pin,
+        "customer_pin_hash": pin_hash,
+        "payment_ref_hash": ref_hash,
         "message": chat_text,
         "text": chat_text,
         "payment_ref": payment_ref,
@@ -602,6 +711,8 @@ async def verify_order(order_id: str, request: Request):
         "sender": "System",
         "customer_phone": phone_raw,
         "phone": phone_raw,
+        "customer_pin_hash": order_data.get("customer_pin_hash") or "",
+        "payment_ref_hash": order_data.get("payment_ref_hash") or hash_pin(ref_code),
         "message": receipt_html,
         "text": receipt_html,
         "payment_ref": ref_code,
@@ -622,24 +733,34 @@ def delete_order(order_id: str, request: Request):
     return {"ok": True, "id": order_id}
 
 
+def _doc_matches_pin_or_ref(doc_dict: Dict[str, Any], clean_pin: str) -> bool:
+    stored_pin_hash = str(doc_dict.get("customer_pin_hash") or "").strip()
+    stored_ref_hash = str(doc_dict.get("payment_ref_hash") or "").strip()
+    if stored_pin_hash and verify_pin(clean_pin, stored_pin_hash):
+        return True
+    if stored_ref_hash and verify_pin(clean_pin, stored_ref_hash):
+        return True
+
+    legacy_pin = str(doc_dict.get("customer_pin") or "").strip()
+    legacy_ref = str(doc_dict.get("payment_ref") or "").strip()
+    if legacy_pin and verify_pin(clean_pin, legacy_pin):
+        return True
+    if legacy_ref and verify_pin(clean_pin, legacy_ref):
+        return True
+    return False
+
+
 def _customer_pin_authorized(phone: str, pin: str) -> bool:
-    clean_pin = pin.strip()
-    if not clean_pin:
+    clean_pin = (pin or "").strip()
+    if not phone or not clean_pin:
         return False
-    upper_pin = clean_pin.upper()
 
     for doc in db.collection("orders").where("contact_phone", "==", phone).stream():
-        odata = doc.to_dict() or {}
-        if str(odata.get("customer_pin") or "").strip() == clean_pin:
-            return True
-        if str(odata.get("payment_ref") or "").strip().upper() == upper_pin:
+        if _doc_matches_pin_or_ref(doc.to_dict() or {}, clean_pin):
             return True
 
     for doc in db.collection("messages").where("customer_phone", "==", phone).stream():
-        mdata = doc.to_dict() or {}
-        if str(mdata.get("customer_pin") or "").strip() == clean_pin:
-            return True
-        if str(mdata.get("payment_ref") or "").strip().upper() == upper_pin:
+        if _doc_matches_pin_or_ref(doc.to_dict() or {}, clean_pin):
             return True
 
     return False
@@ -656,6 +777,7 @@ def get_messages(
     clean_pin = (pin or "").strip()
 
     if not staff:
+        _check_rate_limit(f"pin:{_client_ip(request)}:{clean_phone}", max_attempts=15, window_seconds=300)
         if not clean_phone or not clean_pin:
             raise HTTPException(status_code=401, detail="Enter your phone number and PIN or Order Ref to view chat")
         if not _customer_pin_authorized(clean_phone, clean_pin):
@@ -692,8 +814,10 @@ async def post_message(
     if clean_sender.lower() == "staff" and not staff:
         raise HTTPException(status_code=401, detail="Staff login required to send staff replies")
 
-    if not staff and not _customer_pin_authorized(clean_phone, pin):
-        raise HTTPException(status_code=401, detail="Unlock your chat with your phone number and PIN or Order Ref first")
+    if not staff:
+        _check_rate_limit(f"msg:{_client_ip(request)}:{clean_phone}", max_attempts=20, window_seconds=300)
+        if not _customer_pin_authorized(clean_phone, pin):
+            raise HTTPException(status_code=401, detail="Unlock your chat with your phone number and PIN or Order Ref first")
 
     proof_url = upload_to_cloudinary(
         proof_file, folder="sammyreks_receipts", resource_type="image", max_dim=1000
@@ -763,7 +887,7 @@ async def record_sale(request: Request):
     customer_name = str(payload.get("customer_name") or "Walk-in Customer").strip()
     customer_phone = str(payload.get("customer_phone") or "N/A").strip()
     payment_source = str(payload.get("payment_source") or "Cash").strip()
-    worker = str(payload.get("worker") or staff.get("username") or "admin").strip()
+    worker = staff.get("username") or "admin"
     record_debt = bool(payload.get("record_debt", False))
 
     unit_price = float(payload.get("unit_price") or 0.0)
@@ -773,9 +897,13 @@ async def record_sale(request: Request):
 
     if product_id:
         prod_ref = db.collection("products").document(product_id)
-        prod_snap = prod_ref.get()
-        if prod_snap.exists:
-            pdata = prod_snap.to_dict() or {}
+
+        @firestore.transactional
+        def _deduct_stock_tx(transaction: firestore.Transaction, ref: firestore.DocumentReference):
+            snap = ref.get(transaction=transaction)
+            if not snap.exists:
+                return
+            pdata = snap.to_dict() or {}
             m_lbl = str(pdata.get("unit_main_label") or "Carton")
             p_lbl = str(pdata.get("unit_pack_label") or "Pack")
             packs_per_carton = max(1.0, float(pdata.get("packs_per_carton") or 1))
@@ -794,7 +922,9 @@ async def record_sale(request: Request):
                 else (pdata.get("stock") or 0)
             )
             new_stock = max(0.0, current_stock - deduct_cartons)
-            prod_ref.set({"qty_cartons": new_stock, "stock": new_stock, "updated_at": ts}, merge=True)
+            transaction.set(ref, {"qty_cartons": new_stock, "stock": new_stock, "updated_at": ts}, merge=True)
+
+        _deduct_stock_tx(db.transaction(), prod_ref)
 
     if record_debt:
         debt_doc = {
@@ -935,7 +1065,7 @@ def get_workers(request: Request):
 
 @app.post("/api/workers")
 async def add_worker(request: Request):
-    require_staff(request)
+    require_admin_or_ceo(request)
     payload = await request.json()
     name = str(payload.get("name") or "").strip()
     if not name:
@@ -956,7 +1086,7 @@ async def add_worker(request: Request):
 
 @app.delete("/api/workers/{worker_id}")
 def delete_worker(worker_id: str, request: Request):
-    require_staff(request)
+    require_admin_or_ceo(request)
     doc_ref = db.collection("workers").document(worker_id)
     if not doc_ref.get().exists:
         raise HTTPException(status_code=404, detail="Worker not found")
@@ -966,7 +1096,7 @@ def delete_worker(worker_id: str, request: Request):
 
 @app.get("/api/analytics")
 def get_analytics(request: Request):
-    require_staff(request)
+    require_admin_or_ceo(request)
     products_by_id: Dict[str, Dict[str, Any]] = {}
     products_by_name: Dict[str, Dict[str, Any]] = {}
     for doc in db.collection("products").stream():
@@ -1041,7 +1171,7 @@ async def save_settings(
     extra_settings: str = Form(""),
     broadcast_video_file: Optional[UploadFile] = File(None),
 ):
-    require_staff(request)
+    require_admin_or_ceo(request)
     ref = db.collection("settings").document("business")
     existing = ref.get().to_dict() if ref.get().exists else {}
 
@@ -1082,4 +1212,8 @@ async def save_settings(
 async def unhandled_exception_handler(request: Request, exc: Exception):
     if isinstance(exc, HTTPException):
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-    return JSONResponse(status_code=500, content={"detail": str(exc)})
+    print(f"[ERROR] {request.method} {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong on the server. Please try again."},
+    )

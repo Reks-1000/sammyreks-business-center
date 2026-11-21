@@ -94,11 +94,12 @@
       background: #ffffff;
       border-top: 2px solid #dbe3ee;
       box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.12);
-      display: grid !important;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      display: flex !important;
+      flex-wrap: nowrap;
       gap: 6px !important;
     }
     #customerTabs.bottom-tab-dock .nav-item {
+      flex: 1 1 0;
       min-width: 0;
     }
     #customerTabs.bottom-tab-dock .nav-link {
@@ -233,7 +234,7 @@
 
         <hr />
         <div class="small text-muted">
-          <div>v22.2 | 2026</div>
+          <div>v23.0 | 2026</div>
         </div>
       </aside>
 
@@ -254,7 +255,7 @@
               <h1 class="h4 fw-bold mb-0" id="businessTitleDisplay">Sammyreks Business Center</h1>
               <small class="text-muted" id="businessTaglineDisplay">Quality products, fast orders &amp; live support</small>
             </div>
-            <button type="button" class="btn btn-success btn-sm px-3" data-action="switch-customer-tab" data-tab="cartTab">
+            <button type="button" id="topCartSummaryBtn" class="btn btn-success btn-sm px-3" data-action="switch-customer-tab" data-tab="cartTab">
               <i class="fa-solid fa-cart-shopping me-1"></i>Cart (<span id="cartCountBadge">0</span>) &bull; <span id="cartTotalBadge">&#8358;0.00</span>
             </button>
           </div>
@@ -302,8 +303,8 @@
                     <label class="form-label">Your Phone Number</label>
                     <input type="text" id="reqPhone" class="form-control" placeholder="e.g. 08012345678" required />
                   </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Create 4-Digit Chat PIN (Optional)</label>
+                  <div class="col-md-4" id="reqPinFieldWrap">
+                    <label class="form-label" id="reqPinLabel">4-Digit Chat PIN (Leave blank — auto-generated)</label>
                     <input type="password" id="reqPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
                   </div>
                   <div class="col-12">
@@ -324,15 +325,18 @@
           <div id="chatTab" class="customer-tab-pane d-none">
             <div class="card shadow-sm">
               <div class="card-body">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
                   <div>
                     <h5 class="card-title mb-0"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Private Order Portfolio, Chat &amp; Receipts</h5>
-                    <small class="text-muted">Protected by your Phone Number and 4-Digit Chat PIN (or Order Reference Code).</small>
+                    <small class="text-muted" id="chatHelperSubtitle">First time here? Place an order in Checkout or Request first—your private chat unlocks automatically with your new PIN!</small>
                   </div>
                   <button type="button" id="lockChatBtn" class="btn btn-outline-secondary btn-sm d-none" data-action="lock-customer-chat">
                     <i class="fa-solid fa-lock me-1"></i>Lock Session
                   </button>
                 </div>
+
+                <!-- Optional Bank / Payment Info Box from Settings -->
+                <div id="chatPaymentInfoAlert" class="alert alert-warning py-2 px-3 small d-none"></div>
 
                 <!-- Credential Banner after placing an order -->
                 <div id="customerCredentialNotice" class="alert alert-success py-2 px-3 small d-none"></div>
@@ -355,7 +359,7 @@
                 <div id="chatMessagesBox" class="border rounded p-3 mb-3 chat-box">
                   <div class="text-muted small py-3 text-center">
                     <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
-                    Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.
+                    <span id="chatLockedPlaceholderText">Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.</span>
                   </div>
                 </div>
 
@@ -381,6 +385,10 @@
             <div class="card shadow-sm">
               <div class="card-body">
                 <h5 class="card-title"><i class="fa-solid fa-cart-shopping me-2 text-primary"></i>Your Cart &amp; Order Checkout</h5>
+
+                <!-- Optional Bank / Payment Info Box from Settings -->
+                <div id="checkoutPaymentInfoAlert" class="alert alert-info py-2 px-3 small d-none"></div>
+
                 <div id="cartItemsContainer" class="mb-3">
                   <p class="text-muted">Your cart is empty.</p>
                 </div>
@@ -393,8 +401,8 @@
                     <label class="form-label">Customer Phone Number</label>
                     <input type="text" id="orderPhone" class="form-control" placeholder="e.g. 08012345678" required />
                   </div>
-                  <div class="col-md-3">
-                    <label class="form-label">4-Digit Chat PIN (Optional)</label>
+                  <div class="col-md-3" id="orderPinFieldWrap">
+                    <label class="form-label" id="orderPinLabel">4-Digit Chat PIN (Leave blank — auto-generated)</label>
                     <input type="password" id="orderPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
                   </div>
                   <div class="col-md-3">
@@ -416,7 +424,7 @@
 
           <!-- Discreet Store Footer -->
           <footer class="store-footer mt-5 pt-3 pb-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div>&copy; <span id="footerBusinessName">Sammyreks Business Center</span>. All rights reserved.</div>
+            <div id="footerCopyrightText">&copy; <span id="footerBusinessName">Sammyreks Business Center</span>. All rights reserved.</div>
             <button type="button" class="btn btn-link btn-sm text-decoration-none text-muted p-0" data-action="open-staff-portal">
               Staff Sign-In
             </button>
@@ -424,32 +432,32 @@
 
           <!-- Stationary Mobile-Friendly Bottom Navigation Tabs -->
           <ul class="nav nav-pills bottom-tab-dock" id="customerTabs">
-            <li class="nav-item">
+            <li class="nav-item" id="navItemShopTab">
               <button type="button" class="nav-link active" data-action="switch-customer-tab" data-tab="shopTab">
                 <i class="fa-solid fa-shop"></i>
-                <span class="d-md-none">Shop</span>
-                <span class="d-none d-md-inline">Shop &amp; Cart</span>
+                <span class="dock-short-label d-md-none" id="dockShortShop">Shop</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullShop">Shop &amp; Cart</span>
               </button>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" id="navItemRequestTab">
               <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="requestTab">
                 <i class="fa-solid fa-list-check"></i>
-                <span class="d-md-none">Request</span>
-                <span class="d-none d-md-inline">Multi-Item Request</span>
+                <span class="dock-short-label d-md-none" id="dockShortRequest">Request</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullRequest">Multi-Item Request</span>
               </button>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" id="navItemChatTab">
               <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="chatTab">
                 <i class="fa-solid fa-comments"></i>
-                <span class="d-md-none">Chat &amp; Receipts</span>
-                <span class="d-none d-md-inline">Live Chat &amp; Receipts</span>
+                <span class="dock-short-label d-md-none" id="dockShortChat">Chat &amp; Receipts</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullChat">Live Chat &amp; Receipts</span>
               </button>
             </li>
-            <li class="nav-item">
+            <li class="nav-item" id="navItemCartTab">
               <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="cartTab">
                 <i class="fa-solid fa-cart-shopping"></i>
-                <span class="d-md-none">Checkout</span>
-                <span class="d-none d-md-inline">View Cart &amp; Checkout</span>
+                <span class="dock-short-label d-md-none" id="dockShortCart">Checkout</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullCart">View Cart &amp; Checkout</span>
                 <span class="dock-cart-pill" id="dockCartCountBadge">0</span>
               </button>
             </li>
@@ -488,7 +496,7 @@
             </li>
             <li class="nav-item">
               <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="settingsTab">
-                <i class="fa-solid fa-gear me-1"></i>Settings
+                <i class="fa-solid fa-gear me-1"></i>Overall App Settings
               </button>
             </li>
           </ul>
@@ -817,37 +825,160 @@
             </div>
           </div>
 
-          <!-- Staff Tab 5: Settings -->
+          <!-- Staff Tab 5: Overall App Settings -->
           <div id="settingsTab" class="staff-tab-pane d-none">
             <div class="card shadow-sm">
               <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-sliders me-1 text-primary"></i>Business Settings</h5>
-                <form id="settingsForm" enctype="multipart/form-data" class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label">Business Name</label>
-                    <input type="text" name="business_name" id="setBusinessName" class="form-control" value="Sammyreks Business Center" required />
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <div>
+                    <h5 class="card-title mb-0"><i class="fa-solid fa-sliders me-1 text-primary"></i>Overall App Settings (No GitHub Needed)</h5>
+                    <small class="text-muted">Control storefront text, bottom navigation tabs, payment info, PIN guidance, and product display directly here.</small>
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Tagline</label>
-                    <input type="text" name="tagline" id="setTagline" class="form-control" placeholder="Quality products, fast orders &amp; live support" />
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-action="reset-extra-settings">
+                    <i class="fa-solid fa-rotate-left me-1"></i>Reset UI Toggles to Default
+                  </button>
+                </div>
+
+                <form id="settingsForm" enctype="multipart/form-data">
+                  <!-- Group 1: Branding & Announcements -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">1. Branding, Currency &amp; Announcements</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-5">
+                      <label class="form-label">Business Name</label>
+                      <input type="text" name="business_name" id="setBusinessName" class="form-control" value="Sammyreks Business Center" required />
+                    </div>
+                    <div class="col-md-5">
+                      <label class="form-label">Tagline</label>
+                      <input type="text" name="tagline" id="setTagline" class="form-control" placeholder="Quality products, fast orders &amp; live support" />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label">Currency</label>
+                      <input type="text" id="setCurrency" class="form-control" value="&#8358;" maxlength="5" />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label">Top Storefront Notice Banner</label>
+                      <input type="text" name="active_notice" id="setNotice" class="form-control" placeholder="e.g. Free delivery within Calabar on orders above ₦20,000!" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Upload Broadcast Video File</label>
+                      <input type="file" name="broadcast_video_file" id="setBroadcastVideoFile" class="form-control" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">OR Broadcast Video Link</label>
+                      <input type="text" name="broadcast_video_url" id="setBroadcastVideo" class="form-control" placeholder="https://..." />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Footer Copyright Text (Optional override)</label>
+                      <input type="text" id="setFooterText" class="form-control" placeholder="Leave blank to use default business copyright" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Thermal Receipt Footer Message</label>
+                      <input type="text" id="setReceiptFooter" class="form-control" value="Thank you for your patronage!" />
+                    </div>
                   </div>
-                  <div class="col-12">
-                    <label class="form-label">Notice Message</label>
-                    <input type="text" name="active_notice" id="setNotice" class="form-control" placeholder="Optional announcement banner" />
+
+                  <!-- Group 2: Bottom Navigation & Mobile Dock Controls -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">2. Bottom Navigation Tabs &amp; Mobile Dock</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabShop" checked />
+                        <label class="form-check-label" for="setShowTabShop">Show <strong>Shop</strong> Tab</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabRequest" checked />
+                        <label class="form-check-label" for="setShowTabRequest">Show <strong>Request</strong> Tab</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabChat" checked />
+                        <label class="form-check-label" for="setShowTabChat">Show <strong>Chat &amp; Receipts</strong></label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabCart" checked />
+                        <label class="form-check-label" for="setShowTabCart">Show <strong>Checkout</strong> Tab</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowDockCartBadge" checked />
+                        <label class="form-check-label" for="setShowDockCartBadge">Show Live Cart Count Badge</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTopCartBtn" checked />
+                        <label class="form-check-label" for="setShowTopCartBtn">Show Top Header Cart Button</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Custom Mobile Tab Names (Shop | Request | Chat | Checkout)</label>
+                      <input type="text" id="setMobileTabLabels" class="form-control form-control-sm" value="Shop | Request | Chat &amp; Receipts | Checkout" />
+                    </div>
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label">Upload Broadcast Video File</label>
-                    <input type="file" name="broadcast_video_file" id="setBroadcastVideoFile" class="form-control" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" />
+
+                  <!-- Group 3: Shop Display & Product Cards -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">3. Shop Display &amp; Product Cards</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowWatchAd" checked />
+                        <label class="form-check-label" for="setShowWatchAd">Show <strong>Watch Ad</strong> Buttons</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowStockOnCards" checked />
+                        <label class="form-check-label" for="setShowStockOnCards">Show Stock Count on Cards</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setHideOutOfStock" />
+                        <label class="form-check-label" for="setHideOutOfStock">Hide Out-of-Stock Items</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small mb-1">Search Box Placeholder</label>
+                      <input type="text" id="setSearchPlaceholder" class="form-control form-control-sm" value="Search products..." />
+                    </div>
                   </div>
-                  <div class="col-md-6">
-                    <label class="form-label">OR Broadcast Video Link</label>
-                    <input type="text" name="broadcast_video_url" id="setBroadcastVideo" class="form-control" placeholder="https://..." />
+
+                  <!-- Group 4: Checkout, Payment Info & PIN Guidance -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">4. Checkout, Bank Details &amp; Automatic PIN Help</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                      <label class="form-label">Bank Account / Transfer Details (Shown in Checkout &amp; Chat)</label>
+                      <textarea id="setPaymentInstructions" class="form-control" rows="2" placeholder="e.g. Moniepoint MFB | 1234567890 | Sammyreks Business Center — Upload receipt in Chat after transfer."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Customer PIN Helper Message (Shown on Chat Tab)</label>
+                      <textarea id="setChatHelperSubtitle" class="form-control" rows="2">First time here? Place an order in Checkout or Request first—your private chat unlocks automatically with your new PIN!</textarea>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setAutoPinMode" checked />
+                        <label class="form-check-label" for="setAutoPinMode">Auto-Generate PIN (Hide manual PIN confusion)</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">PIN Field Label (When Manual PIN is Shown)</label>
+                      <input type="text" id="setPinFieldLabel" class="form-control form-control-sm" value="4-Digit Chat PIN (Leave blank — auto-generated)" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Order Note Placeholder</label>
+                      <input type="text" id="setOrderNotePlaceholder" class="form-control form-control-sm" value="Optional delivery address or note..." />
+                    </div>
                   </div>
-                  <div class="col-12">
-                    <button type="submit" class="btn btn-primary">
-                      <i class="fa-solid fa-floppy-disk me-1"></i>Save Settings
-                    </button>
-                  </div>
+
+                  <button type="submit" class="btn btn-primary px-4">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Save All App Settings
+                  </button>
                 </form>
               </div>
             </div>
@@ -891,6 +1022,29 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    const EXTRA_SETTINGS_STORAGE_KEY = "sammyreks_extra_app_settings_v1";
+
+    const DEFAULT_EXTRA_SETTINGS = {
+      showTabShop: true,
+      showTabRequest: true,
+      showTabChat: true,
+      showTabCart: true,
+      showDockCartBadge: true,
+      showTopCartBtn: true,
+      mobileTabLabels: "Shop | Request | Chat & Receipts | Checkout",
+      showWatchAd: true,
+      showStockOnCards: true,
+      hideOutOfStock: false,
+      searchPlaceholder: "Search products...",
+      paymentInstructions: "",
+      chatHelperSubtitle: "First time here? Place an order in Checkout or Request first—your private chat unlocks automatically with your new PIN!",
+      autoPinMode: true,
+      pinFieldLabel: "4-Digit Chat PIN (Leave blank — auto-generated)",
+      orderNotePlaceholder: "Optional delivery address or note...",
+      footerText: "",
+      receiptFooter: "Thank you for your patronage!",
+    };
+
     const state = {
       products: [],
       cart: [],
@@ -905,6 +1059,7 @@
       },
       currency: "\u20a6",
       businessName: "Sammyreks Business Center",
+      extraSettings: { ...DEFAULT_EXTRA_SETTINGS },
       busyKeys: new Set(),
       lastSubmitAt: new Map(),
     };
@@ -916,6 +1071,102 @@
     productAdModalEl.addEventListener("hidden.bs.modal", () => {
       document.getElementById("productAdModalBody").innerHTML = "";
     });
+
+    function readLocalExtraSettings() {
+      try {
+        const raw = localStorage.getItem(EXTRA_SETTINGS_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return parsed && typeof parsed === "object" ? parsed : {};
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function saveLocalExtraSettings(cfg) {
+      try {
+        localStorage.setItem(EXTRA_SETTINGS_STORAGE_KEY, JSON.stringify(cfg));
+      } catch (_) {}
+    }
+
+    function applyExtraSettingsToUI() {
+      const cfg = { ...DEFAULT_EXTRA_SETTINGS, ...(state.extraSettings || {}) };
+      state.extraSettings = cfg;
+
+      // Sync Settings Form Inputs
+      document.getElementById("setCurrency").value = state.currency || "\u20a6";
+      document.getElementById("setFooterText").value = cfg.footerText || "";
+      document.getElementById("setReceiptFooter").value = cfg.receiptFooter || "Thank you for your patronage!";
+      document.getElementById("setShowTabShop").checked = Boolean(cfg.showTabShop);
+      document.getElementById("setShowTabRequest").checked = Boolean(cfg.showTabRequest);
+      document.getElementById("setShowTabChat").checked = Boolean(cfg.showTabChat);
+      document.getElementById("setShowTabCart").checked = Boolean(cfg.showTabCart);
+      document.getElementById("setShowDockCartBadge").checked = Boolean(cfg.showDockCartBadge);
+      document.getElementById("setShowTopCartBtn").checked = Boolean(cfg.showTopCartBtn);
+      document.getElementById("setMobileTabLabels").value = cfg.mobileTabLabels || DEFAULT_EXTRA_SETTINGS.mobileTabLabels;
+      document.getElementById("setShowWatchAd").checked = Boolean(cfg.showWatchAd);
+      document.getElementById("setShowStockOnCards").checked = Boolean(cfg.showStockOnCards);
+      document.getElementById("setHideOutOfStock").checked = Boolean(cfg.hideOutOfStock);
+      document.getElementById("setSearchPlaceholder").value = cfg.searchPlaceholder || "Search products...";
+      document.getElementById("setPaymentInstructions").value = cfg.paymentInstructions || "";
+      document.getElementById("setChatHelperSubtitle").value = cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle;
+      document.getElementById("setAutoPinMode").checked = Boolean(cfg.autoPinMode);
+      document.getElementById("setPinFieldLabel").value = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
+      document.getElementById("setOrderNotePlaceholder").value = cfg.orderNotePlaceholder || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder;
+
+      // Apply Bottom Dock Tab Visibility & Labels
+      document.getElementById("navItemShopTab").classList.toggle("d-none", !cfg.showTabShop);
+      document.getElementById("navItemRequestTab").classList.toggle("d-none", !cfg.showTabRequest);
+      document.getElementById("navItemChatTab").classList.toggle("d-none", !cfg.showTabChat);
+      document.getElementById("navItemCartTab").classList.toggle("d-none", !cfg.showTabCart);
+      document.getElementById("dockCartCountBadge").classList.toggle("d-none", !cfg.showDockCartBadge);
+      document.getElementById("topCartSummaryBtn").classList.toggle("d-none", !cfg.showTopCartBtn);
+
+      const parts = String(cfg.mobileTabLabels || "").split("|").map((s) => s.trim());
+      if (parts[0]) document.getElementById("dockShortShop").textContent = parts[0];
+      if (parts[1]) document.getElementById("dockShortRequest").textContent = parts[1];
+      if (parts[2]) document.getElementById("dockShortChat").textContent = parts[2];
+      if (parts[3]) document.getElementById("dockShortCart").textContent = parts[3];
+
+      // Apply Search & Order Placeholders
+      document.getElementById("shopSearchInput").placeholder = cfg.searchPlaceholder || "Search products...";
+      document.getElementById("orderNote").placeholder = cfg.orderNotePlaceholder || "Optional note...";
+      document.getElementById("chatHelperSubtitle").textContent = cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle;
+
+      // Apply PIN Field Mode (Auto-PIN hides manual PIN inputs so customers never get confused)
+      const hideManualPin = Boolean(cfg.autoPinMode);
+      document.getElementById("reqPinFieldWrap").classList.toggle("d-none", hideManualPin);
+      document.getElementById("orderPinFieldWrap").classList.toggle("d-none", hideManualPin);
+      if (hideManualPin) {
+        document.getElementById("reqPin").value = "";
+        document.getElementById("orderPin").value = "";
+      } else {
+        document.getElementById("reqPinLabel").textContent = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
+        document.getElementById("orderPinLabel").textContent = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
+      }
+
+      // Apply Payment / Bank Instructions
+      const payText = String(cfg.paymentInstructions || "").trim();
+      const checkoutPayBox = document.getElementById("checkoutPaymentInfoAlert");
+      const chatPayBox = document.getElementById("chatPaymentInfoAlert");
+      if (payText) {
+        checkoutPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
+        chatPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
+        checkoutPayBox.classList.remove("d-none");
+        chatPayBox.classList.remove("d-none");
+      } else {
+        checkoutPayBox.classList.add("d-none");
+        chatPayBox.classList.add("d-none");
+      }
+
+      // Apply Footer Copyright Text
+      const footerWrap = document.getElementById("footerCopyrightText");
+      if (cfg.footerText && cfg.footerText.trim()) {
+        footerWrap.textContent = cfg.footerText.trim();
+      } else {
+        footerWrap.innerHTML = `&copy; <span id="footerBusinessName">${escapeHtml(state.businessName)}</span>. All rights reserved.`;
+      }
+    }
 
     function syncLayoutChrome() {
       const sidebarCol = document.getElementById("staffSidebarCol");
@@ -1079,6 +1330,7 @@
 
     function openThermalReceipt({ title = "RECEIPT", ref = "", customer = "Customer", phone = "", timestamp = "", lines = [], total = "" }) {
       const linesHtml = lines.map((l) => `<div>${escapeHtml(l)}</div>`).join("");
+      const receiptFooterText = state.extraSettings.receiptFooter || "Thank you for your patronage!";
       document.getElementById("thermalReceiptBody").innerHTML = `
         <div class="thermal-paper">
           <div class="text-center fw-bold">${escapeHtml(state.businessName)}</div>
@@ -1092,7 +1344,7 @@
           ${linesHtml}
           <hr class="my-2" />
           ${total ? `<div class="fw-bold">TOTAL: ${escapeHtml(total)}</div>` : ""}
-          <div class="text-center small mt-2">Thank you for your patronage!</div>
+          <div class="text-center small mt-2">${escapeHtml(receiptFooterText)}</div>
         </div>
       `;
       thermalReceiptModal.show();
@@ -1259,6 +1511,7 @@
       const posSelect = document.getElementById("posProductSelect");
       const existingSelect = document.getElementById("existingProductSelect");
       const catSelect = document.getElementById("shopCategorySelect");
+      const cfg = state.extraSettings;
 
       const prevCat = catSelect.value;
       const cats = ["All Categories", ...Array.from(new Set(state.products.map((p) => p.category || "General"))).sort()];
@@ -1269,7 +1522,8 @@
       const filtered = state.products.filter((p) => {
         const okCat = catSelect.value === "All Categories" || (p.category || "General") === catSelect.value;
         const okSearch = !queryText || String(p.name || "").toLowerCase().includes(queryText);
-        return okCat && okSearch;
+        const okStock = !cfg.hideOutOfStock || Number(p.qty_cartons ?? p.stock ?? 0) > 0;
+        return okCat && okSearch && okStock;
       });
 
       if (!filtered.length) {
@@ -1282,10 +1536,14 @@
           const rLbl = p.unit_retail_label || "Retail Unit";
           const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
           const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
-          const hasAd = hasValidVideoUrl(p.video_url);
+          const hasAd = cfg.showWatchAd && hasValidVideoUrl(p.video_url);
           const imgHtml = imgSrc
             ? `<div class="product-img-wrap"><img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(p.name)}" loading="lazy" /></div>`
             : `<div class="product-img-wrap text-muted"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
+
+          const metaLine = cfg.showStockOnCards
+            ? `Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}`
+            : `${escapeHtml(p.category || "General")}`;
 
           return `
             <div class="col-6 col-md-4 col-lg-3">
@@ -1294,7 +1552,7 @@
                 <div class="card-body d-flex flex-column">
                   <h6 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h6>
                   <div class="text-primary fw-semibold mb-1">${state.currency}${displayPrice.toFixed(2)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
-                  <div class="small text-muted mb-2">Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}</div>
+                  <div class="small text-muted mb-2">${metaLine}</div>
                   <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
                   ${hasAd ? `
                     <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" data-action="watch-ad" data-id="${escapeHtml(p.id)}">
@@ -1394,6 +1652,8 @@
     }
 
     async function loadSettings() {
+      const localExtra = readLocalExtraSettings();
+      state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS, ...localExtra };
       try {
         const res = await apiRequest("/api/settings");
         const s = res.settings || res.data || {};
@@ -1402,7 +1662,6 @@
           document.title = s.business_name;
           document.getElementById("businessTitleDisplay").textContent = s.business_name;
           document.getElementById("sidebarBusinessName").textContent = s.business_name;
-          document.getElementById("footerBusinessName").textContent = s.business_name;
           document.getElementById("setBusinessName").value = s.business_name;
         }
         if (s.tagline) {
@@ -1413,6 +1672,16 @@
         document.getElementById("setNotice").value = s.active_notice || "";
         document.getElementById("setBroadcastVideo").value = s.broadcast_video_url || "";
 
+        if (s.extra_settings) {
+          const parsedExtra = typeof s.extra_settings === "string"
+            ? JSON.parse(s.extra_settings || "{}")
+            : s.extra_settings;
+          if (parsedExtra && typeof parsedExtra === "object") {
+            state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS, ...localExtra, ...parsedExtra };
+            saveLocalExtraSettings(state.extraSettings);
+          }
+        }
+
         const noticeEl = document.getElementById("customerNoticeAlert");
         if (s.active_notice && s.active_notice.trim()) {
           noticeEl.textContent = s.active_notice.trim();
@@ -1422,9 +1691,11 @@
         }
 
         renderBroadcastVideo(s.broadcast_video_url || "");
-        renderProducts();
-        updateCartSummary();
       } catch (_) {}
+
+      applyExtraSettingsToUI();
+      renderProducts();
+      updateCartSummary();
     }
 
     function renderChatList(container, msgs, emptyText) {
@@ -1654,6 +1925,12 @@
 
       if (action === "dismiss-banner") {
         document.getElementById("appFeedbackBanner").classList.add("d-none");
+      } else if (action === "reset-extra-settings") {
+        state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS };
+        saveLocalExtraSettings(state.extraSettings);
+        applyExtraSettingsToUI();
+        renderProducts();
+        showBanner("UI toggles reset to defaults. Click 'Save All App Settings' to sync.", "info");
       } else if (action === "lock-customer-chat") {
         document.getElementById("chatPinFilter").value = "";
         lockCustomerChatView();
@@ -1962,7 +2239,7 @@
       await runGuardedAction("submit-order", 2000, btn, "Submitting...", async () => {
         const customerName = document.getElementById("orderCustomerName").value.trim();
         const phone = document.getElementById("orderPhone").value.trim();
-        const pin = document.getElementById("orderPin").value.trim();
+        const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("orderPin").value.trim();
         const note = document.getElementById("orderNote").value.trim();
         const mappedItems = state.cart.map((i) => ({
           name: i.name,
@@ -1998,7 +2275,7 @@
       await runGuardedAction("multi-request", 2000, btn, "Sending...", async () => {
         const customerName = document.getElementById("reqName").value.trim();
         const phone = document.getElementById("reqPhone").value.trim();
-        const pin = document.getElementById("reqPin").value.trim();
+        const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("reqPin").value.trim();
         const itemsText = document.getElementById("reqItemsText").value.trim();
         try {
           const res = await apiRequest("/api/orders", {
@@ -2178,15 +2455,47 @@
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("save-settings", 1500, btn, "Saving...", async () => {
+        const currencyVal = document.getElementById("setCurrency").value.trim() || "\u20a6";
+        state.currency = currencyVal;
+
+        const nextExtra = {
+          showTabShop: document.getElementById("setShowTabShop").checked,
+          showTabRequest: document.getElementById("setShowTabRequest").checked,
+          showTabChat: document.getElementById("setShowTabChat").checked,
+          showTabCart: document.getElementById("setShowTabCart").checked,
+          showDockCartBadge: document.getElementById("setShowDockCartBadge").checked,
+          showTopCartBtn: document.getElementById("setShowTopCartBtn").checked,
+          mobileTabLabels: document.getElementById("setMobileTabLabels").value.trim() || DEFAULT_EXTRA_SETTINGS.mobileTabLabels,
+          showWatchAd: document.getElementById("setShowWatchAd").checked,
+          showStockOnCards: document.getElementById("setShowStockOnCards").checked,
+          hideOutOfStock: document.getElementById("setHideOutOfStock").checked,
+          searchPlaceholder: document.getElementById("setSearchPlaceholder").value.trim() || "Search products...",
+          paymentInstructions: document.getElementById("setPaymentInstructions").value.trim(),
+          chatHelperSubtitle: document.getElementById("setChatHelperSubtitle").value.trim() || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle,
+          autoPinMode: document.getElementById("setAutoPinMode").checked,
+          pinFieldLabel: document.getElementById("setPinFieldLabel").value.trim() || DEFAULT_EXTRA_SETTINGS.pinFieldLabel,
+          orderNotePlaceholder: document.getElementById("setOrderNotePlaceholder").value.trim() || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder,
+          footerText: document.getElementById("setFooterText").value.trim(),
+          receiptFooter: document.getElementById("setReceiptFooter").value.trim() || "Thank you for your patronage!",
+        };
+
+        state.extraSettings = nextExtra;
+        saveLocalExtraSettings(nextExtra);
+
         const fd = new FormData(e.target);
-        fd.append("currency", state.currency);
+        fd.append("currency", currencyVal);
+        fd.append("extra_settings", JSON.stringify(nextExtra));
+
         try {
           await apiRequest("/api/settings", { method: "POST", body: fd });
           document.getElementById("setBroadcastVideoFile").value = "";
           await loadSettings();
-          showBanner("Settings saved.", "success");
+          showBanner("All app settings saved and applied!", "success");
         } catch (err) {
-          showBanner(`Failed to save settings: ${err.message}`, "danger");
+          applyExtraSettingsToUI();
+          renderProducts();
+          updateCartSummary();
+          showBanner(`Failed to save settings to server: ${err.message}`, "danger");
         }
       });
     });

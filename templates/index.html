@@ -80,6 +80,13 @@
       color: #6b7280;
       font-size: 0.85rem;
     }
+    .analytics-metric-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px;
+      height: 100%;
+    }
     #customerSection.has-bottom-dock {
       padding-bottom: 104px;
     }
@@ -234,7 +241,7 @@
 
         <hr />
         <div class="small text-muted">
-          <div>v24.0 | 2026</div>
+          <div>v24.1 | 2026</div>
         </div>
       </aside>
 
@@ -471,6 +478,44 @@
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-toolbox me-2 text-primary"></i>Staff &amp; Admin Workspace</h2>
             <span class="badge bg-success" id="staffSessionLabel">Logged In</span>
+          </div>
+
+          <!-- Toggleable Business Analytics (Cash Flow) Card -->
+          <div id="businessAnalyticsCard" class="card shadow-sm mb-3 d-none">
+            <div class="card-body">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h5 class="card-title mb-0"><i class="fa-solid fa-chart-column me-2 text-primary"></i>Business Analytics</h5>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-analytics">
+                  <i class="fa-solid fa-rotate-right me-1"></i>Refresh Cash Flow
+                </button>
+              </div>
+              <div class="row g-3">
+                <div class="col-6 col-md-3">
+                  <div class="analytics-metric-card">
+                    <div class="small text-muted">Total Revenue</div>
+                    <div class="fs-5 fw-bold mt-1" id="metricTotalRevenue">&#8358;0.00</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="analytics-metric-card">
+                    <div class="small text-muted">Total Profit</div>
+                    <div class="fs-5 fw-bold mt-1" id="metricTotalProfit">&#8358;0.00</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="analytics-metric-card">
+                    <div class="small text-muted">Total Expenses</div>
+                    <div class="fs-5 fw-bold mt-1" id="metricTotalExpenses">&#8358;0.00</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="analytics-metric-card">
+                    <div class="small text-muted">Net Cashflow</div>
+                    <div class="fs-5 fw-bold mt-1" id="metricNetCashflow">&#8358;0.00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <ul class="nav nav-tabs mb-3" id="staffTabs">
@@ -890,28 +935,34 @@
                     </div>
                   </div>
 
-                  <!-- Group 2: Bottom Navigation & Mobile Dock Controls -->
-                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">2. Bottom Navigation Tabs &amp; Mobile Dock</h6>
+                  <!-- Group 2: Bottom Navigation, Analytics & Mobile Dock Controls -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">2. Bottom Navigation Tabs, Cash Flow Analytics &amp; Mobile Dock</h6>
                   <div class="row g-3 mb-4">
-                    <div class="col-md-3 col-6">
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowBusinessAnalytics" />
+                        <label class="form-check-label" for="setShowBusinessAnalytics">Show <strong>Business Analytics</strong> (Cash Flow)</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
                       <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="setShowTabShop" checked />
                         <label class="form-check-label" for="setShowTabShop">Show <strong>Shop</strong> Tab</label>
                       </div>
                     </div>
-                    <div class="col-md-3 col-6">
+                    <div class="col-md-4 col-6">
                       <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="setShowTabRequest" checked />
                         <label class="form-check-label" for="setShowTabRequest">Show <strong>Request</strong> Tab</label>
                       </div>
                     </div>
-                    <div class="col-md-3 col-6">
+                    <div class="col-md-4 col-6">
                       <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="setShowTabChat" checked />
                         <label class="form-check-label" for="setShowTabChat">Show <strong>Chat &amp; Receipts</strong></label>
                       </div>
                     </div>
-                    <div class="col-md-3 col-6">
+                    <div class="col-md-4 col-6">
                       <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="setShowTabCart" checked />
                         <label class="form-check-label" for="setShowTabCart">Show <strong>Checkout</strong> Tab</label>
@@ -929,7 +980,7 @@
                         <label class="form-check-label" for="setShowTopCartBtn">Show Top Header Cart Button</label>
                       </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-8">
                       <label class="form-label small mb-1">Custom Mobile Tab Names (Shop | Request | Chat | Checkout)</label>
                       <input type="text" id="setMobileTabLabels" class="form-control form-control-sm" value="Shop | Request | Chat &amp; Receipts | Checkout" />
                     </div>
@@ -1042,6 +1093,7 @@
     const DELETED_CHAT_PHOTOS_KEY = "sammyreks_deleted_chat_photo_ids_v1";
 
     const DEFAULT_EXTRA_SETTINGS = {
+      showBusinessAnalytics: false,
       showTabShop: true,
       showTabRequest: true,
       showTabChat: true,
@@ -1092,6 +1144,157 @@
       document.getElementById("productAdModalBody").innerHTML = "";
     });
 
+    function formatMoney(amount) {
+      const num = Number(amount || 0);
+      const safeNum = Number.isFinite(num) ? num : 0;
+      return `${state.currency || "\u20a6"}${safeNum.toFixed(2)}`;
+    }
+
+    function renderAnalyticsMetrics({ totalRevenue = 0, totalProfit = 0, totalExpenses = 0, netCashflow = 0 }) {
+      const revEl = document.getElementById("metricTotalRevenue");
+      const profEl = document.getElementById("metricTotalProfit");
+      const expEl = document.getElementById("metricTotalExpenses");
+      const cashEl = document.getElementById("metricNetCashflow");
+      if (!revEl || !profEl || !expEl || !cashEl) return;
+
+      revEl.textContent = formatMoney(totalRevenue);
+      profEl.textContent = formatMoney(totalProfit);
+      expEl.textContent = formatMoney(totalExpenses);
+      cashEl.textContent = formatMoney(netCashflow);
+    }
+
+    async function loadBusinessAnalytics() {
+      if (!state.isLoggedIn || !state.extraSettings.showBusinessAnalytics) {
+        return;
+      }
+
+      try {
+        const analyticsRes = await apiRequest("/api/analytics");
+        const src = analyticsRes.analytics || analyticsRes.data || analyticsRes || {};
+        if (
+          src.total_revenue !== undefined ||
+          src.revenue !== undefined ||
+          src.net_cashflow !== undefined ||
+          src.cashflow !== undefined
+        ) {
+          const rev = Number(src.total_revenue ?? src.revenue ?? 0);
+          const prof = Number(src.total_profit ?? src.profit ?? 0);
+          const exp = Number(src.total_expenses ?? src.expenses ?? 0);
+          const cash = Number(src.net_cashflow ?? src.cashflow ?? (prof || rev) - exp);
+          renderAnalyticsMetrics({
+            totalRevenue: rev,
+            totalProfit: prof,
+            totalExpenses: exp,
+            netCashflow: cash,
+          });
+          return;
+        }
+      } catch (_) {}
+
+      try {
+        const [salesRes, expensesRes] = await Promise.all([
+          apiRequest("/api/sales").catch(() => ({})),
+          apiRequest("/api/expenses").catch(() => ({})),
+        ]);
+
+        const salesList = Array.isArray(salesRes.sales)
+          ? salesRes.sales
+          : Array.isArray(salesRes.data)
+            ? salesRes.data
+            : [];
+        const expensesList = Array.isArray(expensesRes.expenses)
+          ? expensesRes.expenses
+          : Array.isArray(expensesRes.data)
+            ? expensesRes.data
+            : [];
+
+        const costByProductId = new Map();
+        const costByProductName = new Map();
+        for (const p of state.products || []) {
+          const packsPerCarton = Math.max(1, Number(p.packs_per_carton ?? 1));
+          const retailPerPack = Math.max(1, Number(p.units_per_pack ?? 1));
+          const cartonCost = Number(p.cost ?? 0);
+          const packCost = cartonCost / packsPerCarton;
+          const retailCost = packCost / retailPerPack;
+
+          if (p.id) {
+            costByProductId.set(String(p.id), {
+              mainUnit: p.unit_main_label || "Carton",
+              packUnit: p.unit_pack_label || "Pack",
+              cartonCost,
+              packCost,
+              retailCost,
+            });
+          }
+          if (p.name) {
+            costByProductName.set(String(p.name).trim().toLowerCase(), {
+              mainUnit: p.unit_main_label || "Carton",
+              packUnit: p.unit_pack_label || "Pack",
+              cartonCost,
+              packCost,
+              retailCost,
+            });
+          }
+        }
+
+        let totalRevenue = 0;
+        let totalProfit = 0;
+        let hasExplicitProfit = false;
+
+        for (const s of salesList) {
+          if (s && (s.record_debt === true || String(s.status || "").toLowerCase() === "debt")) {
+            continue;
+          }
+          const qty = Math.max(0, Number(s.qty ?? s.quantity ?? 1));
+          const rowTotal = Number(s.total ?? s.amount ?? (Number(s.unit_price ?? s.price ?? 0) * qty));
+          totalRevenue += Number.isFinite(rowTotal) ? rowTotal : 0;
+
+          if (s.profit !== undefined && s.profit !== null && s.profit !== "") {
+            totalProfit += Number(s.profit) || 0;
+            hasExplicitProfit = true;
+          } else {
+            const meta =
+              (s.product_id && costByProductId.get(String(s.product_id))) ||
+              ((s.item_name || s.name) && costByProductName.get(String(s.item_name || s.name).trim().toLowerCase())) ||
+              null;
+            if (meta) {
+              const unitType = String(s.unit_type ?? s.unit ?? "");
+              let unitCost = meta.retailCost;
+              if (unitType === meta.mainUnit || unitType.toLowerCase() === "carton") {
+                unitCost = meta.cartonCost;
+              } else if (unitType === meta.packUnit || unitType.toLowerCase() === "pack") {
+                unitCost = meta.packCost;
+              }
+              totalProfit += rowTotal - unitCost * qty;
+            }
+          }
+        }
+
+        const effectiveProfit = hasExplicitProfit ? totalProfit : totalProfit;
+
+        let totalExpenses = 0;
+        for (const ex of expensesList) {
+          const exAmt = Number(ex.amount ?? ex.cost ?? 0);
+          totalExpenses += Number.isFinite(exAmt) ? exAmt : 0;
+        }
+
+        const netCashflow = (salesList.length > 0 ? effectiveProfit : totalRevenue) - totalExpenses;
+        renderAnalyticsMetrics({
+          totalRevenue,
+          totalProfit: effectiveProfit,
+          totalExpenses,
+          netCashflow,
+        });
+      } catch (_) {
+        renderAnalyticsMetrics({
+          totalRevenue: 0,
+          totalProfit: 0,
+          totalExpenses: 0,
+          netCashflow: 0,
+        });
+      }
+    }
+
     function readDeletedPhotoIds() {
       try {
         const raw = localStorage.getItem(DELETED_CHAT_PHOTOS_KEY);
@@ -1132,6 +1335,7 @@
       document.getElementById("setCurrency").value = state.currency || "\u20a6";
       document.getElementById("setFooterText").value = cfg.footerText || "";
       document.getElementById("setReceiptFooter").value = cfg.receiptFooter || "Thank you for your patronage!";
+      document.getElementById("setShowBusinessAnalytics").checked = Boolean(cfg.showBusinessAnalytics);
       document.getElementById("setShowTabShop").checked = Boolean(cfg.showTabShop);
       document.getElementById("setShowTabRequest").checked = Boolean(cfg.showTabRequest);
       document.getElementById("setShowTabChat").checked = Boolean(cfg.showTabChat);
@@ -1148,6 +1352,13 @@
       document.getElementById("setAutoPinMode").checked = Boolean(cfg.autoPinMode);
       document.getElementById("setPinFieldLabel").value = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
       document.getElementById("setOrderNotePlaceholder").value = cfg.orderNotePlaceholder || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder;
+
+      const analyticsCard = document.getElementById("businessAnalyticsCard");
+      const showAnalytics = Boolean(state.isLoggedIn && cfg.showBusinessAnalytics);
+      analyticsCard.classList.toggle("d-none", !showAnalytics);
+      if (showAnalytics) {
+        loadBusinessAnalytics();
+      }
 
       document.getElementById("navItemShopTab").classList.toggle("d-none", !cfg.showTabShop);
       document.getElementById("navItemRequestTab").classList.toggle("d-none", !cfg.showTabRequest);
@@ -1214,6 +1425,12 @@
         mainCol.className = "col-lg-9 col-xl-10 p-3 p-md-4";
       } else {
         mainCol.className = "col-12 p-3 p-md-4";
+      }
+
+      const showAnalytics = Boolean(state.isLoggedIn && state.extraSettings.showBusinessAnalytics);
+      document.getElementById("businessAnalyticsCard").classList.toggle("d-none", !showAnalytics);
+      if (showAnalytics) {
+        loadBusinessAnalytics();
       }
     }
 
@@ -1565,7 +1782,7 @@
       const total = state.cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
       document.getElementById("cartCountBadge").textContent = count;
       document.getElementById("dockCartCountBadge").textContent = count;
-      document.getElementById("cartTotalBadge").textContent = `${state.currency}${total.toFixed(2)}`;
+      document.getElementById("cartTotalBadge").textContent = formatMoney(total);
 
       const container = document.getElementById("cartItemsContainer");
       if (!state.cart.length) {
@@ -1579,7 +1796,7 @@
             <li class="list-group-item d-flex justify-content-between align-items-center">
               <div>
                 <strong>${escapeHtml(item.name)}</strong> <span class="badge bg-light text-dark border">${escapeHtml(item.unit || "Unit")}</span>
-                <div class="small text-muted">${state.currency}${Number(item.price).toFixed(2)} &times; ${item.qty}</div>
+                <div class="small text-muted">${formatMoney(item.price)} &times; ${item.qty}</div>
               </div>
               <button type="button" class="btn btn-sm btn-outline-danger" data-action="remove-cart-item" data-index="${idx}">
                 <i class="fa-solid fa-xmark"></i>
@@ -1587,7 +1804,7 @@
             </li>
           `).join("")}
         </ul>
-        <div class="mt-2 fw-bold">Total: ${state.currency}${total.toFixed(2)}</div>
+        <div class="mt-2 fw-bold">Total: ${formatMoney(total)}</div>
       `;
     }
 
@@ -1638,7 +1855,7 @@
       const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
       const unit = document.getElementById("posUnitSelect").value;
       const unitPrice = prod ? getPriceForUnit(prod, unit) : 0;
-      document.getElementById("posTotalPreview").textContent = `${state.currency}${(unitPrice * qty).toFixed(2)}`;
+      document.getElementById("posTotalPreview").textContent = formatMoney(unitPrice * qty);
     }
 
     document.getElementById("posProductSelect").addEventListener("change", syncPosUnitOptions);
@@ -1691,7 +1908,7 @@
                 ${imgHtml}
                 <div class="card-body d-flex flex-column">
                   <h6 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h6>
-                  <div class="text-primary fw-semibold mb-1">${state.currency}${displayPrice.toFixed(2)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
+                  <div class="text-primary fw-semibold mb-1">${formatMoney(displayPrice)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
                   <div class="small text-muted mb-2">${metaLine}</div>
                   <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
                   ${hasAd ? `
@@ -1702,9 +1919,9 @@
                   <div class="row g-1 mb-2">
                     <div class="col-7">
                       <select class="form-select form-select-sm card-unit-sel">
-                        <option value="${escapeHtml(rLbl)}">${escapeHtml(rLbl)} (${state.currency}${Number(p.price_retail ?? displayPrice).toFixed(2)})</option>
-                        <option value="${escapeHtml(pLbl)}">${escapeHtml(pLbl)} (${state.currency}${Number(p.price_pack ?? displayPrice).toFixed(2)})</option>
-                        <option value="${escapeHtml(mLbl)}">${escapeHtml(mLbl)} (${state.currency}${Number(p.price_carton ?? displayPrice).toFixed(2)})</option>
+                        <option value="${escapeHtml(rLbl)}">${escapeHtml(rLbl)} (${formatMoney(p.price_retail ?? displayPrice)})</option>
+                        <option value="${escapeHtml(pLbl)}">${escapeHtml(pLbl)} (${formatMoney(p.price_pack ?? displayPrice)})</option>
+                        <option value="${escapeHtml(mLbl)}">${escapeHtml(mLbl)} (${formatMoney(p.price_carton ?? displayPrice)})</option>
                       </select>
                     </div>
                     <div class="col-5">
@@ -1742,11 +1959,11 @@
           <tr>
             <td class="fw-semibold">${escapeHtml(p.name)}</td>
             <td>${escapeHtml(p.category || "General")}</td>
-            <td>${state.currency}${pCarton.toFixed(2)}</td>
+            <td>${formatMoney(pCarton)}</td>
             <td>${stockCartons.toFixed(2)}</td>
-            <td>${state.currency}${cCarton.toFixed(2)}</td>
-            <td>${state.currency}${pPack.toFixed(2)}</td>
-            <td>${state.currency}${pRetail.toFixed(2)}</td>
+            <td>${formatMoney(cCarton)}</td>
+            <td>${formatMoney(pPack)}</td>
+            <td>${formatMoney(pRetail)}</td>
             <td>${packsCount}</td>
             <td>${retailCount}</td>
             <td>${escapeHtml(p.shelf || "-")}</td>
@@ -1764,7 +1981,7 @@
       posSelect.innerHTML = state.products.map((p) => {
         const priceVal = Number(p.price_carton ?? p.price ?? 0);
         const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
-        return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${state.currency}${priceVal.toFixed(2)} &bull; Stock: ${stockVal.toFixed(2)})</option>`;
+        return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${formatMoney(priceVal)} &bull; Stock: ${stockVal.toFixed(2)})</option>`;
       }).join("");
       if (prevPos) posSelect.value = prevPos;
 
@@ -1786,6 +2003,9 @@
         const rawList = res.products || res.data || [];
         state.products = rawList.map(normalizeProductClient);
         renderProducts();
+        if (state.isLoggedIn && state.extraSettings.showBusinessAnalytics) {
+          await loadBusinessAnalytics();
+        }
       } catch (err) {
         showBanner(`Could not load products: ${err.message}`, "danger");
       }
@@ -1955,8 +2175,8 @@
           } else if (Array.isArray(o.items) && o.items.length > 0) {
             const totalVal = o.items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
             detailsHtml = o.items
-              .map((it) => `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) &times; ${escapeHtml(it.qty || 1)} &mdash; ${state.currency}${Number(it.total_price || 0).toFixed(2)}</div>`)
-              .join("") + `<div class="small fw-bold mt-1">Total: ${state.currency}${totalVal.toFixed(2)}</div>`;
+              .map((it) => `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) &times; ${escapeHtml(it.qty || 1)} &mdash; ${formatMoney(it.total_price || 0)}</div>`)
+              .join("") + `<div class="small fw-bold mt-1">Total: ${formatMoney(totalVal)}</div>`;
           }
 
           const hasStructuredItems = hasSpecial || (Array.isArray(o.items) && o.items.length > 0);
@@ -2058,6 +2278,8 @@
       if (tabId === "staffOrdersChatTab") {
         loadStaffOrders();
         loadStaffChatMessages();
+      } else if (state.isLoggedIn && state.extraSettings.showBusinessAnalytics) {
+        loadBusinessAnalytics();
       }
     }
 
@@ -2068,9 +2290,9 @@
       if (hasSpecial) {
         lines = o.special_items.map((sp) => `${sp.item || sp.name || "Requested Item"}`);
       } else if (Array.isArray(o.items) && o.items.length > 0) {
-        lines = o.items.map((it) => `${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${state.currency}${Number(it.total_price || 0).toFixed(2)}`);
+        lines = o.items.map((it) => `${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${formatMoney(it.total_price || 0)}`);
         const sum = o.items.reduce((acc, it) => acc + Number(it.total_price || 0), 0);
-        totalStr = `${state.currency}${sum.toFixed(2)}`;
+        totalStr = formatMoney(sum);
       } else if (o.notes) {
         lines = [o.notes];
       } else {
@@ -2107,6 +2329,11 @@
 
       if (action === "dismiss-banner") {
         document.getElementById("appFeedbackBanner").classList.add("d-none");
+      } else if (action === "refresh-analytics") {
+        await runGuardedAction("refresh-analytics", 500, target, "Refreshing...", async () => {
+          await loadBusinessAnalytics();
+          showBanner("Business analytics updated.", "info");
+        });
       } else if (action === "reset-extra-settings") {
         state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS };
         saveLocalExtraSettings(state.extraSettings);
@@ -2585,7 +2812,7 @@
           });
           const rec = res.receipt || {};
           const refCode = rec.payment_ref || "";
-          const formattedTotal = `${state.currency}${totalAmount.toFixed(2)}`;
+          const formattedTotal = formatMoney(totalAmount);
 
           let waStatusHtml = "";
           if (sendWhatsAppOpt && custPhone && custPhone !== "N/A") {
@@ -2669,6 +2896,9 @@
           });
           e.target.reset();
           document.getElementById("expenseCategory").value = "Operations";
+          if (state.isLoggedIn && state.extraSettings.showBusinessAnalytics) {
+            await loadBusinessAnalytics();
+          }
           showBanner("Expense saved.", "success");
         } catch (err) {
           showBanner(`Failed to save expense: ${err.message}`, "danger");
@@ -2707,6 +2937,7 @@
         state.currency = currencyVal;
 
         const nextExtra = {
+          showBusinessAnalytics: document.getElementById("setShowBusinessAnalytics").checked,
           showTabShop: document.getElementById("setShowTabShop").checked,
           showTabRequest: document.getElementById("setShowTabRequest").checked,
           showTabChat: document.getElementById("setShowTabChat").checked,

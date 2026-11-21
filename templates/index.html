@@ -234,7 +234,7 @@
 
         <hr />
         <div class="small text-muted">
-          <div>v23.0 | 2026</div>
+          <div>v24.0 | 2026</div>
         </div>
       </aside>
 
@@ -689,8 +689,8 @@
                     <input type="text" id="posCustomerName" class="form-control" value="Walk-in Customer" />
                   </div>
                   <div class="col-md-4">
-                    <label class="form-label">Phone</label>
-                    <input type="text" id="posPhone" class="form-control" placeholder="Optional" />
+                    <label class="form-label">Customer WhatsApp Number</label>
+                    <input type="text" id="posPhone" class="form-control" placeholder="e.g. 08012345678" />
                   </div>
                   <div class="col-md-4">
                     <label class="form-label">Payment Gateway / Source</label>
@@ -702,9 +702,17 @@
                       <option value="Transfer">Transfer</option>
                     </select>
                   </div>
+                  <div class="col-12">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="posSendReceiptToWhatsApp" />
+                      <label class="form-check-label small fw-semibold" for="posSendReceiptToWhatsApp">
+                        Send receipt to Customer WhatsApp for future evidence (when customer chooses &amp; WhatsApp number is provided)
+                      </label>
+                    </div>
+                  </div>
                   <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
                     <button type="submit" class="btn btn-success">
-                      <i class="fa-solid fa-check-circle me-1"></i>Cash Sale &amp; Delivery Receipt
+                      <i class="fa-solid fa-check-circle me-1"></i>Cash Sale &amp; Generate Receipt
                     </button>
                     <button type="button" class="btn btn-warning" data-action="pos-debt">
                       <i class="fa-solid fa-book me-1"></i>Record Debt
@@ -740,7 +748,12 @@
               <div class="col-lg-6">
                 <div class="card shadow-sm h-100">
                   <div class="card-body">
-                    <h5 class="card-title"><i class="fa-solid fa-comments me-1 text-success"></i>Live Chat &amp; Receipts</h5>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                      <h5 class="card-title mb-0"><i class="fa-solid fa-comments me-1 text-success"></i>Live Chat &amp; Receipts</h5>
+                      <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-all-chat-photos" title="Remove stored chat images to free storage">
+                        <i class="fa-solid fa-images me-1"></i>Delete All Chat Photos
+                      </button>
+                    </div>
                     <div class="row g-2 mb-3">
                       <div class="col-md-8">
                         <input type="text" id="staffChatPhoneFilter" class="form-control form-control-sm" placeholder="Filter by customer phone (leave blank for all)" />
@@ -1010,7 +1023,10 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body" id="thermalReceiptBody"></div>
-        <div class="modal-footer no-print">
+        <div class="modal-footer no-print flex-wrap gap-2">
+          <button type="button" class="btn btn-success btn-sm d-none" id="modalSendReceiptWhatsAppBtn" data-action="send-modal-receipt-whatsapp">
+            <i class="fa-brands fa-whatsapp me-1"></i>Send Receipt to WhatsApp
+          </button>
           <button type="button" class="btn btn-dark btn-sm" data-action="print-thermal-receipt">
             <i class="fa-solid fa-print me-1"></i>Print Receipt
           </button>
@@ -1023,6 +1039,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     const EXTRA_SETTINGS_STORAGE_KEY = "sammyreks_extra_app_settings_v1";
+    const DELETED_CHAT_PHOTOS_KEY = "sammyreks_deleted_chat_photo_ids_v1";
 
     const DEFAULT_EXTRA_SETTINGS = {
       showTabShop: true,
@@ -1049,6 +1066,9 @@
       products: [],
       cart: [],
       ordersFeed: [],
+      staffMessagesFeed: [],
+      deletedPhotoIds: new Set(),
+      pendingWhatsAppReceipt: null,
       isLoggedIn: false,
       user: null,
       staffToken: "",
@@ -1072,6 +1092,22 @@
       document.getElementById("productAdModalBody").innerHTML = "";
     });
 
+    function readDeletedPhotoIds() {
+      try {
+        const raw = localStorage.getItem(DELETED_CHAT_PHOTOS_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return new Set(Array.isArray(arr) ? arr.map(String) : []);
+      } catch (_) {
+        return new Set();
+      }
+    }
+
+    function saveDeletedPhotoIds(idSet) {
+      try {
+        localStorage.setItem(DELETED_CHAT_PHOTOS_KEY, JSON.stringify(Array.from(idSet)));
+      } catch (_) {}
+    }
+
     function readLocalExtraSettings() {
       try {
         const raw = localStorage.getItem(EXTRA_SETTINGS_STORAGE_KEY);
@@ -1093,7 +1129,6 @@
       const cfg = { ...DEFAULT_EXTRA_SETTINGS, ...(state.extraSettings || {}) };
       state.extraSettings = cfg;
 
-      // Sync Settings Form Inputs
       document.getElementById("setCurrency").value = state.currency || "\u20a6";
       document.getElementById("setFooterText").value = cfg.footerText || "";
       document.getElementById("setReceiptFooter").value = cfg.receiptFooter || "Thank you for your patronage!";
@@ -1114,7 +1149,6 @@
       document.getElementById("setPinFieldLabel").value = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
       document.getElementById("setOrderNotePlaceholder").value = cfg.orderNotePlaceholder || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder;
 
-      // Apply Bottom Dock Tab Visibility & Labels
       document.getElementById("navItemShopTab").classList.toggle("d-none", !cfg.showTabShop);
       document.getElementById("navItemRequestTab").classList.toggle("d-none", !cfg.showTabRequest);
       document.getElementById("navItemChatTab").classList.toggle("d-none", !cfg.showTabChat);
@@ -1128,12 +1162,10 @@
       if (parts[2]) document.getElementById("dockShortChat").textContent = parts[2];
       if (parts[3]) document.getElementById("dockShortCart").textContent = parts[3];
 
-      // Apply Search & Order Placeholders
       document.getElementById("shopSearchInput").placeholder = cfg.searchPlaceholder || "Search products...";
       document.getElementById("orderNote").placeholder = cfg.orderNotePlaceholder || "Optional note...";
       document.getElementById("chatHelperSubtitle").textContent = cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle;
 
-      // Apply PIN Field Mode (Auto-PIN hides manual PIN inputs so customers never get confused)
       const hideManualPin = Boolean(cfg.autoPinMode);
       document.getElementById("reqPinFieldWrap").classList.toggle("d-none", hideManualPin);
       document.getElementById("orderPinFieldWrap").classList.toggle("d-none", hideManualPin);
@@ -1145,7 +1177,6 @@
         document.getElementById("orderPinLabel").textContent = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
       }
 
-      // Apply Payment / Bank Instructions
       const payText = String(cfg.paymentInstructions || "").trim();
       const checkoutPayBox = document.getElementById("checkoutPaymentInfoAlert");
       const chatPayBox = document.getElementById("chatPaymentInfoAlert");
@@ -1159,7 +1190,6 @@
         chatPayBox.classList.add("d-none");
       }
 
-      // Apply Footer Copyright Text
       const footerWrap = document.getElementById("footerCopyrightText");
       if (cfg.footerText && cfg.footerText.trim()) {
         footerWrap.textContent = cfg.footerText.trim();
@@ -1315,29 +1345,87 @@
       const item = m || {};
       const phone = String(item.customer_phone ?? item.phone ?? "").trim();
       const body = String(item.message ?? item.text ?? "").trim();
+      const msgId = String(item.id ?? "");
+      const rawProof = String(item.proof_url ?? "").trim();
+      const isPhotoCleared = state.deletedPhotoIds.has(msgId);
       return {
         ...item,
-        id: String(item.id ?? ""),
+        id: msgId,
         sender: String(item.sender ?? "Customer").trim(),
         customer_phone: phone,
         phone,
         message: body,
         text: body,
-        proof_url: String(item.proof_url ?? "").trim(),
+        proof_url: isPhotoCleared ? "" : rawProof,
+        photo_cleared: isPhotoCleared || !rawProof,
         timestamp: String(item.timestamp ?? "").trim(),
       };
     }
 
-    function openThermalReceipt({ title = "RECEIPT", ref = "", customer = "Customer", phone = "", timestamp = "", lines = [], total = "" }) {
+    function formatWhatsAppPhone(rawPhone) {
+      const digits = String(rawPhone || "").replace(/\D/g, "");
+      if (!digits) return "";
+      if (digits.startsWith("234") && digits.length >= 13) {
+        return digits;
+      }
+      if (digits.startsWith("0") && digits.length === 11) {
+        return "234" + digits.slice(1);
+      }
+      return digits;
+    }
+
+    function buildWhatsAppReceiptMessage({ title, ref, customer, phone, timestamp, lines, total }) {
+      const footerText = state.extraSettings.receiptFooter || "Thank you for your patronage!";
+      const rows = [
+        `*${state.businessName}*`,
+        `*${title || "RECEIPT"}*`,
+        "------------------------------",
+        `Customer: ${customer || "Customer"}`,
+        phone ? `Phone: ${phone}` : "",
+        ref ? `Ref: ${ref}` : "",
+        timestamp ? `Date: ${timestamp}` : "",
+        ...(lines || []),
+        total ? `*Total: ${total}*` : "",
+        "------------------------------",
+        footerText,
+      ].filter(Boolean);
+      return rows.join("\n");
+    }
+
+    function sendReceiptToCustomerWhatsApp({ phone, receiptMessage }) {
+      const cleanPhone = String(phone || "").trim();
+      const waDigits = formatWhatsAppPhone(cleanPhone);
+      if (!cleanPhone || cleanPhone.toUpperCase() === "N/A" || !waDigits) {
+        throw new Error("Enter a valid customer WhatsApp number before sending a receipt to WhatsApp.");
+      }
+      const waUrl = `https://wa.me/${encodeURIComponent(waDigits)}?text=${encodeURIComponent(receiptMessage)}`;
+      window.open(waUrl, "_blank", "noopener,noreferrer");
+    }
+
+    function openThermalReceipt({ title = "RECEIPT", ref = "", customer = "Customer", phone = "", timestamp = "", lines = [], total = "", allowWhatsAppSend = true }) {
       const linesHtml = lines.map((l) => `<div>${escapeHtml(l)}</div>`).join("");
       const receiptFooterText = state.extraSettings.receiptFooter || "Thank you for your patronage!";
+      const cleanPhone = String(phone || "").trim();
+      const waDigits = formatWhatsAppPhone(cleanPhone);
+      const canSendWhatsApp = Boolean(allowWhatsAppSend && cleanPhone && cleanPhone.toUpperCase() !== "N/A" && waDigits);
+
+      state.pendingWhatsAppReceipt = canSendWhatsApp
+        ? {
+            phone: cleanPhone,
+            receiptMessage: buildWhatsAppReceiptMessage({ title, ref, customer, phone: cleanPhone, timestamp, lines, total }),
+          }
+        : null;
+
+      const waBtn = document.getElementById("modalSendReceiptWhatsAppBtn");
+      waBtn.classList.toggle("d-none", !canSendWhatsApp);
+
       document.getElementById("thermalReceiptBody").innerHTML = `
         <div class="thermal-paper">
           <div class="text-center fw-bold">${escapeHtml(state.businessName)}</div>
           <div class="text-center small">${escapeHtml(title)}</div>
           <hr class="my-2" />
           <div><strong>Customer:</strong> ${escapeHtml(customer)}</div>
-          <div><strong>Phone:</strong> ${escapeHtml(phone || "N/A")}</div>
+          <div><strong>Phone:</strong> ${escapeHtml(cleanPhone || "N/A")}</div>
           ${ref ? `<div><strong>Ref:</strong> ${escapeHtml(ref)}</div>` : ""}
           ${timestamp ? `<div><strong>Date:</strong> ${escapeHtml(timestamp)}</div>` : ""}
           <hr class="my-2" />
@@ -1348,6 +1436,58 @@
         </div>
       `;
       thermalReceiptModal.show();
+    }
+
+    async function deleteSingleChatPhoto(msgId) {
+      const cleanId = String(msgId || "").trim();
+      if (!cleanId) return;
+      state.deletedPhotoIds.add(cleanId);
+      saveDeletedPhotoIds(state.deletedPhotoIds);
+
+      try {
+        await apiRequest(`/api/messages/${encodeURIComponent(cleanId)}/photo`, { method: "DELETE" });
+      } catch (_) {
+        try {
+          await apiRequest(`/api/messages/${encodeURIComponent(cleanId)}/delete-photo`, { method: "POST" });
+        } catch (_) {}
+      }
+
+      await loadStaffChatMessages();
+      if (state.customerAuth.unlocked) {
+        await loadCustomerPrivateChat();
+      }
+      showBanner("Chat photo removed to save storage.", "success");
+    }
+
+    async function deleteAllChatPhotos() {
+      const photoMsgs = (state.staffMessagesFeed || []).filter(
+        (m) => m.id && m.proof_url && String(m.proof_url).startsWith("http")
+      );
+      if (!photoMsgs.length) {
+        showBanner("No active chat photos found to delete.", "info");
+        return;
+      }
+
+      for (const m of photoMsgs) {
+        state.deletedPhotoIds.add(String(m.id));
+      }
+      saveDeletedPhotoIds(state.deletedPhotoIds);
+
+      try {
+        await apiRequest("/api/messages/photos", { method: "DELETE" });
+      } catch (_) {
+        for (const m of photoMsgs) {
+          try {
+            await apiRequest(`/api/messages/${encodeURIComponent(m.id)}/photo`, { method: "DELETE" });
+          } catch (_) {}
+        }
+      }
+
+      await loadStaffChatMessages();
+      if (state.customerAuth.unlocked) {
+        await loadCustomerPrivateChat();
+      }
+      showBanner(`Removed ${photoMsgs.length} chat photo(s) to free up storage.`, "success");
     }
 
     function hasValidVideoUrl(videoUrl) {
@@ -1698,7 +1838,7 @@
       updateCartSummary();
     }
 
-    function renderChatList(container, msgs, emptyText) {
+    function renderChatList(container, msgs, emptyText, { allowPhotoDelete = false } = {}) {
       if (!msgs.length) {
         container.innerHTML = `<div class="text-muted small">${escapeHtml(emptyText)}</div>`;
         return;
@@ -1706,9 +1846,16 @@
 
       container.innerHTML = msgs.map((rawMsg) => {
         const m = normalizeMessageClient(rawMsg);
-        const proofImg = m.proof_url && String(m.proof_url).startsWith("http")
+        const hasPhoto = Boolean(m.proof_url && String(m.proof_url).startsWith("http"));
+        const proofImg = hasPhoto
           ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
+          : (m.photo_cleared && rawMsg.proof_url
+              ? `<div class="mt-1 small fst-italic text-muted"><i class="fa-solid fa-image-slash me-1"></i>Photo removed to free storage</div>`
+              : "");
+        const deletePhotoBtn = allowPhotoDelete && hasPhoto && m.id
+          ? `<button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 ms-1" data-action="delete-chat-photo" data-msg-id="${escapeHtml(m.id)}" title="Delete this photo"><i class="fa-solid fa-trash-can me-1"></i>Delete Photo</button>`
           : "";
+
         const rawText = m.message || m.text || "";
         const decodedText = decodeHtmlEntities(rawText).trim();
         const isSystemReceipt =
@@ -1718,9 +1865,12 @@
 
         return `
           <div class="border-bottom pb-2 mb-2">
-            <div class="d-flex justify-content-between small">
+            <div class="d-flex justify-content-between align-items-center small gap-2">
               <strong>${escapeHtml(m.sender || "Customer")}</strong>
-              <span class="text-muted">${escapeHtml(m.customer_phone || m.phone || "")} &bull; ${escapeHtml(m.timestamp || "")}</span>
+              <div class="d-flex align-items-center gap-1">
+                <span class="text-muted">${escapeHtml(m.customer_phone || m.phone || "")} &bull; ${escapeHtml(m.timestamp || "")}</span>
+                ${deletePhotoBtn}
+              </div>
             </div>
             <div>${bodyHtml}</div>
             ${proofImg}
@@ -1761,7 +1911,7 @@
         document.getElementById("chatSendForm").classList.remove("d-none");
         document.getElementById("lockChatBtn").classList.remove("d-none");
 
-        renderChatList(box, msgs, `No messages or receipts found for ${phone}.`);
+        renderChatList(box, msgs, `No messages or receipts found for ${phone}.`, { allowPhotoDelete: false });
       } catch (err) {
         lockCustomerChatView();
         showBanner(err.message, "danger");
@@ -1828,10 +1978,13 @@
               ${noteHtml}
               <div class="mt-2 d-flex flex-wrap gap-1">
                 <button type="button" class="btn btn-outline-dark btn-sm" data-action="open-order-receipt" data-order-index="${idx}">
-                  <i class="fa-solid fa-print me-1"></i>Thermal Receipt
+                  <i class="fa-solid fa-print me-1"></i>Receipt
+                </button>
+                <button type="button" class="btn btn-outline-success btn-sm" data-action="send-order-receipt-whatsapp" data-order-index="${idx}" data-phone="${escapeHtml(phoneVal)}">
+                  <i class="fa-brands fa-whatsapp me-1"></i>Send to WhatsApp
                 </button>
                 <button type="button" class="btn btn-success btn-sm" data-action="verify-send-receipt" data-order-id="${escapeHtml(o.id)}" data-phone="${escapeHtml(phoneVal)}">
-                  <i class="fa-solid fa-check-double me-1"></i>Verify &amp; Send Receipt
+                  <i class="fa-solid fa-check-double me-1"></i>Verify &amp; Send
                 </button>
                 <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-order" data-order-id="${escapeHtml(o.id)}">
                   <i class="fa-solid fa-trash"></i>
@@ -1852,7 +2005,8 @@
         const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
         const res = await apiRequest(`/api/messages${query}`);
         const msgs = (res.messages || res.data || []).map(normalizeMessageClient);
-        renderChatList(box, msgs, "No chat messages or receipts found.");
+        state.staffMessagesFeed = msgs;
+        renderChatList(box, msgs, "No chat messages or receipts found.", { allowPhotoDelete: true });
       } catch (err) {
         box.innerHTML = `<div class="text-danger small">Failed to load chat: ${escapeHtml(err.message)}</div>`;
       }
@@ -1907,6 +2061,34 @@
       }
     }
 
+    function buildOrderReceiptPayload(o) {
+      const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
+      let lines = [];
+      let totalStr = "";
+      if (hasSpecial) {
+        lines = o.special_items.map((sp) => `${sp.item || sp.name || "Requested Item"}`);
+      } else if (Array.isArray(o.items) && o.items.length > 0) {
+        lines = o.items.map((it) => `${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${state.currency}${Number(it.total_price || 0).toFixed(2)}`);
+        const sum = o.items.reduce((acc, it) => acc + Number(it.total_price || 0), 0);
+        totalStr = `${state.currency}${sum.toFixed(2)}`;
+      } else if (o.notes) {
+        lines = [o.notes];
+      } else {
+        lines = ["Customer Order"];
+      }
+      if (o.notes && hasSpecial) lines.push(`Note: ${o.notes}`);
+      if (o.notes && Array.isArray(o.items) && o.items.length > 0) lines.push(`Note: ${o.notes}`);
+      return {
+        title: hasSpecial ? "MULTI-ITEM REQUEST RECEIPT" : "CUSTOMER ORDER RECEIPT",
+        ref: o.payment_ref || "",
+        customer: o.customer || o.customer_name || "Customer",
+        phone: o.contact_phone || o.phone || "",
+        timestamp: o.timestamp || "",
+        lines,
+        total: totalStr,
+      };
+    }
+
     document.getElementById("unlockChatForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
@@ -1948,6 +2130,17 @@
           await loadStaffOrders();
           await loadStaffChatMessages();
         });
+      } else if (action === "delete-chat-photo") {
+        event.stopPropagation();
+        const msgId = target.dataset.msgId;
+        await runGuardedAction(`del-photo-${msgId}`, 800, target, "Removing...", async () => {
+          await deleteSingleChatPhoto(msgId);
+        });
+      } else if (action === "delete-all-chat-photos") {
+        event.stopPropagation();
+        await runGuardedAction("del-all-photos", 1500, target, "Cleaning...", async () => {
+          await deleteAllChatPhotos();
+        });
       } else if (action === "select-order-phone") {
         const phone = (target.dataset.phone || "").trim();
         if (phone) {
@@ -1960,31 +2153,28 @@
         event.stopPropagation();
         const o = state.ordersFeed[Number(target.dataset.orderIndex)];
         if (!o) return;
-        const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
-        let lines = [];
-        let totalStr = "";
-        if (hasSpecial) {
-          lines = o.special_items.map((sp) => `${sp.item || sp.name || "Requested Item"}`);
-        } else if (Array.isArray(o.items) && o.items.length > 0) {
-          lines = o.items.map((it) => `${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${state.currency}${Number(it.total_price || 0).toFixed(2)}`);
-          const sum = o.items.reduce((acc, it) => acc + Number(it.total_price || 0), 0);
-          totalStr = `${state.currency}${sum.toFixed(2)}`;
-        } else if (o.notes) {
-          lines = [o.notes];
-        } else {
-          lines = ["Customer Order"];
+        openThermalReceipt({ ...buildOrderReceiptPayload(o), allowWhatsAppSend: true });
+      } else if (action === "send-order-receipt-whatsapp") {
+        event.stopPropagation();
+        const o = state.ordersFeed[Number(target.dataset.orderIndex)];
+        const phone = (target.dataset.phone || o?.contact_phone || o?.phone || "").trim();
+        if (!o) return;
+        try {
+          const payload = buildOrderReceiptPayload(o);
+          const receiptMessage = buildWhatsAppReceiptMessage({ ...payload, phone });
+          sendReceiptToCustomerWhatsApp({ phone, receiptMessage });
+          showBanner(`Opened WhatsApp receipt for ${phone}.`, "success");
+        } catch (err) {
+          showBanner(err.message, "warning");
         }
-        if (o.notes && hasSpecial) lines.push(`Note: ${o.notes}`);
-        if (o.notes && Array.isArray(o.items) && o.items.length > 0) lines.push(`Note: ${o.notes}`);
-        openThermalReceipt({
-          title: hasSpecial ? "MULTI-ITEM REQUEST RECEIPT" : "CUSTOMER ORDER RECEIPT",
-          ref: o.payment_ref || "",
-          customer: o.customer || o.customer_name || "Customer",
-          phone: o.contact_phone || o.phone || "",
-          timestamp: o.timestamp || "",
-          lines,
-          total: totalStr,
-        });
+      } else if (action === "send-modal-receipt-whatsapp") {
+        if (!state.pendingWhatsAppReceipt) return;
+        try {
+          sendReceiptToCustomerWhatsApp(state.pendingWhatsAppReceipt);
+          showBanner(`Opened WhatsApp receipt for ${state.pendingWhatsAppReceipt.phone}.`, "success");
+        } catch (err) {
+          showBanner(err.message, "warning");
+        }
       } else if (action === "verify-send-receipt") {
         event.stopPropagation();
         const orderId = target.dataset.orderId;
@@ -2022,18 +2212,48 @@
           }
         });
       } else if (action === "open-pos-receipt") {
+        const ref = target.dataset.ref || "";
+        const customer = target.dataset.customer || "Walk-in Customer";
+        const phone = target.dataset.phone || "N/A";
+        const item = target.dataset.item || "Item";
+        const unit = target.dataset.unit || "Unit";
+        const qty = target.dataset.qty || "1";
+        const source = target.dataset.source || "Cash";
+        const total = target.dataset.total || "";
         openThermalReceipt({
           title: "POS SALES RECEIPT",
-          ref: target.dataset.ref || "",
-          customer: target.dataset.customer || "Walk-in Customer",
-          phone: target.dataset.phone || "N/A",
+          ref,
+          customer,
+          phone,
           timestamp: new Date().toLocaleString(),
-          lines: [
-            `${target.dataset.item} (${target.dataset.unit}) x ${target.dataset.qty}`,
-            `Payment: ${target.dataset.source || "Cash"}`,
-          ],
-          total: target.dataset.total || "",
+          lines: [`${item} (${unit}) x ${qty}`, `Payment: ${source}`],
+          total,
+          allowWhatsAppSend: true,
         });
+      } else if (action === "send-pos-receipt-whatsapp") {
+        const ref = target.dataset.ref || "";
+        const customer = target.dataset.customer || "Walk-in Customer";
+        const phone = target.dataset.phone || "";
+        const item = target.dataset.item || "Item";
+        const unit = target.dataset.unit || "Unit";
+        const qty = target.dataset.qty || "1";
+        const source = target.dataset.source || "Cash";
+        const total = target.dataset.total || "";
+        try {
+          const receiptMessage = buildWhatsAppReceiptMessage({
+            title: "POS SALES RECEIPT",
+            ref,
+            customer,
+            phone,
+            timestamp: new Date().toLocaleString(),
+            lines: [`${item} (${unit}) x ${qty}`, `Payment: ${source}`],
+            total,
+          });
+          sendReceiptToCustomerWhatsApp({ phone, receiptMessage });
+          showBanner(`Opened WhatsApp receipt for ${phone}.`, "success");
+        } catch (err) {
+          showBanner(err.message, "warning");
+        }
       } else if (action === "print-thermal-receipt") {
         window.print();
       } else if (action === "watch-ad") {
@@ -2343,6 +2563,7 @@
         const custName = document.getElementById("posCustomerName").value.trim() || "Walk-in Customer";
         const custPhone = document.getElementById("posPhone").value.trim() || "N/A";
         const paySource = document.getElementById("posPaymentMethod").value;
+        const sendWhatsAppOpt = document.getElementById("posSendReceiptToWhatsApp").checked;
 
         try {
           const res = await apiRequest("/api/sales", {
@@ -2364,18 +2585,45 @@
           });
           const rec = res.receipt || {};
           const refCode = rec.payment_ref || "";
+          const formattedTotal = `${state.currency}${totalAmount.toFixed(2)}`;
+
+          let waStatusHtml = "";
+          if (sendWhatsAppOpt && custPhone && custPhone !== "N/A") {
+            try {
+              const receiptMessage = buildWhatsAppReceiptMessage({
+                title: "POS SALES RECEIPT",
+                ref: refCode,
+                customer: custName,
+                phone: custPhone,
+                timestamp: new Date().toLocaleString(),
+                lines: [`${prod.name} (${unitType}) x ${qty}`, `Payment: ${paySource}`],
+                total: formattedTotal,
+              });
+              sendReceiptToCustomerWhatsApp({ phone: custPhone, receiptMessage });
+              waStatusHtml = `<div class="text-success mt-1"><i class="fa-brands fa-whatsapp me-1"></i>Opened WhatsApp receipt for ${escapeHtml(custPhone)}.</div>`;
+            } catch (waErr) {
+              waStatusHtml = `<div class="text-warning mt-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>${escapeHtml(waErr.message)}</div>`;
+            }
+          }
+
           document.getElementById("posReceiptBox").innerHTML = `
             <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
               <div>
-                <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${state.currency}${totalAmount.toFixed(2)}</strong>
+                <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${formattedTotal}</strong>
+                ${waStatusHtml}
               </div>
-              <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${state.currency}${totalAmount.toFixed(2)}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
-                <i class="fa-solid fa-print me-1"></i>Thermal Receipt
-              </button>
+              <div class="d-flex gap-1">
+                <button type="button" class="btn btn-success btn-sm" data-action="send-pos-receipt-whatsapp" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+                  <i class="fa-brands fa-whatsapp me-1"></i>Send to WhatsApp
+                </button>
+                <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+                  <i class="fa-solid fa-print me-1"></i>Thermal Receipt
+                </button>
+              </div>
             </div>
           `;
           await loadProducts();
-          showBanner(`Recorded sale of ${state.currency}${totalAmount.toFixed(2)} and updated stock.`, "success");
+          showBanner(`Recorded sale of ${formattedTotal} and updated stock.`, "success");
         } catch (err) {
           showBanner(`Failed to record sale: ${err.message}`, "danger");
         }
@@ -2501,6 +2749,7 @@
     });
 
     (async function initApp() {
+      state.deletedPhotoIds = readDeletedPhotoIds();
       syncLayoutChrome();
       lockCustomerChatView();
       updateCartSummary();

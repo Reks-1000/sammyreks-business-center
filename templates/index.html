@@ -43,6 +43,62 @@
     .tip-fade {
       transition: opacity 0.2s ease;
     }
+    .floating-awareness-card {
+      position: fixed;
+      right: 14px;
+      bottom: 84px;
+      width: 240px;
+      max-width: calc(100vw - 28px);
+      z-index: 1025;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+    }
+    .floating-awareness-card img {
+      width: 100%;
+      max-height: 170px;
+      object-fit: cover;
+      display: block;
+      background: #f8fafc;
+    }
+    .floating-awareness-close {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: none;
+      background: rgba(15, 23, 42, 0.72);
+      color: #ffffff;
+      font-size: 0.75rem;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .floating-awareness-caption {
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      line-height: 1.35;
+      color: #1e293b;
+      background: #ffffff;
+      border-top: 1px solid #eef2f6;
+      word-break: break-word;
+    }
+    @media (min-width: 768px) {
+      .floating-awareness-card {
+        right: 22px;
+        bottom: 76px;
+        width: 270px;
+      }
+      .floating-awareness-card img {
+        max-height: 195px;
+      }
+    }
     .chat-box {
       max-height: 400px;
       overflow-y: auto;
@@ -442,6 +498,13 @@
                 </form>
               </div>
             </div>
+          </div>
+
+          <!-- Floating Awareness Photo Card (Customer Storefront) -->
+          <div id="customerAwarenessFloat" class="floating-awareness-card d-none" role="region" aria-label="Store Update">
+            <button type="button" class="floating-awareness-close" data-action="dismiss-awareness-float" aria-label="Close image notice">&times;</button>
+            <img id="customerAwarenessImg" src="" alt="Store Awareness" />
+            <div id="customerAwarenessCaption" class="floating-awareness-caption d-none"></div>
           </div>
 
           <!-- Discreet Store Footer -->
@@ -1119,7 +1182,7 @@
                   </div>
 
                   <!-- Group 5: Rotating Storefront Tips -->
-                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">5. Rotating Storefront Tips (Zero Extra DB/API Cost)</h6>
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">5. Rotating Storefront Tips (Rotates Together With Built-In Tips)</h6>
                   <div class="row g-3 mb-4">
                     <div class="col-md-4 col-6">
                       <div class="form-check form-switch">
@@ -1132,8 +1195,34 @@
                       <input type="number" min="2" max="3600" id="setTickerIntervalSec" class="form-control form-control-sm" value="5" />
                     </div>
                     <div class="col-12">
-                      <label class="form-label small mb-1" for="setTickerMessages">Custom Rotating Tips (Separate with <code>|</code>)</label>
-                      <textarea id="setTickerMessages" class="form-control form-control-sm" rows="2" placeholder="Optional custom tips separated by | (leave blank for default tips)"></textarea>
+                      <label class="form-label small mb-1" for="setTickerMessages">Extra Rotating Tips (One per line or separate with <code>|</code> — e.g. <code>Motivational: Keep going!</code>)</label>
+                      <textarea id="setTickerMessages" class="form-control form-control-sm" rows="3" placeholder="Type extra tips here (one per line or separated by |). These rotate alongside your built-in tips!"></textarea>
+                    </div>
+                  </div>
+
+                  <!-- Group 6: Floating Awareness Photo & Bottom Caption -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">6. Floating Awareness Photo &amp; Bottom Description</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowAwarenessFloat" />
+                        <label class="form-check-label" for="setShowAwarenessFloat">Show <strong>Floating Awareness Image</strong></label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1" for="setAwarenessImageFile">Upload Awareness Photo</label>
+                      <input type="file" name="awareness_image_file" id="setAwarenessImageFile" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp,image/*" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1" for="setAwarenessImageUrl">OR Image Link / Saved Preview</label>
+                      <div class="input-group input-group-sm">
+                        <input type="text" id="setAwarenessImageUrl" class="form-control" placeholder="https://... or uploaded image" />
+                        <button type="button" class="btn btn-outline-danger" data-action="clear-awareness-image" title="Remove floating image">Clear</button>
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small mb-1" for="setAwarenessCaption">Bottom Description / Awareness Message</label>
+                      <textarea id="setAwarenessCaption" class="form-control form-control-sm" rows="2" placeholder="Describe what this photo is meant for (shown at the bottom of the floating image)..."></textarea>
                     </div>
                   </div>
 
@@ -1217,6 +1306,9 @@
       showRotatingTicker: true,
       tickerIntervalSec: 5,
       tickerMessages: "",
+      showAwarenessFloat: false,
+      awarenessImageUrl: "",
+      awarenessCaption: "",
     };
 
     const DEFAULT_ROTATING_TIPS = [
@@ -1240,6 +1332,7 @@
       deletedPhotoIds: new Set(),
       vendorOverrides: {},
       pendingWhatsAppReceipt: null,
+      awarenessDismissed: false,
       isLoggedIn: false,
       user: null,
       staffToken: "",
@@ -1265,30 +1358,30 @@
     }
 
     function getRotatingTickerItems() {
+      const combined = [...DEFAULT_ROTATING_TIPS];
       const customRaw = String(state.extraSettings?.tickerMessages || "").trim();
       if (customRaw) {
-        const list = customRaw
-          .split("|")
+        const fallbackBadges = ["Did You Know?", "Smart Tip", "Motivation", "Store Note"];
+        customRaw
+          .split(/\||\r?\n/)
           .map((item) => item.trim())
-          .filter(Boolean);
-        if (list.length) {
-          const fallbackBadges = ["Did You Know?", "Smart Tip", "Motivation", "Store Note"];
-          return list.map((line, idx) => {
+          .filter(Boolean)
+          .forEach((line, idx) => {
             const colonIdx = line.indexOf(":");
-            if (colonIdx > 0 && colonIdx <= 20) {
-              return {
+            if (colonIdx > 0 && colonIdx <= 25) {
+              combined.push({
                 badge: line.slice(0, colonIdx).trim(),
                 text: line.slice(colonIdx + 1).trim(),
-              };
+              });
+            } else {
+              combined.push({
+                badge: fallbackBadges[idx % fallbackBadges.length],
+                text: line,
+              });
             }
-            return {
-              badge: fallbackBadges[idx % fallbackBadges.length],
-              text: line,
-            };
           });
-        }
       }
-      return DEFAULT_ROTATING_TIPS;
+      return combined;
     }
 
     function startRotatingTicker() {
@@ -1335,6 +1428,86 @@
 
       showCurrentSlide();
       _tickerTimerId = setInterval(showCurrentSlide, intervalSec * 1000);
+    }
+
+    function isSafeImageSrc(url) {
+      const clean = String(url || "").trim();
+      if (!clean) return false;
+      if (clean.startsWith("https://") || clean.startsWith("http://") || clean.startsWith("/")) {
+        return true;
+      }
+      if (/^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(clean)) {
+        return true;
+      }
+      return false;
+    }
+
+    function renderFloatingAwarenessCard() {
+      const card = document.getElementById("customerAwarenessFloat");
+      const imgEl = document.getElementById("customerAwarenessImg");
+      const capEl = document.getElementById("customerAwarenessCaption");
+      if (!card || !imgEl || !capEl) return;
+
+      const cfg = state.extraSettings || {};
+      const imgUrl = String(cfg.awarenessImageUrl || "").trim();
+      const caption = String(cfg.awarenessCaption || "").trim();
+
+      if (!cfg.showAwarenessFloat || state.awarenessDismissed || !isSafeImageSrc(imgUrl)) {
+        card.classList.add("d-none");
+        imgEl.removeAttribute("src");
+        return;
+      }
+
+      imgEl.src = imgUrl;
+      if (caption) {
+        capEl.textContent = caption;
+        capEl.classList.remove("d-none");
+      } else {
+        capEl.textContent = "";
+        capEl.classList.add("d-none");
+      }
+      card.classList.remove("d-none");
+    }
+
+    function readAwarenessFileAsDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        if (!file) {
+          resolve("");
+          return;
+        }
+        if (!String(file.type || "").startsWith("image/")) {
+          reject(new Error("Please choose a valid image file (PNG, JPG, WEBP)."));
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const img = new Image();
+          img.onload = () => {
+            const maxDim = 720;
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/jpeg", 0.82));
+          };
+          img.onerror = () => reject(new Error("Could not read selected awareness image."));
+          img.src = String(reader.result || "");
+        };
+        reader.onerror = () => reject(new Error("Failed to load selected awareness image."));
+        reader.readAsDataURL(file);
+      });
     }
 
     const productAdModalEl = document.getElementById("productAdModal");
@@ -1665,6 +1838,9 @@
       document.getElementById("setShowRotatingTicker").checked = cfg.showRotatingTicker !== false;
       document.getElementById("setTickerIntervalSec").value = cfg.tickerIntervalSec;
       document.getElementById("setTickerMessages").value = cfg.tickerMessages || "";
+      document.getElementById("setShowAwarenessFloat").checked = Boolean(cfg.showAwarenessFloat);
+      document.getElementById("setAwarenessImageUrl").value = cfg.awarenessImageUrl || "";
+      document.getElementById("setAwarenessCaption").value = cfg.awarenessCaption || "";
 
       const analyticsCard = document.getElementById("businessAnalyticsCard");
       const showAnalytics = Boolean(state.isLoggedIn && cfg.showBusinessAnalytics);
@@ -1723,6 +1899,7 @@
       }
 
       startRotatingTicker();
+      renderFloatingAwarenessCard();
     }
 
     function syncLayoutChrome() {
@@ -2419,6 +2596,10 @@
           }
         }
 
+        if (s.awareness_image_url && !state.extraSettings.awarenessImageUrl) {
+          state.extraSettings.awarenessImageUrl = s.awareness_image_url;
+        }
+
         const noticeEl = document.getElementById("customerNoticeAlert");
         if (s.active_notice && s.active_notice.trim()) {
           noticeEl.textContent = s.active_notice.trim();
@@ -2822,6 +3003,17 @@
 
       if (action === "dismiss-banner") {
         document.getElementById("appFeedbackBanner").classList.add("d-none");
+      } else if (action === "dismiss-awareness-float") {
+        state.awarenessDismissed = true;
+        renderFloatingAwarenessCard();
+      } else if (action === "clear-awareness-image") {
+        document.getElementById("setAwarenessImageFile").value = "";
+        document.getElementById("setAwarenessImageUrl").value = "";
+        document.getElementById("setShowAwarenessFloat").checked = false;
+        state.extraSettings.awarenessImageUrl = "";
+        state.extraSettings.showAwarenessFloat = false;
+        renderFloatingAwarenessCard();
+        showBanner("Floating awareness image cleared. Click 'Save All App Settings' to confirm.", "info");
       } else if (action === "edit-product-vendor") {
         startEditingProduct(target.dataset.id, true);
       } else if (action === "refresh-analytics") {
@@ -2885,6 +3077,7 @@
         renderStaffOrdersList();
       } else if (action === "reset-extra-settings") {
         state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS };
+        state.awarenessDismissed = false;
         saveLocalExtraSettings(state.extraSettings);
         applyExtraSettingsToUI();
         renderProducts();
@@ -3499,6 +3692,19 @@
         const currencyVal = document.getElementById("setCurrency").value.trim() || "\u20a6";
         state.currency = currencyVal;
 
+        const awarenessFile = document.getElementById("setAwarenessImageFile").files[0];
+        let awarenessImgVal = document.getElementById("setAwarenessImageUrl").value.trim();
+        if (awarenessFile) {
+          try {
+            awarenessImgVal = await readAwarenessFileAsDataUrl(awarenessFile);
+            document.getElementById("setAwarenessImageUrl").value = awarenessImgVal;
+            document.getElementById("setShowAwarenessFloat").checked = true;
+          } catch (fileErr) {
+            showBanner(fileErr.message, "warning");
+            return;
+          }
+        }
+
         const nextExtra = {
           showBusinessAnalytics: document.getElementById("setShowBusinessAnalytics").checked,
           showInventoryAlerts: document.getElementById("setShowInventoryAlerts").checked,
@@ -3525,8 +3731,12 @@
           showRotatingTicker: document.getElementById("setShowRotatingTicker").checked,
           tickerIntervalSec: normalizeTickerIntervalSec(document.getElementById("setTickerIntervalSec").value),
           tickerMessages: document.getElementById("setTickerMessages").value.trim(),
+          showAwarenessFloat: document.getElementById("setShowAwarenessFloat").checked,
+          awarenessImageUrl: awarenessImgVal,
+          awarenessCaption: document.getElementById("setAwarenessCaption").value.trim(),
         };
 
+        state.awarenessDismissed = false;
         state.extraSettings = nextExtra;
         saveLocalExtraSettings(nextExtra);
 
@@ -3537,6 +3747,7 @@
         try {
           await apiRequest("/api/settings", { method: "POST", body: fd });
           document.getElementById("setBroadcastVideoFile").value = "";
+          document.getElementById("setAwarenessImageFile").value = "";
           await loadSettings();
           showBanner("All app settings saved and applied!", "success");
         } catch (err) {

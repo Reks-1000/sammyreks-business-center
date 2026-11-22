@@ -86,8 +86,61 @@
     let _awarenessBaseOffsetX = 0;
     let _awarenessBaseOffsetY = 0;
 
+    function byId(id) {
+      return document.getElementById(id);
+    }
+
+    function setElValue(id, value) {
+      const el = byId(id);
+      if (el) el.value = value;
+      return el;
+    }
+
+    function setElChecked(id, checked) {
+      const el = byId(id);
+      if (el) el.checked = Boolean(checked);
+      return el;
+    }
+
+    function setElText(id, text) {
+      const el = byId(id);
+      if (el) el.textContent = text;
+      return el;
+    }
+
+    function setElHidden(id, hidden) {
+      const el = byId(id);
+      if (el) el.classList.toggle("d-none", Boolean(hidden));
+      return el;
+    }
+
+    function onEl(id, eventName, handler) {
+      const el = byId(id);
+      if (!el) return null;
+      el.addEventListener(eventName, handler);
+      return el;
+    }
+
+    function createSafeModal(id) {
+      const el = byId(id);
+      if (!el || typeof bootstrap === "undefined" || !bootstrap.Modal) {
+        return {
+          show() {},
+          hide() {},
+        };
+      }
+      try {
+        return new bootstrap.Modal(el);
+      } catch (_) {
+        return {
+          show() {},
+          hide() {},
+        };
+      }
+    }
+
     function applyAwarenessPosition() {
-      const card = document.getElementById("customerAwarenessFloat");
+      const card = byId("customerAwarenessFloat");
       if (!card) return;
       card.style.transform = `translate3d(${_awarenessOffsetX}px, ${_awarenessOffsetY}px, 0)`;
     }
@@ -134,10 +187,10 @@
     }
 
     function startRotatingTicker() {
-      const banner = document.getElementById("customerTickerBanner");
-      const badgeEl = document.getElementById("customerTickerBadge");
-      const textEl = document.getElementById("customerTickerText");
-      const timerLabel = document.getElementById("customerTickerTimerLabel");
+      const banner = byId("customerTickerBanner");
+      const badgeEl = byId("customerTickerBadge");
+      const textEl = byId("customerTickerText");
+      const timerLabel = byId("customerTickerTimerLabel");
       if (!banner || !badgeEl || !textEl) return;
 
       if (_tickerTimerId) {
@@ -219,11 +272,11 @@
     }
 
     function renderFloatingAwarenessCard() {
-      const card = document.getElementById("customerAwarenessFloat");
-      const imgEl = document.getElementById("customerAwarenessImg");
-      const capEl = document.getElementById("customerAwarenessCaption");
-      const navBar = document.getElementById("customerAwarenessNavBar");
-      const counterEl = document.getElementById("customerAwarenessCounter");
+      const card = byId("customerAwarenessFloat");
+      const imgEl = byId("customerAwarenessImg");
+      const capEl = byId("customerAwarenessCaption");
+      const navBar = byId("customerAwarenessNavBar");
+      const counterEl = byId("customerAwarenessCounter");
       if (!card || !imgEl || !capEl) return;
 
       if (_awarenessAutoTimerId) {
@@ -320,13 +373,16 @@
       return results;
     }
 
-    const productAdModalEl = document.getElementById("productAdModal");
-    const productAdModal = new bootstrap.Modal(productAdModalEl);
-    const thermalReceiptModal = new bootstrap.Modal(document.getElementById("thermalReceiptModal"));
+    const productAdModalEl = byId("productAdModal");
+    const productAdModal = createSafeModal("productAdModal");
+    const thermalReceiptModal = createSafeModal("thermalReceiptModal");
 
-    productAdModalEl.addEventListener("hidden.bs.modal", () => {
-      document.getElementById("productAdModalBody").innerHTML = "";
-    });
+    if (productAdModalEl) {
+      productAdModalEl.addEventListener("hidden.bs.modal", () => {
+        const body = byId("productAdModalBody");
+        if (body) body.innerHTML = "";
+      });
+    }
 
     function formatMoney(amount) {
       const num = Number(amount || 0);
@@ -408,9 +464,9 @@
     }
 
     function renderInventoryAlerts() {
-      const card = document.getElementById("inventoryAlertsCard");
-      const badge = document.getElementById("inventoryAlertsBadge");
-      const listEl = document.getElementById("inventoryAlertsList");
+      const card = byId("inventoryAlertsCard");
+      const badge = byId("inventoryAlertsBadge");
+      const listEl = byId("inventoryAlertsList");
       if (!card || !badge || !listEl) return;
 
       if (!state.isLoggedIn || !state.extraSettings.showInventoryAlerts) {
@@ -460,16 +516,10 @@
     }
 
     function renderAnalyticsMetrics({ totalRevenue = 0, totalProfit = 0, totalExpenses = 0, netCashflow = 0 }) {
-      const revEl = document.getElementById("metricTotalRevenue");
-      const profEl = document.getElementById("metricTotalProfit");
-      const expEl = document.getElementById("metricTotalExpenses");
-      const cashEl = document.getElementById("metricNetCashflow");
-      if (!revEl || !profEl || !expEl || !cashEl) return;
-
-      revEl.textContent = formatMoney(totalRevenue);
-      profEl.textContent = formatMoney(totalProfit);
-      expEl.textContent = formatMoney(totalExpenses);
-      cashEl.textContent = formatMoney(netCashflow);
+      setElText("metricTotalRevenue", formatMoney(totalRevenue));
+      setElText("metricTotalProfit", formatMoney(totalProfit));
+      setElText("metricTotalExpenses", formatMoney(totalExpenses));
+      setElText("metricNetCashflow", formatMoney(netCashflow));
     }
 
     async function loadBusinessAnalytics() {
@@ -622,95 +672,103 @@
       cfg.tickerIntervalSec = normalizeTickerIntervalSec(cfg.tickerIntervalSec);
       state.extraSettings = cfg;
 
-      document.getElementById("setCurrency").value = state.currency || "\u20a6";
-      document.getElementById("setFooterText").value = cfg.footerText || "";
-      document.getElementById("setReceiptFooter").value = cfg.receiptFooter || "Thank you for your patronage!";
-      document.getElementById("setShowBusinessAnalytics").checked = Boolean(cfg.showBusinessAnalytics);
-      document.getElementById("setShowInventoryAlerts").checked = Boolean(cfg.showInventoryAlerts);
-      document.getElementById("setLowStockThreshold").value = Number(cfg.lowStockThreshold ?? 2);
-      document.getElementById("setShowTabShop").checked = Boolean(cfg.showTabShop);
-      document.getElementById("setShowTabRequest").checked = Boolean(cfg.showTabRequest);
-      document.getElementById("setShowTabChat").checked = Boolean(cfg.showTabChat);
-      document.getElementById("setShowTabCart").checked = Boolean(cfg.showTabCart);
-      document.getElementById("setShowDockCartBadge").checked = Boolean(cfg.showDockCartBadge);
-      document.getElementById("setShowTopCartBtn").checked = Boolean(cfg.showTopCartBtn);
-      document.getElementById("setMobileTabLabels").value = cfg.mobileTabLabels || DEFAULT_EXTRA_SETTINGS.mobileTabLabels;
-      document.getElementById("setShowWatchAd").checked = Boolean(cfg.showWatchAd);
-      document.getElementById("setShowVendorBadges").checked = Boolean(cfg.showVendorBadges);
-      document.getElementById("setShowStockOnCards").checked = Boolean(cfg.showStockOnCards);
-      document.getElementById("setHideOutOfStock").checked = Boolean(cfg.hideOutOfStock);
-      document.getElementById("setSearchPlaceholder").value = cfg.searchPlaceholder || "Search products...";
-      document.getElementById("setPaymentInstructions").value = cfg.paymentInstructions || "";
-      document.getElementById("setChatHelperSubtitle").value = cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle;
-      document.getElementById("setAutoPinMode").checked = Boolean(cfg.autoPinMode);
-      document.getElementById("setPinFieldLabel").value = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
-      document.getElementById("setOrderNotePlaceholder").value = cfg.orderNotePlaceholder || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder;
-      document.getElementById("setShowRotatingTicker").checked = cfg.showRotatingTicker !== false;
-      document.getElementById("setTickerIntervalSec").value = cfg.tickerIntervalSec;
-      document.getElementById("setTickerMessages").value = cfg.tickerMessages || "";
-      document.getElementById("setShowAwarenessFloat").checked = Boolean(cfg.showAwarenessFloat);
-      document.getElementById("setAwarenessAutoSlide").checked = Boolean(cfg.awarenessAutoSlide);
-      document.getElementById("setAwarenessImageUrl").value = Array.isArray(cfg.awarenessImageUrl)
+      setElValue("setCurrency", state.currency || "\u20a6");
+      setElValue("setFooterText", cfg.footerText || "");
+      setElValue("setReceiptFooter", cfg.receiptFooter || "Thank you for your patronage!");
+      setElChecked("setShowBusinessAnalytics", cfg.showBusinessAnalytics);
+      setElChecked("setShowInventoryAlerts", cfg.showInventoryAlerts);
+      setElValue("setLowStockThreshold", Number(cfg.lowStockThreshold ?? 2));
+      setElChecked("setShowTabShop", cfg.showTabShop);
+      setElChecked("setShowTabRequest", cfg.showTabRequest);
+      setElChecked("setShowTabChat", cfg.showTabChat);
+      setElChecked("setShowTabCart", cfg.showTabCart);
+      setElChecked("setShowDockCartBadge", cfg.showDockCartBadge);
+      setElChecked("setShowTopCartBtn", cfg.showTopCartBtn);
+      setElValue("setMobileTabLabels", cfg.mobileTabLabels || DEFAULT_EXTRA_SETTINGS.mobileTabLabels);
+      setElChecked("setShowWatchAd", cfg.showWatchAd);
+      setElChecked("setShowVendorBadges", cfg.showVendorBadges);
+      setElChecked("setShowStockOnCards", cfg.showStockOnCards);
+      setElChecked("setHideOutOfStock", cfg.hideOutOfStock);
+      setElValue("setSearchPlaceholder", cfg.searchPlaceholder || "Search products...");
+      setElValue("setPaymentInstructions", cfg.paymentInstructions || "");
+      setElValue("setChatHelperSubtitle", cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle);
+      setElChecked("setAutoPinMode", cfg.autoPinMode);
+      setElValue("setPinFieldLabel", cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel);
+      setElValue("setOrderNotePlaceholder", cfg.orderNotePlaceholder || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder);
+      setElChecked("setShowRotatingTicker", cfg.showRotatingTicker !== false);
+      setElValue("setTickerIntervalSec", cfg.tickerIntervalSec);
+      setElValue("setTickerMessages", cfg.tickerMessages || "");
+      setElChecked("setShowAwarenessFloat", cfg.showAwarenessFloat);
+      setElChecked("setAwarenessAutoSlide", cfg.awarenessAutoSlide);
+      setElValue("setAwarenessImageUrl", Array.isArray(cfg.awarenessImageUrl)
         ? cfg.awarenessImageUrl.join("\n")
-        : (cfg.awarenessImageUrl || "");
-      document.getElementById("setAwarenessCaption").value = Array.isArray(cfg.awarenessCaption)
+        : (cfg.awarenessImageUrl || ""));
+      setElValue("setAwarenessCaption", Array.isArray(cfg.awarenessCaption)
         ? cfg.awarenessCaption.join("\n")
-        : (cfg.awarenessCaption || "");
+        : (cfg.awarenessCaption || ""));
 
-      const analyticsCard = document.getElementById("businessAnalyticsCard");
       const showAnalytics = Boolean(state.isLoggedIn && cfg.showBusinessAnalytics);
-      analyticsCard.classList.toggle("d-none", !showAnalytics);
+      setElHidden("businessAnalyticsCard", !showAnalytics);
       if (showAnalytics) {
         loadBusinessAnalytics();
       }
       renderInventoryAlerts();
 
-      document.getElementById("navItemShopTab").classList.toggle("d-none", !cfg.showTabShop);
-      document.getElementById("navItemRequestTab").classList.toggle("d-none", !cfg.showTabRequest);
-      document.getElementById("navItemChatTab").classList.toggle("d-none", !cfg.showTabChat);
-      document.getElementById("navItemCartTab").classList.toggle("d-none", !cfg.showTabCart);
-      document.getElementById("dockCartCountBadge").classList.toggle("d-none", !cfg.showDockCartBadge);
-      document.getElementById("topCartSummaryBtn").classList.toggle("d-none", !cfg.showTopCartBtn);
+      setElHidden("navItemShopTab", !cfg.showTabShop);
+      setElHidden("navItemRequestTab", !cfg.showTabRequest);
+      setElHidden("navItemChatTab", !cfg.showTabChat);
+      setElHidden("navItemCartTab", !cfg.showTabCart);
+      setElHidden("dockCartCountBadge", !cfg.showDockCartBadge);
+      setElHidden("topCartSummaryBtn", !cfg.showTopCartBtn);
 
       const parts = String(cfg.mobileTabLabels || "").split("|").map((s) => s.trim());
-      if (parts[0]) document.getElementById("dockShortShop").textContent = parts[0];
-      if (parts[1]) document.getElementById("dockShortRequest").textContent = parts[1];
-      if (parts[2]) document.getElementById("dockShortChat").textContent = parts[2];
-      if (parts[3]) document.getElementById("dockShortCart").textContent = parts[3];
+      if (parts[0]) setElText("dockShortShop", parts[0]);
+      if (parts[1]) setElText("dockShortRequest", parts[1]);
+      if (parts[2]) setElText("dockShortChat", parts[2]);
+      if (parts[3]) setElText("dockShortCart", parts[3]);
 
-      document.getElementById("shopSearchInput").placeholder = cfg.searchPlaceholder || "Search products...";
-      document.getElementById("orderNote").placeholder = cfg.orderNotePlaceholder || "Optional note...";
-      document.getElementById("chatHelperSubtitle").textContent = cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle;
+      const searchInp = byId("shopSearchInput");
+      if (searchInp) searchInp.placeholder = cfg.searchPlaceholder || "Search products...";
+      const orderNoteInp = byId("orderNote");
+      if (orderNoteInp) orderNoteInp.placeholder = cfg.orderNotePlaceholder || "Optional note...";
+      setElText("chatHelperSubtitle", cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle);
 
       const hideManualPin = Boolean(cfg.autoPinMode);
-      document.getElementById("reqPinFieldWrap").classList.toggle("d-none", hideManualPin);
-      document.getElementById("orderPinFieldWrap").classList.toggle("d-none", hideManualPin);
+      setElHidden("reqPinFieldWrap", hideManualPin);
+      setElHidden("orderPinFieldWrap", hideManualPin);
       if (hideManualPin) {
-        document.getElementById("reqPin").value = "";
-        document.getElementById("orderPin").value = "";
+        setElValue("reqPin", "");
+        setElValue("orderPin", "");
       } else {
-        document.getElementById("reqPinLabel").textContent = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
-        document.getElementById("orderPinLabel").textContent = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
+        setElText("reqPinLabel", cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel);
+        setElText("orderPinLabel", cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel);
       }
 
       const payText = String(cfg.paymentInstructions || "").trim();
-      const checkoutPayBox = document.getElementById("checkoutPaymentInfoAlert");
-      const chatPayBox = document.getElementById("chatPaymentInfoAlert");
+      const checkoutPayBox = byId("checkoutPaymentInfoAlert");
+      const chatPayBox = byId("chatPaymentInfoAlert");
       if (payText) {
-        checkoutPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
-        chatPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
-        checkoutPayBox.classList.remove("d-none");
-        chatPayBox.classList.remove("d-none");
+        const payHtml = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
+        if (checkoutPayBox) {
+          checkoutPayBox.innerHTML = payHtml;
+          checkoutPayBox.classList.remove("d-none");
+        }
+        if (chatPayBox) {
+          chatPayBox.innerHTML = payHtml;
+          chatPayBox.classList.remove("d-none");
+        }
       } else {
-        checkoutPayBox.classList.add("d-none");
-        chatPayBox.classList.add("d-none");
+        if (checkoutPayBox) checkoutPayBox.classList.add("d-none");
+        if (chatPayBox) chatPayBox.classList.add("d-none");
       }
 
-      const footerWrap = document.getElementById("footerCopyrightText");
-      if (cfg.footerText && cfg.footerText.trim()) {
-        footerWrap.textContent = cfg.footerText.trim();
-      } else {
-        footerWrap.innerHTML = `&copy; <span id="footerBusinessName">${escapeHtml(state.businessName)}</span>. All rights reserved.`;
+      const footerWrap = byId("footerCopyrightText");
+      if (footerWrap) {
+        if (cfg.footerText && cfg.footerText.trim()) {
+          footerWrap.textContent = cfg.footerText.trim();
+        } else {
+          footerWrap.innerHTML = `&copy; <span id="footerBusinessName">${escapeHtml(state.businessName)}</span>. All rights reserved.`;
+        }
       }
 
       startRotatingTicker();
@@ -718,25 +776,27 @@
     }
 
     function syncLayoutChrome() {
-      const sidebarCol = document.getElementById("staffSidebarCol");
-      const mainCol = document.getElementById("mainContentCol");
-      const bottomDock = document.getElementById("customerTabs");
-      const customerSec = document.getElementById("customerSection");
+      const sidebarCol = byId("staffSidebarCol");
+      const mainCol = byId("mainContentCol");
+      const bottomDock = byId("customerTabs");
+      const customerSec = byId("customerSection");
       const showSidebar = Boolean(state.isLoggedIn);
-      const isCustomerVisible = !customerSec.classList.contains("d-none");
+      const isCustomerVisible = customerSec ? !customerSec.classList.contains("d-none") : false;
 
-      sidebarCol.classList.toggle("d-none", !showSidebar);
-      bottomDock.classList.toggle("d-none", !isCustomerVisible);
-      customerSec.classList.toggle("has-bottom-dock", isCustomerVisible);
+      if (sidebarCol) sidebarCol.classList.toggle("d-none", !showSidebar);
+      if (bottomDock) bottomDock.classList.toggle("d-none", !isCustomerVisible);
+      if (customerSec) customerSec.classList.toggle("has-bottom-dock", isCustomerVisible);
 
-      if (showSidebar) {
-        mainCol.className = "col-lg-9 col-xl-10 p-3 p-md-4";
-      } else {
-        mainCol.className = "col-12 p-3 p-md-4";
+      if (mainCol) {
+        if (showSidebar) {
+          mainCol.className = "col-lg-9 col-xl-10 p-3 p-md-4";
+        } else {
+          mainCol.className = "col-12 p-3 p-md-4";
+        }
       }
 
       const showAnalytics = Boolean(state.isLoggedIn && state.extraSettings.showBusinessAnalytics);
-      document.getElementById("businessAnalyticsCard").classList.toggle("d-none", !showAnalytics);
+      setElHidden("businessAnalyticsCard", !showAnalytics);
       if (showAnalytics) {
         loadBusinessAnalytics();
       }
@@ -747,8 +807,9 @@
       if (!state.isLoggedIn && type !== "danger" && type !== "warning") {
         return;
       }
-      const banner = document.getElementById("appFeedbackBanner");
-      const textEl = document.getElementById("appFeedbackText");
+      const banner = byId("appFeedbackBanner");
+      const textEl = byId("appFeedbackText");
+      if (!banner || !textEl) return;
       banner.className = `alert alert-${type} d-flex align-items-center justify-content-between py-2 px-3 mb-3`;
       banner.classList.remove("d-none");
       textEl.innerHTML = `<i class="fa-solid ${type === "danger" ? "fa-triangle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info"} me-2"></i>${escapeHtml(message)}`;
@@ -770,9 +831,12 @@
         if (response.status === 401 && state.staffToken && !url.startsWith("/api/messages")) {
           state.isLoggedIn = false;
           state.staffToken = "";
-          document.getElementById("authBadge").className = "badge bg-secondary";
-          document.getElementById("authBadge").textContent = "Staff Mode";
-          document.getElementById("logoutBtn").classList.add("d-none");
+          const badge = byId("authBadge");
+          if (badge) {
+            badge.className = "badge bg-secondary";
+            badge.textContent = "Staff Mode";
+          }
+          setElHidden("logoutBtn", true);
           syncLayoutChrome();
         }
         throw new Error(data.detail || data.message || `Request failed (${response.status})`);
@@ -953,25 +1017,27 @@
           }
         : null;
 
-      const waBtn = document.getElementById("modalSendReceiptWhatsAppBtn");
-      waBtn.classList.toggle("d-none", !canSendWhatsApp);
+      setElHidden("modalSendReceiptWhatsAppBtn", !canSendWhatsApp);
 
-      document.getElementById("thermalReceiptBody").innerHTML = `
-        <div class="thermal-paper">
-          <div class="text-center fw-bold">${escapeHtml(state.businessName)}</div>
-          <div class="text-center small">${escapeHtml(title)}</div>
-          <hr class="my-2" />
-          <div><strong>Customer:</strong> ${escapeHtml(customer)}</div>
-          <div><strong>Phone:</strong> ${escapeHtml(cleanPhone || "N/A")}</div>
-          ${ref ? `<div><strong>Ref:</strong> ${escapeHtml(ref)}</div>` : ""}
-          ${timestamp ? `<div><strong>Date:</strong> ${escapeHtml(timestamp)}</div>` : ""}
-          <hr class="my-2" />
-          ${linesHtml}
-          <hr class="my-2" />
-          ${total ? `<div class="fw-bold">TOTAL: ${escapeHtml(total)}</div>` : ""}
-          <div class="text-center small mt-2">${escapeHtml(receiptFooterText)}</div>
-        </div>
-      `;
+      const receiptBody = byId("thermalReceiptBody");
+      if (receiptBody) {
+        receiptBody.innerHTML = `
+          <div class="thermal-paper">
+            <div class="text-center fw-bold">${escapeHtml(state.businessName)}</div>
+            <div class="text-center small">${escapeHtml(title)}</div>
+            <hr class="my-2" />
+            <div><strong>Customer:</strong> ${escapeHtml(customer)}</div>
+            <div><strong>Phone:</strong> ${escapeHtml(cleanPhone || "N/A")}</div>
+            ${ref ? `<div><strong>Ref:</strong> ${escapeHtml(ref)}</div>` : ""}
+            ${timestamp ? `<div><strong>Date:</strong> ${escapeHtml(timestamp)}</div>` : ""}
+            <hr class="my-2" />
+            ${linesHtml}
+            <hr class="my-2" />
+            ${total ? `<div class="fw-bold">TOTAL: ${escapeHtml(total)}</div>` : ""}
+            <div class="text-center small mt-2">${escapeHtml(receiptFooterText)}</div>
+          </div>
+        `;
+      }
       thermalReceiptModal.show();
     }
 
@@ -1044,27 +1110,31 @@
     function openProductAd(prod) {
       const cleanUrl = String(prod.video_url ?? "").trim();
       const sponsorTag = prod.vendor_name ? ` (${prod.vendor_name})` : "";
-      document.getElementById("productAdModalLabel").textContent = `${prod.name || "Product"}${sponsorTag} \u2014 Advert`;
+      setElText("productAdModalLabel", `${prod.name || "Product"}${sponsorTag} \u2014 Advert`);
       const ytEmbed = getYouTubeEmbedUrl(cleanUrl);
-      document.getElementById("productAdModalBody").innerHTML = ytEmbed
-        ? `
-          <div class="ratio ratio-16x9">
-            <iframe src="${escapeHtml(ytEmbed)}" title="${escapeHtml(prod.name || "Product Ad")}" allowfullscreen></iframe>
-          </div>
-        `
-        : `
-          <video class="product-ad-player" controls autoplay preload="metadata" playsinline>
-            <source src="${escapeHtml(cleanUrl)}" />
-            Your browser does not support video playback.
-          </video>
-        `;
+      const modalBody = byId("productAdModalBody");
+      if (modalBody) {
+        modalBody.innerHTML = ytEmbed
+          ? `
+            <div class="ratio ratio-16x9">
+              <iframe src="${escapeHtml(ytEmbed)}" title="${escapeHtml(prod.name || "Product Ad")}" allowfullscreen></iframe>
+            </div>
+          `
+          : `
+            <video class="product-ad-player" controls autoplay preload="metadata" playsinline>
+              <source src="${escapeHtml(cleanUrl)}" />
+              Your browser does not support video playback.
+            </video>
+          `;
+      }
       productAdModal.show();
     }
 
     function renderBroadcastVideo(videoUrl) {
-      const card = document.getElementById("customerBroadcastCard");
-      const wrap = document.getElementById("customerBroadcastPlayerWrap");
+      const card = byId("customerBroadcastCard");
+      const wrap = byId("customerBroadcastPlayerWrap");
       const cleanUrl = String(videoUrl ?? "").trim();
+      if (!card || !wrap) return;
 
       if (!hasValidVideoUrl(cleanUrl)) {
         card.classList.add("d-none");
@@ -1101,11 +1171,12 @@
     function updateCartSummary() {
       const count = state.cart.reduce((sum, item) => sum + Number(item.qty || 1), 0);
       const total = state.cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
-      document.getElementById("cartCountBadge").textContent = count;
-      document.getElementById("dockCartCountBadge").textContent = count;
-      document.getElementById("cartTotalBadge").textContent = formatMoney(total);
+      setElText("cartCountBadge", count);
+      setElText("dockCartCountBadge", count);
+      setElText("cartTotalBadge", formatMoney(total));
 
-      const container = document.getElementById("cartItemsContainer");
+      const container = byId("cartItemsContainer");
+      if (!container) return;
       if (!state.cart.length) {
         container.innerHTML = `<p class="text-muted">Your cart is empty.</p>`;
         return;
@@ -1131,35 +1202,36 @@
 
     function populateFormFromProduct(prod) {
       if (!prod) return;
-      document.getElementById("prodName").value = prod.name || "";
-      document.getElementById("prodCategory").value = prod.category || "General";
-      document.getElementById("prodVendorName").value = prod.vendor_name || "";
-      document.getElementById("prodMainUnit").value = prod.unit_main_label || "Carton";
-      document.getElementById("prodSubUnit").value = prod.unit_pack_label || "Pack";
-      document.getElementById("prodRetailUnit").value = prod.unit_retail_label || "Retail Unit";
-      document.getElementById("prodPriceCarton").value = Number(prod.price_carton ?? prod.price ?? 0).toFixed(2);
-      document.getElementById("prodStockCartons").value = Number(prod.qty_cartons ?? prod.stock ?? 0).toFixed(2);
-      document.getElementById("prodCostCarton").value = Number(prod.cost ?? 0).toFixed(2);
-      document.getElementById("prodPricePack").value = Number(prod.price_pack ?? 0).toFixed(2);
-      document.getElementById("prodPacksPerCarton").value = prod.packs_per_carton ?? 1;
-      document.getElementById("prodShelfLocation").value = prod.shelf || "";
-      document.getElementById("prodPriceRetail").value = Number(prod.price_retail ?? 0).toFixed(2);
-      document.getElementById("prodRetailPerPack").value = prod.units_per_pack ?? 1;
-      document.getElementById("prodExpiryDate").value = prod.expiry || "";
-      document.getElementById("prodVideoLink").value = prod.video_url || "";
-      document.getElementById("prodDescription").value = prod.description || "";
+      setElValue("prodName", prod.name || "");
+      setElValue("prodCategory", prod.category || "General");
+      setElValue("prodVendorName", prod.vendor_name || "");
+      setElValue("prodMainUnit", prod.unit_main_label || "Carton");
+      setElValue("prodSubUnit", prod.unit_pack_label || "Pack");
+      setElValue("prodRetailUnit", prod.unit_retail_label || "Retail Unit");
+      setElValue("prodPriceCarton", Number(prod.price_carton ?? prod.price ?? 0).toFixed(2));
+      setElValue("prodStockCartons", Number(prod.qty_cartons ?? prod.stock ?? 0).toFixed(2));
+      setElValue("prodCostCarton", Number(prod.cost ?? 0).toFixed(2));
+      setElValue("prodPricePack", Number(prod.price_pack ?? 0).toFixed(2));
+      setElValue("prodPacksPerCarton", prod.packs_per_carton ?? 1);
+      setElValue("prodShelfLocation", prod.shelf || "");
+      setElValue("prodPriceRetail", Number(prod.price_retail ?? 0).toFixed(2));
+      setElValue("prodRetailPerPack", prod.units_per_pack ?? 1);
+      setElValue("prodExpiryDate", prod.expiry || "");
+      setElValue("prodVideoLink", prod.video_url || "");
+      setElValue("prodDescription", prod.description || "");
     }
 
     function toggleUpdateMode() {
-      const isUpdate = document.getElementById("actionUpdateExisting").checked;
-      document.getElementById("existingProductSelectorWrap").classList.toggle("d-none", !isUpdate);
-      document.getElementById("formModeIndicator").textContent = isUpdate ? "Mode: Update Existing Item" : "Mode: Add New Item";
+      const updateRadio = byId("actionUpdateExisting");
+      const isUpdate = Boolean(updateRadio && updateRadio.checked);
+      setElHidden("existingProductSelectorWrap", !isUpdate);
+      setElText("formModeIndicator", isUpdate ? "Mode: Update Existing Item" : "Mode: Add New Item");
     }
 
-    document.getElementById("actionAddNew").addEventListener("change", toggleUpdateMode);
-    document.getElementById("actionUpdateExisting").addEventListener("change", toggleUpdateMode);
+    onEl("actionAddNew", "change", toggleUpdateMode);
+    onEl("actionUpdateExisting", "change", toggleUpdateMode);
 
-    document.getElementById("existingProductSelect").addEventListener("change", (e) => {
+    onEl("existingProductSelect", "change", (e) => {
       const prod = state.products.find((p) => String(p.id) === String(e.target.value));
       populateFormFromProduct(prod);
     });
@@ -1167,25 +1239,29 @@
     function startEditingProduct(prodId, focusVendor = false) {
       const prod = state.products.find((p) => String(p.id) === String(prodId));
       if (!prod) return;
-      document.getElementById("actionUpdateExisting").checked = true;
+      setElChecked("actionUpdateExisting", true);
       toggleUpdateMode();
-      document.getElementById("existingProductSelect").value = String(prod.id);
+      setElValue("existingProductSelect", String(prod.id));
       populateFormFromProduct(prod);
-      const card = document.getElementById("addUpdateItemCard");
+      const card = byId("addUpdateItemCard");
       if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
       if (focusVendor) {
-        const vendorInp = document.getElementById("prodVendorName");
-        setTimeout(() => {
-          vendorInp.focus();
-          vendorInp.select();
-        }, 250);
+        const vendorInp = byId("prodVendorName");
+        if (vendorInp) {
+          setTimeout(() => {
+            vendorInp.focus();
+            if (typeof vendorInp.select === "function") vendorInp.select();
+          }, 250);
+        }
       }
       showBanner(`Loaded "${prod.name}" into editor — update Vendor / Sponsor and click Save Product Data.`, "info");
     }
 
     function syncPosUnitOptions() {
-      const prod = state.products.find((p) => String(p.id) === String(document.getElementById("posProductSelect").value));
-      const unitSel = document.getElementById("posUnitSelect");
+      const posSel = byId("posProductSelect");
+      const unitSel = byId("posUnitSelect");
+      if (!posSel || !unitSel) return;
+      const prod = state.products.find((p) => String(p.id) === String(posSel.value));
       if (!prod) {
         unitSel.innerHTML = `<option value="Carton">Carton</option>`;
         updatePosTotalPreview();
@@ -1197,33 +1273,41 @@
     }
 
     function updatePosTotalPreview() {
-      const prod = state.products.find((p) => String(p.id) === String(document.getElementById("posProductSelect").value));
-      const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
-      const unit = document.getElementById("posUnitSelect").value;
+      const posSel = byId("posProductSelect");
+      const qtyInp = byId("posQty");
+      const unitSel = byId("posUnitSelect");
+      if (!posSel || !qtyInp || !unitSel) return;
+      const prod = state.products.find((p) => String(p.id) === String(posSel.value));
+      const qty = Math.max(1, Number(qtyInp.value || 1));
+      const unit = unitSel.value;
       const unitPrice = prod ? getPriceForUnit(prod, unit) : 0;
-      document.getElementById("posTotalPreview").textContent = formatMoney(unitPrice * qty);
+      setElText("posTotalPreview", formatMoney(unitPrice * qty));
     }
 
-    document.getElementById("posProductSelect").addEventListener("change", syncPosUnitOptions);
-    document.getElementById("posUnitSelect").addEventListener("change", updatePosTotalPreview);
-    document.getElementById("posQty").addEventListener("input", updatePosTotalPreview);
+    onEl("posProductSelect", "change", syncPosUnitOptions);
+    onEl("posUnitSelect", "change", updatePosTotalPreview);
+    onEl("posQty", "input", updatePosTotalPreview);
 
     function renderProducts() {
-      const grid = document.getElementById("productsGrid");
-      const tbody = document.getElementById("adminProductsTableBody");
-      const posSelect = document.getElementById("posProductSelect");
-      const existingSelect = document.getElementById("existingProductSelect");
-      const catSelect = document.getElementById("shopCategorySelect");
+      const grid = byId("productsGrid");
+      const tbody = byId("adminProductsTableBody");
+      const posSelect = byId("posProductSelect");
+      const existingSelect = byId("existingProductSelect");
+      const catSelect = byId("shopCategorySelect");
+      const searchInp = byId("shopSearchInput");
       const cfg = state.extraSettings;
 
-      const prevCat = catSelect.value;
+      const prevCat = catSelect ? catSelect.value : "All Categories";
       const cats = ["All Categories", ...Array.from(new Set(state.products.map((p) => p.category || "General"))).sort()];
-      catSelect.innerHTML = cats.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
-      if (cats.includes(prevCat)) catSelect.value = prevCat;
+      if (catSelect) {
+        catSelect.innerHTML = cats.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+        if (cats.includes(prevCat)) catSelect.value = prevCat;
+      }
 
-      const queryText = document.getElementById("shopSearchInput").value.trim().toLowerCase();
+      const queryText = searchInp ? searchInp.value.trim().toLowerCase() : "";
+      const activeCat = catSelect ? catSelect.value : "All Categories";
       const filtered = state.products.filter((p) => {
-        const okCat = catSelect.value === "All Categories" || (p.category || "General") === catSelect.value;
+        const okCat = activeCat === "All Categories" || (p.category || "General") === activeCat;
         const okSearch =
           !queryText ||
           String(p.name || "").toLowerCase().includes(queryText) ||
@@ -1232,139 +1316,147 @@
         return okCat && okSearch && okStock;
       });
 
-      if (!filtered.length) {
-        grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products match your selection right now.</div></div>`;
-      } else {
-        grid.innerHTML = filtered.map((p) => {
-          const imgSrc = p.image_url || "";
-          const mLbl = p.unit_main_label || "Carton";
-          const pLbl = p.unit_pack_label || "Pack";
-          const rLbl = p.unit_retail_label || "Retail Unit";
-          const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
-          const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
-          const hasAd = cfg.showWatchAd && hasValidVideoUrl(p.video_url);
-          const vendorBadgeHtml = cfg.showVendorBadges && p.vendor_name
-            ? `<div class="mb-1"><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="fa-solid fa-store me-1"></i>${escapeHtml(p.vendor_name)}</span></div>`
-            : "";
-          const imgHtml = imgSrc
-            ? `<div class="product-img-wrap"><img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(p.name)}" loading="lazy" /></div>`
-            : `<div class="product-img-wrap text-muted"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
+      if (grid) {
+        if (!filtered.length) {
+          grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products match your selection right now.</div></div>`;
+        } else {
+          grid.innerHTML = filtered.map((p) => {
+            const imgSrc = p.image_url || "";
+            const mLbl = p.unit_main_label || "Carton";
+            const pLbl = p.unit_pack_label || "Pack";
+            const rLbl = p.unit_retail_label || "Retail Unit";
+            const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
+            const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+            const hasAd = cfg.showWatchAd && hasValidVideoUrl(p.video_url);
+            const vendorBadgeHtml = cfg.showVendorBadges && p.vendor_name
+              ? `<div class="mb-1"><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="fa-solid fa-store me-1"></i>${escapeHtml(p.vendor_name)}</span></div>`
+              : "";
+            const imgHtml = imgSrc
+              ? `<div class="product-img-wrap"><img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(p.name)}" loading="lazy" /></div>`
+              : `<div class="product-img-wrap text-muted"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
 
-          const metaLine = cfg.showStockOnCards
-            ? `Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}`
-            : `${escapeHtml(p.category || "General")}`;
+            const metaLine = cfg.showStockOnCards
+              ? `Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}`
+              : `${escapeHtml(p.category || "General")}`;
 
-          return `
-            <div class="col-6 col-md-4 col-lg-3">
-              <div class="card h-100 shadow-sm product-card">
-                ${imgHtml}
-                <div class="card-body d-flex flex-column">
-                  <h6 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h6>
-                  ${vendorBadgeHtml}
-                  <div class="text-primary fw-semibold mb-1">${formatMoney(displayPrice)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
-                  <div class="small text-muted mb-2">${metaLine}</div>
-                  <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
-                  ${hasAd ? `
-                    <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" data-action="watch-ad" data-id="${escapeHtml(p.id)}">
-                      <i class="fa-solid fa-play me-1"></i>Watch Ad
+            return `
+              <div class="col-6 col-md-4 col-lg-3">
+                <div class="card h-100 shadow-sm product-card">
+                  ${imgHtml}
+                  <div class="card-body d-flex flex-column">
+                    <h6 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h6>
+                    ${vendorBadgeHtml}
+                    <div class="text-primary fw-semibold mb-1">${formatMoney(displayPrice)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
+                    <div class="small text-muted mb-2">${metaLine}</div>
+                    <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
+                    ${hasAd ? `
+                      <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" data-action="watch-ad" data-id="${escapeHtml(p.id)}">
+                        <i class="fa-solid fa-play me-1"></i>Watch Ad
+                      </button>
+                    ` : ""}
+                    <div class="row g-1 mb-2">
+                      <div class="col-7">
+                        <select class="form-select form-select-sm card-unit-sel">
+                          <option value="${escapeHtml(rLbl)}">${escapeHtml(rLbl)} (${formatMoney(p.price_retail ?? displayPrice)})</option>
+                          <option value="${escapeHtml(pLbl)}">${escapeHtml(pLbl)} (${formatMoney(p.price_pack ?? displayPrice)})</option>
+                          <option value="${escapeHtml(mLbl)}">${escapeHtml(mLbl)} (${formatMoney(p.price_carton ?? displayPrice)})</option>
+                        </select>
+                      </div>
+                      <div class="col-5">
+                        <input type="number" min="1" value="1" class="form-control form-control-sm card-qty-inp" />
+                      </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm w-100" data-action="add-to-cart" data-id="${escapeHtml(p.id)}">
+                      <i class="fa-solid fa-cart-plus me-1"></i>Add to Cart
                     </button>
-                  ` : ""}
-                  <div class="row g-1 mb-2">
-                    <div class="col-7">
-                      <select class="form-select form-select-sm card-unit-sel">
-                        <option value="${escapeHtml(rLbl)}">${escapeHtml(rLbl)} (${formatMoney(p.price_retail ?? displayPrice)})</option>
-                        <option value="${escapeHtml(pLbl)}">${escapeHtml(pLbl)} (${formatMoney(p.price_pack ?? displayPrice)})</option>
-                        <option value="${escapeHtml(mLbl)}">${escapeHtml(mLbl)} (${formatMoney(p.price_carton ?? displayPrice)})</option>
-                      </select>
-                    </div>
-                    <div class="col-5">
-                      <input type="number" min="1" value="1" class="form-control form-control-sm card-qty-inp" />
-                    </div>
                   </div>
-                  <button type="button" class="btn btn-primary btn-sm w-100" data-action="add-to-cart" data-id="${escapeHtml(p.id)}">
-                    <i class="fa-solid fa-cart-plus me-1"></i>Add to Cart
-                  </button>
                 </div>
               </div>
-            </div>
-          `;
-        }).join("");
+            `;
+          }).join("");
+        }
       }
 
       if (!state.products.length) {
-        tbody.innerHTML = `<tr><td colspan="13" class="text-muted">No inventory items yet.</td></tr>`;
-        posSelect.innerHTML = `<option value="">No products available</option>`;
-        existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="13" class="text-muted">No inventory items yet.</td></tr>`;
+        if (posSelect) posSelect.innerHTML = `<option value="">No products available</option>`;
+        if (existingSelect) existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>`;
         syncPosUnitOptions();
         renderInventoryAlerts();
         return;
       }
 
-      tbody.innerHTML = state.products.map((p) => {
-        const pCarton = Number(p.price_carton ?? p.price ?? 0);
-        const stockCartons = Number(p.qty_cartons ?? p.stock ?? 0);
-        const cCarton = Number(p.cost ?? 0);
-        const pPack = Number(p.price_pack ?? 0);
-        const pRetail = Number(p.price_retail ?? 0);
-        const packsCount = Number(p.packs_per_carton ?? 1);
-        const retailCount = Number(p.units_per_pack ?? 1);
-        const alertInfo = getProductAlertInfo(p);
+      if (tbody) {
+        tbody.innerHTML = state.products.map((p) => {
+          const pCarton = Number(p.price_carton ?? p.price ?? 0);
+          const stockCartons = Number(p.qty_cartons ?? p.stock ?? 0);
+          const cCarton = Number(p.cost ?? 0);
+          const pPack = Number(p.price_pack ?? 0);
+          const pRetail = Number(p.price_retail ?? 0);
+          const packsCount = Number(p.packs_per_carton ?? 1);
+          const retailCount = Number(p.units_per_pack ?? 1);
+          const alertInfo = getProductAlertInfo(p);
 
-        const stockFlag = alertInfo.isLowStock
-          ? ` <span class="badge ${stockCartons <= 0 ? "bg-danger" : "bg-warning text-dark"}">Low</span>`
-          : "";
-        const expFlag = alertInfo.isExpired
-          ? ` <span class="badge bg-danger">Expired</span>`
-          : alertInfo.isExpiringSoon
-            ? ` <span class="badge bg-warning text-dark">${alertInfo.daysLeft}d</span>`
+          const stockFlag = alertInfo.isLowStock
+            ? ` <span class="badge ${stockCartons <= 0 ? "bg-danger" : "bg-warning text-dark"}">Low</span>`
             : "";
+          const expFlag = alertInfo.isExpired
+            ? ` <span class="badge bg-danger">Expired</span>`
+            : alertInfo.isExpiringSoon
+              ? ` <span class="badge bg-warning text-dark">${alertInfo.daysLeft}d</span>`
+              : "";
 
-        return `
-          <tr>
-            <td class="fw-semibold">${escapeHtml(p.name)}</td>
-            <td>${escapeHtml(p.category || "General")}</td>
-            <td>${escapeHtml(p.vendor_name || "-")}</td>
-            <td>${formatMoney(pCarton)}</td>
-            <td>${stockCartons.toFixed(2)}${stockFlag}</td>
-            <td>${formatMoney(cCarton)}</td>
-            <td>${formatMoney(pPack)}</td>
-            <td>${formatMoney(pRetail)}</td>
-            <td>${packsCount}</td>
-            <td>${retailCount}</td>
-            <td>${escapeHtml(p.shelf || "-")}</td>
-            <td>${escapeHtml(p.expiry || "-")}${expFlag}</td>
-            <td class="text-nowrap">
-              <button type="button" class="btn btn-outline-primary btn-sm me-1" data-action="edit-product-vendor" data-id="${escapeHtml(p.id)}" title="Edit product & vendor/sponsor">
-                <i class="fa-solid fa-pen"></i>
-              </button>
-              <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
-                <i class="fa-solid fa-trash"></i>
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join("");
+          return `
+            <tr>
+              <td class="fw-semibold">${escapeHtml(p.name)}</td>
+              <td>${escapeHtml(p.category || "General")}</td>
+              <td>${escapeHtml(p.vendor_name || "-")}</td>
+              <td>${formatMoney(pCarton)}</td>
+              <td>${stockCartons.toFixed(2)}${stockFlag}</td>
+              <td>${formatMoney(cCarton)}</td>
+              <td>${formatMoney(pPack)}</td>
+              <td>${formatMoney(pRetail)}</td>
+              <td>${packsCount}</td>
+              <td>${retailCount}</td>
+              <td>${escapeHtml(p.shelf || "-")}</td>
+              <td>${escapeHtml(p.expiry || "-")}${expFlag}</td>
+              <td class="text-nowrap">
+                <button type="button" class="btn btn-outline-primary btn-sm me-1" data-action="edit-product-vendor" data-id="${escapeHtml(p.id)}" title="Edit product & vendor/sponsor">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join("");
+      }
 
-      const prevPos = posSelect.value;
-      posSelect.innerHTML = state.products.map((p) => {
-        const priceVal = Number(p.price_carton ?? p.price ?? 0);
-        const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
-        return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${formatMoney(priceVal)} &bull; Stock: ${stockVal.toFixed(2)})</option>`;
-      }).join("");
-      if (prevPos) posSelect.value = prevPos;
+      if (posSelect) {
+        const prevPos = posSelect.value;
+        posSelect.innerHTML = state.products.map((p) => {
+          const priceVal = Number(p.price_carton ?? p.price ?? 0);
+          const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+          return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${formatMoney(priceVal)} &bull; Stock: ${stockVal.toFixed(2)})</option>`;
+        }).join("");
+        if (prevPos) posSelect.value = prevPos;
+      }
 
-      const prevExisting = existingSelect.value;
-      existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>` + state.products.map((p) =>
-        `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${escapeHtml(p.category || "General")})</option>`
-      ).join("");
-      if (prevExisting) existingSelect.value = prevExisting;
+      if (existingSelect) {
+        const prevExisting = existingSelect.value;
+        existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>` + state.products.map((p) =>
+          `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${escapeHtml(p.category || "General")})</option>`
+        ).join("");
+        if (prevExisting) existingSelect.value = prevExisting;
+      }
 
       syncPosUnitOptions();
       renderInventoryAlerts();
     }
 
-    document.getElementById("shopCategorySelect").addEventListener("change", renderProducts);
-    document.getElementById("shopSearchInput").addEventListener("input", renderProducts);
+    onEl("shopCategorySelect", "change", renderProducts);
+    onEl("shopSearchInput", "input", renderProducts);
 
     async function loadProducts() {
       try {
@@ -1389,17 +1481,17 @@
         if (s.business_name) {
           state.businessName = s.business_name;
           document.title = s.business_name;
-          document.getElementById("businessTitleDisplay").textContent = s.business_name;
-          document.getElementById("sidebarBusinessName").textContent = s.business_name;
-          document.getElementById("setBusinessName").value = s.business_name;
+          setElText("businessTitleDisplay", s.business_name);
+          setElText("sidebarBusinessName", s.business_name);
+          setElValue("setBusinessName", s.business_name);
         }
         if (s.tagline) {
-          document.getElementById("businessTaglineDisplay").textContent = s.tagline;
-          document.getElementById("setTagline").value = s.tagline;
+          setElText("businessTaglineDisplay", s.tagline);
+          setElValue("setTagline", s.tagline);
         }
         if (s.currency) state.currency = s.currency;
-        document.getElementById("setNotice").value = s.active_notice || "";
-        document.getElementById("setBroadcastVideo").value = s.broadcast_video_url || "";
+        setElValue("setNotice", s.active_notice || "");
+        setElValue("setBroadcastVideo", s.broadcast_video_url || "");
 
         if (s.extra_settings) {
           const parsedExtra = typeof s.extra_settings === "string"
@@ -1415,12 +1507,14 @@
           state.extraSettings.awarenessImageUrl = s.awareness_image_url;
         }
 
-        const noticeEl = document.getElementById("customerNoticeAlert");
-        if (s.active_notice && s.active_notice.trim()) {
-          noticeEl.textContent = s.active_notice.trim();
-          noticeEl.classList.remove("d-none");
-        } else {
-          noticeEl.classList.add("d-none");
+        const noticeEl = byId("customerNoticeAlert");
+        if (noticeEl) {
+          if (s.active_notice && s.active_notice.trim()) {
+            noticeEl.textContent = s.active_notice.trim();
+            noticeEl.classList.remove("d-none");
+          } else {
+            noticeEl.classList.add("d-none");
+          }
         }
 
         renderBroadcastVideo(s.broadcast_video_url || "");
@@ -1432,6 +1526,7 @@
     }
 
     function renderChatList(container, msgs, emptyText, { allowPhotoDelete = false } = {}) {
+      if (!container) return;
       if (!msgs.length) {
         container.innerHTML = `<div class="text-muted small">${escapeHtml(emptyText)}</div>`;
         return;
@@ -1475,21 +1570,26 @@
 
     function lockCustomerChatView() {
       state.customerAuth = { unlocked: false, phone: "", pin: "" };
-      document.getElementById("chatSendForm").classList.add("d-none");
-      document.getElementById("lockChatBtn").classList.add("d-none");
-      document.getElementById("customerCredentialNotice").classList.add("d-none");
-      document.getElementById("chatMessagesBox").innerHTML = `
-        <div class="text-muted small py-3 text-center">
-          <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
-          Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.
-        </div>
-      `;
+      setElHidden("chatSendForm", true);
+      setElHidden("lockChatBtn", true);
+      setElHidden("customerCredentialNotice", true);
+      const box = byId("chatMessagesBox");
+      if (box) {
+        box.innerHTML = `
+          <div class="text-muted small py-3 text-center">
+            <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
+            Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.
+          </div>
+        `;
+      }
     }
 
     async function loadCustomerPrivateChat() {
-      const phone = (state.customerAuth.phone || document.getElementById("chatPhoneFilter").value).trim();
-      const pin = (state.customerAuth.pin || document.getElementById("chatPinFilter").value).trim();
-      const box = document.getElementById("chatMessagesBox");
+      const phoneInp = byId("chatPhoneFilter");
+      const pinInp = byId("chatPinFilter");
+      const phone = (state.customerAuth.phone || (phoneInp ? phoneInp.value : "")).trim();
+      const pin = (state.customerAuth.pin || (pinInp ? pinInp.value : "")).trim();
+      const box = byId("chatMessagesBox");
 
       if (!phone || !pin) {
         lockCustomerChatView();
@@ -1502,23 +1602,26 @@
         const msgs = (res.messages || res.data || []).map(normalizeMessageClient);
 
         state.customerAuth = { unlocked: true, phone, pin };
-        document.getElementById("chatSendForm").classList.remove("d-none");
-        document.getElementById("lockChatBtn").classList.remove("d-none");
+        setElHidden("chatSendForm", false);
+        setElHidden("lockChatBtn", false);
 
         renderChatList(box, msgs, `No messages or receipts found for ${phone}.`, { allowPhotoDelete: false });
       } catch (err) {
         lockCustomerChatView();
-        document.getElementById("chatMessagesBox").innerHTML = `
-          <div class="text-danger small py-3 text-center">
-            <i class="fa-solid fa-circle-exclamation fa-lg mb-2 d-block"></i>
-            ${escapeHtml(err.message)}
-          </div>
-        `;
+        if (box) {
+          box.innerHTML = `
+            <div class="text-danger small py-3 text-center">
+              <i class="fa-solid fa-circle-exclamation fa-lg mb-2 d-block"></i>
+              ${escapeHtml(err.message)}
+            </div>
+          `;
+        }
       }
     }
 
     function renderStaffOrdersList() {
-      const box = document.getElementById("staffOrdersBox");
+      const box = byId("staffOrdersBox");
+      if (!box) return;
       const filterMode = state.ordersFilter || "all";
 
       const filteredOrders = (state.ordersFeed || []).filter((o) => {
@@ -1593,7 +1696,7 @@
     }
 
     async function loadStaffOrders() {
-      const box = document.getElementById("staffOrdersBox");
+      const box = byId("staffOrdersBox");
       try {
         const res = await apiRequest("/api/orders");
         const rawOrders = (res.orders || res.data || []).map(normalizeOrderClient);
@@ -1609,13 +1712,14 @@
         state.ordersFeed = orders;
         renderStaffOrdersList();
       } catch (err) {
-        box.innerHTML = `<div class="text-danger small p-2">Failed to load orders: ${escapeHtml(err.message)}</div>`;
+        if (box) box.innerHTML = `<div class="text-danger small p-2">Failed to load orders: ${escapeHtml(err.message)}</div>`;
       }
     }
 
     async function loadStaffChatMessages() {
-      const phone = document.getElementById("staffChatPhoneFilter").value.trim();
-      const box = document.getElementById("staffChatMessagesBox");
+      const filterInp = byId("staffChatPhoneFilter");
+      const phone = filterInp ? filterInp.value.trim() : "";
+      const box = byId("staffChatMessagesBox");
       try {
         const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
         const res = await apiRequest(`/api/messages${query}`);
@@ -1623,14 +1727,14 @@
         state.staffMessagesFeed = msgs;
         renderChatList(box, msgs, "No chat messages or receipts found.", { allowPhotoDelete: true });
       } catch (err) {
-        box.innerHTML = `<div class="text-danger small">Failed to load chat: ${escapeHtml(err.message)}</div>`;
+        if (box) box.innerHTML = `<div class="text-danger small">Failed to load chat: ${escapeHtml(err.message)}</div>`;
       }
     }
 
     function renderRecordsLists() {
-      const debtorsBox = document.getElementById("debtorsListBox");
-      const expensesBox = document.getElementById("expensesListBox");
-      const workersBox = document.getElementById("workersListBox");
+      const debtorsBox = byId("debtorsListBox");
+      const expensesBox = byId("expensesListBox");
+      const workersBox = byId("workersListBox");
 
       if (debtorsBox) {
         const activeDebtors = (state.debtorsList || []).filter((d) => {
@@ -1720,9 +1824,12 @@
     }
 
     function openStaffPortalLogin() {
-      document.getElementById("staffSidebarCol").classList.remove("d-none");
-      document.getElementById("mainContentCol").className = "col-lg-9 col-xl-10 p-3 p-md-4";
-      document.getElementById("loginUsername").focus();
+      const sidebarCol = byId("staffSidebarCol");
+      const mainCol = byId("mainContentCol");
+      const loginUser = byId("loginUsername");
+      if (sidebarCol) sidebarCol.classList.remove("d-none");
+      if (mainCol) mainCol.className = "col-lg-9 col-xl-10 p-3 p-md-4";
+      if (loginUser) loginUser.focus();
       showBanner("Enter your staff or admin credentials on the left to sign in.", "info");
     }
 
@@ -1731,8 +1838,8 @@
         openStaffPortalLogin();
         return;
       }
-      document.getElementById("customerSection").classList.toggle("d-none", sectionId !== "customerSection");
-      document.getElementById("staffSection").classList.toggle("d-none", sectionId !== "staffSection");
+      setElHidden("customerSection", sectionId !== "customerSection");
+      setElHidden("staffSection", sectionId !== "staffSection");
       document.querySelectorAll(".nav-pill-btn").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.section === sectionId);
       });
@@ -1800,12 +1907,14 @@
       };
     }
 
-    document.getElementById("unlockChatForm").addEventListener("submit", async (e) => {
+    onEl("unlockChatForm", "submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("unlock-customer-chat", 600, btn, "Unlocking...", async () => {
-        state.customerAuth.phone = document.getElementById("chatPhoneFilter").value.trim();
-        state.customerAuth.pin = document.getElementById("chatPinFilter").value.trim();
+        const phoneInp = byId("chatPhoneFilter");
+        const pinInp = byId("chatPinFilter");
+        state.customerAuth.phone = phoneInp ? phoneInp.value.trim() : "";
+        state.customerAuth.pin = pinInp ? pinInp.value.trim() : "";
         await loadCustomerPrivateChat();
       });
     });
@@ -1817,7 +1926,7 @@
       const action = target.dataset.action;
 
       if (action === "dismiss-banner") {
-        document.getElementById("appFeedbackBanner").classList.add("d-none");
+        setElHidden("appFeedbackBanner", true);
       } else if (action === "dismiss-awareness-float") {
         state.awarenessDismissed = true;
         renderFloatingAwarenessCard();
@@ -1826,9 +1935,9 @@
       } else if (action === "next-awareness-slide") {
         stepAwarenessSlide(1);
       } else if (action === "clear-awareness-image") {
-        document.getElementById("setAwarenessImageFile").value = "";
-        document.getElementById("setAwarenessImageUrl").value = "";
-        document.getElementById("setShowAwarenessFloat").checked = false;
+        setElValue("setAwarenessImageFile", "");
+        setElValue("setAwarenessImageUrl", "");
+        setElChecked("setShowAwarenessFloat", false);
         _awarenessSlideIndex = 0;
         resetAwarenessPosition();
         state.extraSettings.awarenessImageUrl = "";
@@ -1906,7 +2015,7 @@
         renderProducts();
         showBanner("UI toggles reset to defaults. Click 'Save All App Settings' to sync.", "info");
       } else if (action === "lock-customer-chat") {
-        document.getElementById("chatPinFilter").value = "";
+        setElValue("chatPinFilter", "");
         lockCustomerChatView();
       } else if (action === "open-staff-portal") {
         openStaffPortalLogin();
@@ -1936,8 +2045,8 @@
       } else if (action === "select-order-phone") {
         const phone = (target.dataset.phone || "").trim();
         if (phone) {
-          document.getElementById("staffChatPhoneFilter").value = phone;
-          document.getElementById("staffChatSendPhone").value = phone;
+          setElValue("staffChatPhoneFilter", phone);
+          setElValue("staffChatSendPhone", phone);
           await loadStaffChatMessages();
           showBanner(`Loaded chat for ${phone}.`, "info");
         }
@@ -1980,8 +2089,8 @@
               body: JSON.stringify({ verified_by: state.user?.username || "admin" }),
             });
             if (phone) {
-              document.getElementById("staffChatPhoneFilter").value = phone;
-              document.getElementById("staffChatSendPhone").value = phone;
+              setElValue("staffChatPhoneFilter", phone);
+              setElValue("staffChatSendPhone", phone);
             }
             await loadStaffOrders();
             await loadStaffChatMessages();
@@ -2059,8 +2168,10 @@
         const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
         if (!prod) return;
         const card = target.closest(".card");
-        const unit = card ? card.querySelector(".card-unit-sel").value : (prod.unit_retail_label || "Retail Unit");
-        const qty = card ? Math.max(1, Number(card.querySelector(".card-qty-inp").value || 1)) : 1;
+        const unitSel = card ? card.querySelector(".card-unit-sel") : null;
+        const qtyInp = card ? card.querySelector(".card-qty-inp") : null;
+        const unit = unitSel ? unitSel.value : (prod.unit_retail_label || "Retail Unit");
+        const qty = qtyInp ? Math.max(1, Number(qtyInp.value || 1)) : 1;
         const unitPrice = getPriceForUnit(prod, unit);
         const existing = state.cart.find((c) => String(c.id) === String(prod.id) && c.unit === unit);
         if (existing) {
@@ -2094,12 +2205,17 @@
           }
         });
       } else if (action === "pos-debt") {
-        const prodId = document.getElementById("posProductSelect").value;
+        const prodSel = byId("posProductSelect");
+        const unitSel = byId("posUnitSelect");
+        const qtyInp = byId("posQty");
+        const custInp = byId("posCustomerName");
+        const phoneInp = byId("posPhone");
+        const prodId = prodSel ? prodSel.value : "";
         const prod = state.products.find((p) => String(p.id) === String(prodId));
-        const unitType = document.getElementById("posUnitSelect").value;
-        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
-        const custName = document.getElementById("posCustomerName").value.trim();
-        const phone = document.getElementById("posPhone").value.trim();
+        const unitType = unitSel ? unitSel.value : "Carton";
+        const qty = Math.max(1, Number(qtyInp ? qtyInp.value : 1) || 1);
+        const custName = custInp ? custInp.value.trim() : "";
+        const phone = phoneInp ? phoneInp.value.trim() : "";
         if (!custName || custName === "Walk-in Customer") {
           showBanner("Enter the customer's name to record a debt.", "warning");
           return;
@@ -2130,20 +2246,22 @@
       }
     });
 
-    document.getElementById("staffChatSendForm").addEventListener("submit", async (e) => {
+    onEl("staffChatSendForm", "submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("staff-chat-send", 1200, btn, "Sending...", async () => {
-        const phone = document.getElementById("staffChatSendPhone").value.trim();
-        const text = document.getElementById("staffChatSendText").value.trim();
+        const phoneInp = byId("staffChatSendPhone");
+        const textInp = byId("staffChatSendText");
+        const phone = phoneInp ? phoneInp.value.trim() : "";
+        const text = textInp ? textInp.value.trim() : "";
         const fd = new FormData();
         fd.append("phone", phone);
         fd.append("sender", "Staff");
         fd.append("text", text);
         try {
           await apiRequest("/api/messages", { method: "POST", body: fd });
-          document.getElementById("staffChatSendText").value = "";
-          document.getElementById("staffChatPhoneFilter").value = phone;
+          if (textInp) textInp.value = "";
+          setElValue("staffChatPhoneFilter", phone);
           await loadStaffChatMessages();
           showBanner("Reply sent to customer chat!", "success");
         } catch (err) {
@@ -2152,13 +2270,16 @@
       });
     });
 
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+    onEl("loginForm", "submit", async (e) => {
       e.preventDefault();
-      const btn = document.getElementById("loginBtn");
+      const btn = byId("loginBtn");
       await runGuardedAction("login-submit", 1000, btn, "Logging in...", async () => {
-        const username = document.getElementById("loginUsername").value.trim();
-        const password = document.getElementById("loginPassword").value;
-        const mode = document.getElementById("loginMode").value;
+        const userInp = byId("loginUsername");
+        const passInp = byId("loginPassword");
+        const modeSel = byId("loginMode");
+        const username = userInp ? userInp.value.trim() : "";
+        const password = passInp ? passInp.value : "";
+        const mode = modeSel ? modeSel.value : "admin";
 
         try {
           const res = await apiRequest("/api/login", {
@@ -2169,11 +2290,14 @@
           state.isLoggedIn = true;
           state.user = res;
           state.staffToken = res.token || "";
-          document.getElementById("authBadge").className = "badge bg-success";
-          document.getElementById("authBadge").textContent = `${res.role || "Admin"}: ${res.username || username}`;
-          document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username}`;
-          document.getElementById("logoutBtn").classList.remove("d-none");
-          document.getElementById("loginPassword").value = "";
+          const badge = byId("authBadge");
+          if (badge) {
+            badge.className = "badge bg-success";
+            badge.textContent = `${res.role || "Admin"}: ${res.username || username}`;
+          }
+          setElText("staffSessionLabel", `Signed in as ${res.username || username}`);
+          setElHidden("logoutBtn", false);
+          if (passInp) passInp.value = "";
           switchSection("staffSection");
           await loadProducts();
           await loadRecordsData();
@@ -2184,25 +2308,29 @@
       });
     });
 
-    document.getElementById("logoutBtn").addEventListener("click", () => {
+    onEl("logoutBtn", "click", () => {
       state.isLoggedIn = false;
       state.user = null;
       state.staffToken = "";
-      document.getElementById("authBadge").className = "badge bg-secondary";
-      document.getElementById("authBadge").textContent = "Staff Mode";
-      document.getElementById("logoutBtn").classList.add("d-none");
+      const badge = byId("authBadge");
+      if (badge) {
+        badge.className = "badge bg-secondary";
+        badge.textContent = "Staff Mode";
+      }
+      setElHidden("logoutBtn", true);
       switchSection("customerSection");
       showBanner("Logged out.", "info");
     });
 
-    document.getElementById("addProductForm").addEventListener("submit", async (e) => {
+    onEl("addProductForm", "submit", async (e) => {
       e.preventDefault();
-      const btn = document.getElementById("saveProductBtn");
+      const btn = byId("saveProductBtn");
       await runGuardedAction("save-product", 1500, btn, "Saving...", async () => {
         const formData = new FormData(e.target);
         const submittedName = String(formData.get("name") || "").trim();
         const submittedVendor = String(formData.get("vendor_name") || "").trim();
-        const selectedExistingId = String(document.getElementById("existingProductSelect").value || "").trim();
+        const existingSel = byId("existingProductSelect");
+        const selectedExistingId = existingSel ? String(existingSel.value || "").trim() : "";
 
         try {
           const res = await apiRequest("/api/products", { method: "POST", body: formData });
@@ -2210,20 +2338,20 @@
           saveVendorOverride(savedId, submittedName, submittedVendor);
 
           e.target.reset();
-          document.getElementById("actionAddNew").checked = true;
+          setElChecked("actionAddNew", true);
           toggleUpdateMode();
-          document.getElementById("prodCategory").value = "General";
-          document.getElementById("prodVendorName").value = "";
-          document.getElementById("prodMainUnit").value = "Carton";
-          document.getElementById("prodSubUnit").value = "Pack";
-          document.getElementById("prodRetailUnit").value = "Retail Unit";
-          document.getElementById("prodPriceCarton").value = "0.00";
-          document.getElementById("prodStockCartons").value = "0.00";
-          document.getElementById("prodCostCarton").value = "0.00";
-          document.getElementById("prodPricePack").value = "0.00";
-          document.getElementById("prodPacksPerCarton").value = "1";
-          document.getElementById("prodPriceRetail").value = "0.00";
-          document.getElementById("prodRetailPerPack").value = "1";
+          setElValue("prodCategory", "General");
+          setElValue("prodVendorName", "");
+          setElValue("prodMainUnit", "Carton");
+          setElValue("prodSubUnit", "Pack");
+          setElValue("prodRetailUnit", "Retail Unit");
+          setElValue("prodPriceCarton", "0.00");
+          setElValue("prodStockCartons", "0.00");
+          setElValue("prodCostCarton", "0.00");
+          setElValue("prodPricePack", "0.00");
+          setElValue("prodPacksPerCarton", "1");
+          setElValue("prodPriceRetail", "0.00");
+          setElValue("prodRetailPerPack", "1");
           await loadProducts();
           showBanner(`Saved "${submittedName}"${submittedVendor ? ` (Vendor/Sponsor: ${submittedVendor})` : ""}.`, "success");
         } catch (err) {
@@ -2236,22 +2364,24 @@
       const cleanPin = String(pin || "").trim();
       const cleanRef = String(refCode || "").trim();
       state.customerAuth = { unlocked: true, phone, pin: cleanPin || cleanRef };
-      document.getElementById("chatPhoneFilter").value = phone;
-      document.getElementById("chatPinFilter").value = cleanPin || cleanRef;
+      setElValue("chatPhoneFilter", phone);
+      setElValue("chatPinFilter", cleanPin || cleanRef);
 
-      const noticeEl = document.getElementById("customerCredentialNotice");
-      noticeEl.innerHTML = `
-        <strong><i class="fa-solid fa-key me-1"></i>Save Your Private Access Credentials:</strong>
-        Phone: <strong>${escapeHtml(phone)}</strong> &bull;
-        Chat PIN: <strong>${escapeHtml(cleanPin || "N/A")}</strong>
-        ${cleanRef ? `&bull; Order Ref: <strong>${escapeHtml(cleanRef)}</strong>` : ""}
-        <span class="d-block mt-1">Use your phone number and PIN (or Order Ref) anytime to unlock your private chat and receipts.</span>
-      `;
-      noticeEl.classList.remove("d-none");
+      const noticeEl = byId("customerCredentialNotice");
+      if (noticeEl) {
+        noticeEl.innerHTML = `
+          <strong><i class="fa-solid fa-key me-1"></i>Save Your Private Access Credentials:</strong>
+          Phone: <strong>${escapeHtml(phone)}</strong> &bull;
+          Chat PIN: <strong>${escapeHtml(cleanPin || "N/A")}</strong>
+          ${cleanRef ? `&bull; Order Ref: <strong>${escapeHtml(cleanRef)}</strong>` : ""}
+          <span class="d-block mt-1">Use your phone number and PIN (or Order Ref) anytime to unlock your private chat and receipts.</span>
+        `;
+        noticeEl.classList.remove("d-none");
+      }
       switchCustomerTab("chatTab");
     }
 
-    document.getElementById("customerOrderForm").addEventListener("submit", async (e) => {
+    onEl("customerOrderForm", "submit", async (e) => {
       e.preventDefault();
       if (!state.cart.length) {
         showBanner("Add at least one product to your cart before submitting an order.", "warning");
@@ -2259,10 +2389,14 @@
       }
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("submit-order", 2000, btn, "Submitting...", async () => {
-        const customerName = document.getElementById("orderCustomerName").value.trim();
-        const phone = document.getElementById("orderPhone").value.trim();
-        const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("orderPin").value.trim();
-        const note = document.getElementById("orderNote").value.trim();
+        const nameInp = byId("orderCustomerName");
+        const phoneInp = byId("orderPhone");
+        const pinInp = byId("orderPin");
+        const noteInp = byId("orderNote");
+        const customerName = nameInp ? nameInp.value.trim() : "";
+        const phone = phoneInp ? phoneInp.value.trim() : "";
+        const pin = state.extraSettings.autoPinMode ? "" : (pinInp ? pinInp.value.trim() : "");
+        const note = noteInp ? noteInp.value.trim() : "";
         const mappedItems = state.cart.map((i) => ({
           name: i.name,
           unit: i.unit || "Unit",
@@ -2291,14 +2425,18 @@
       });
     });
 
-    document.getElementById("multiRequestForm").addEventListener("submit", async (e) => {
+    onEl("multiRequestForm", "submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("multi-request", 2000, btn, "Sending...", async () => {
-        const customerName = document.getElementById("reqName").value.trim();
-        const phone = document.getElementById("reqPhone").value.trim();
-        const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("reqPin").value.trim();
-        const itemsText = document.getElementById("reqItemsText").value.trim();
+        const nameInp = byId("reqName");
+        const phoneInp = byId("reqPhone");
+        const pinInp = byId("reqPin");
+        const itemsInp = byId("reqItemsText");
+        const customerName = nameInp ? nameInp.value.trim() : "";
+        const phone = phoneInp ? phoneInp.value.trim() : "";
+        const pin = state.extraSettings.autoPinMode ? "" : (pinInp ? pinInp.value.trim() : "");
+        const itemsText = itemsInp ? itemsInp.value.trim() : "";
         try {
           const res = await apiRequest("/api/orders", {
             method: "POST",
@@ -2318,7 +2456,7 @@
       });
     });
 
-    document.getElementById("chatSendForm").addEventListener("submit", async (e) => {
+    onEl("chatSendForm", "submit", async (e) => {
       e.preventDefault();
       if (!state.customerAuth.unlocked) {
         showBanner("Please unlock your private chat first.", "warning");
@@ -2327,9 +2465,12 @@
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("customer-chat-send", 1200, btn, "Sending...", async () => {
         const phone = state.customerAuth.phone;
-        const pin = state.customerAuth.pin || document.getElementById("chatPinFilter").value.trim();
-        const text = document.getElementById("chatSendText").value.trim();
-        const proofFile = document.getElementById("chatProofFile").files[0];
+        const pinInp = byId("chatPinFilter");
+        const textInp = byId("chatSendText");
+        const proofInp = byId("chatProofFile");
+        const pin = state.customerAuth.pin || (pinInp ? pinInp.value.trim() : "");
+        const text = textInp ? textInp.value.trim() : "";
+        const proofFile = proofInp && proofInp.files ? proofInp.files[0] : null;
         const fd = new FormData();
         fd.append("phone", phone);
         fd.append("pin", pin);
@@ -2339,8 +2480,8 @@
 
         try {
           await apiRequest("/api/messages", { method: "POST", body: fd });
-          document.getElementById("chatSendText").value = "";
-          document.getElementById("chatProofFile").value = "";
+          if (textInp) textInp.value = "";
+          if (proofInp) proofInp.value = "";
           await loadCustomerPrivateChat();
         } catch (err) {
           showBanner(`Failed to send message: ${err.message}`, "danger");
@@ -2348,13 +2489,21 @@
       });
     });
 
-    document.getElementById("posSaleForm").addEventListener("submit", async (e) => {
+    onEl("posSaleForm", "submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("pos-sale", 1500, btn, "Recording...", async () => {
-        const prodId = document.getElementById("posProductSelect").value;
-        const unitType = document.getElementById("posUnitSelect").value;
-        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
+        const prodSel = byId("posProductSelect");
+        const unitSel = byId("posUnitSelect");
+        const qtyInp = byId("posQty");
+        const custInp = byId("posCustomerName");
+        const phoneInp = byId("posPhone");
+        const paySel = byId("posPaymentMethod");
+        const waChk = byId("posSendReceiptToWhatsApp");
+
+        const prodId = prodSel ? prodSel.value : "";
+        const unitType = unitSel ? unitSel.value : "Carton";
+        const qty = Math.max(1, Number(qtyInp ? qtyInp.value : 1) || 1);
         const prod = state.products.find((p) => String(p.id) === String(prodId));
         if (!prod) {
           showBanner("Please select a valid product.", "warning");
@@ -2362,10 +2511,10 @@
         }
         const unitPrice = getPriceForUnit(prod, unitType);
         const totalAmount = unitPrice * qty;
-        const custName = document.getElementById("posCustomerName").value.trim() || "Walk-in Customer";
-        const custPhone = document.getElementById("posPhone").value.trim() || "N/A";
-        const paySource = document.getElementById("posPaymentMethod").value;
-        const sendWhatsAppOpt = document.getElementById("posSendReceiptToWhatsApp").checked;
+        const custName = (custInp ? custInp.value.trim() : "") || "Walk-in Customer";
+        const custPhone = (phoneInp ? phoneInp.value.trim() : "") || "N/A";
+        const paySource = paySel ? paySel.value : "Cash";
+        const sendWhatsAppOpt = Boolean(waChk && waChk.checked);
 
         try {
           const res = await apiRequest("/api/sales", {
@@ -2408,22 +2557,25 @@
             }
           }
 
-          document.getElementById("posReceiptBox").innerHTML = `
-            <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <div>
-                <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${formattedTotal}</strong>
-                ${waStatusHtml}
+          const receiptBox = byId("posReceiptBox");
+          if (receiptBox) {
+            receiptBox.innerHTML = `
+              <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <div>
+                  <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${formattedTotal}</strong>
+                  ${waStatusHtml}
+                </div>
+                <div class="d-flex gap-1">
+                  <button type="button" class="btn btn-success btn-sm" data-action="send-pos-receipt-whatsapp" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+                    <i class="fa-brands fa-whatsapp me-1"></i>Send to WhatsApp
+                  </button>
+                  <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+                    <i class="fa-solid fa-print me-1"></i>Thermal Receipt
+                  </button>
+                </div>
               </div>
-              <div class="d-flex gap-1">
-                <button type="button" class="btn btn-success btn-sm" data-action="send-pos-receipt-whatsapp" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
-                  <i class="fa-brands fa-whatsapp me-1"></i>Send to WhatsApp
-                </button>
-                <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
-                  <i class="fa-solid fa-print me-1"></i>Thermal Receipt
-                </button>
-              </div>
-            </div>
-          `;
+            `;
+          }
           await loadProducts();
           showBanner(`Recorded sale of ${formattedTotal} and updated stock.`, "success");
         } catch (err) {
@@ -2432,7 +2584,7 @@
       });
     });
 
-    document.getElementById("debtorForm").addEventListener("submit", async (e) => {
+    onEl("debtorForm", "submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("save-debtor", 1200, btn, "Saving...", async () => {
@@ -2441,10 +2593,10 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              customer: document.getElementById("debtorName").value.trim(),
-              phone: document.getElementById("debtorPhone").value.trim(),
-              amount: Number(document.getElementById("debtorAmount").value),
-              items_bought: document.getElementById("debtorNote").value.trim(),
+              customer: (byId("debtorName")?.value || "").trim(),
+              phone: (byId("debtorPhone")?.value || "").trim(),
+              amount: Number(byId("debtorAmount")?.value || 0),
+              items_bought: (byId("debtorNote")?.value || "").trim(),
             }),
           });
           e.target.reset();
@@ -2456,22 +2608,25 @@
       });
     });
 
-    document.getElementById("expenseForm").addEventListener("submit", async (e) => {
+    onEl("expenseForm", "submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("save-expense", 1200, btn, "Saving...", async () => {
+        const catInp = byId("expenseCategory");
+        const titleInp = byId("expenseTitle");
+        const noteInp = byId("expenseNote");
         try {
           await apiRequest("/api/expenses", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              category: document.getElementById("expenseCategory").value.trim() || document.getElementById("expenseTitle").value.trim() || "Operations",
-              amount: Number(document.getElementById("expenseAmount").value),
-              note: document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim(),
+              category: (catInp?.value || "").trim() || (titleInp?.value || "").trim() || "Operations",
+              amount: Number(byId("expenseAmount")?.value || 0),
+              note: (noteInp?.value || "").trim() || (titleInp?.value || "").trim(),
             }),
           });
           e.target.reset();
-          document.getElementById("expenseCategory").value = "Operations";
+          setElValue("expenseCategory", "Operations");
           await loadRecordsData();
           if (state.isLoggedIn && state.extraSettings.showBusinessAnalytics) {
             await loadBusinessAnalytics();
@@ -2483,7 +2638,7 @@
       });
     });
 
-    document.getElementById("workerForm").addEventListener("submit", async (e) => {
+    onEl("workerForm", "submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("save-worker", 1200, btn, "Saving...", async () => {
@@ -2492,14 +2647,14 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              name: document.getElementById("workerName").value.trim(),
-              role: document.getElementById("workerRole").value.trim() || "Staff",
-              username: document.getElementById("workerUsername").value.trim(),
-              password: document.getElementById("workerPassword").value,
+              name: (byId("workerName")?.value || "").trim(),
+              role: (byId("workerRole")?.value || "").trim() || "Staff",
+              username: (byId("workerUsername")?.value || "").trim(),
+              password: byId("workerPassword")?.value || "",
             }),
           });
           e.target.reset();
-          document.getElementById("workerRole").value = "Staff";
+          setElValue("workerRole", "Staff");
           await loadRecordsData();
           showBanner("Worker saved.", "success");
         } catch (err) {
@@ -2508,23 +2663,26 @@
       });
     });
 
-    document.getElementById("settingsForm").addEventListener("submit", async (e) => {
+    onEl("settingsForm", "submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("save-settings", 1500, btn, "Saving...", async () => {
-        const currencyVal = document.getElementById("setCurrency").value.trim() || "\u20a6";
+        const currencyInp = byId("setCurrency");
+        const currencyVal = (currencyInp ? currencyInp.value.trim() : "") || "\u20a6";
         state.currency = currencyVal;
 
-        const awarenessFiles = document.getElementById("setAwarenessImageFile").files;
-        let awarenessImgVal = document.getElementById("setAwarenessImageUrl").value.trim();
+        const awarenessFileInp = byId("setAwarenessImageFile");
+        const awarenessUrlInp = byId("setAwarenessImageUrl");
+        const awarenessFiles = awarenessFileInp ? awarenessFileInp.files : null;
+        let awarenessImgVal = awarenessUrlInp ? awarenessUrlInp.value.trim() : "";
         if (awarenessFiles && awarenessFiles.length > 0) {
           try {
             const uploadedList = await readAwarenessFilesAsDataUrls(awarenessFiles);
             const existingList = parseAwarenessList(awarenessImgVal);
             const mergedList = [...existingList, ...uploadedList];
             awarenessImgVal = mergedList.join("\n");
-            document.getElementById("setAwarenessImageUrl").value = awarenessImgVal;
-            document.getElementById("setShowAwarenessFloat").checked = true;
+            setElValue("setAwarenessImageUrl", awarenessImgVal);
+            setElChecked("setShowAwarenessFloat", true);
           } catch (fileErr) {
             showBanner(fileErr.message, "warning");
             return;
@@ -2532,35 +2690,35 @@
         }
 
         const nextExtra = {
-          showBusinessAnalytics: document.getElementById("setShowBusinessAnalytics").checked,
-          showInventoryAlerts: document.getElementById("setShowInventoryAlerts").checked,
-          lowStockThreshold: Math.max(0, Number(document.getElementById("setLowStockThreshold").value || 2)),
-          showTabShop: document.getElementById("setShowTabShop").checked,
-          showTabRequest: document.getElementById("setShowTabRequest").checked,
-          showTabChat: document.getElementById("setShowTabChat").checked,
-          showTabCart: document.getElementById("setShowTabCart").checked,
-          showDockCartBadge: document.getElementById("setShowDockCartBadge").checked,
-          showTopCartBtn: document.getElementById("setShowTopCartBtn").checked,
-          mobileTabLabels: document.getElementById("setMobileTabLabels").value.trim() || DEFAULT_EXTRA_SETTINGS.mobileTabLabels,
-          showWatchAd: document.getElementById("setShowWatchAd").checked,
-          showVendorBadges: document.getElementById("setShowVendorBadges").checked,
-          showStockOnCards: document.getElementById("setShowStockOnCards").checked,
-          hideOutOfStock: document.getElementById("setHideOutOfStock").checked,
-          searchPlaceholder: document.getElementById("setSearchPlaceholder").value.trim() || "Search products...",
-          paymentInstructions: document.getElementById("setPaymentInstructions").value.trim(),
-          chatHelperSubtitle: document.getElementById("setChatHelperSubtitle").value.trim() || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle,
-          autoPinMode: document.getElementById("setAutoPinMode").checked,
-          pinFieldLabel: document.getElementById("setPinFieldLabel").value.trim() || DEFAULT_EXTRA_SETTINGS.pinFieldLabel,
-          orderNotePlaceholder: document.getElementById("setOrderNotePlaceholder").value.trim() || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder,
-          footerText: document.getElementById("setFooterText").value.trim(),
-          receiptFooter: document.getElementById("setReceiptFooter").value.trim() || "Thank you for your patronage!",
-          showRotatingTicker: document.getElementById("setShowRotatingTicker").checked,
-          tickerIntervalSec: normalizeTickerIntervalSec(document.getElementById("setTickerIntervalSec").value),
-          tickerMessages: document.getElementById("setTickerMessages").value.trim(),
-          showAwarenessFloat: document.getElementById("setShowAwarenessFloat").checked,
-          awarenessAutoSlide: document.getElementById("setAwarenessAutoSlide").checked,
+          showBusinessAnalytics: Boolean(byId("setShowBusinessAnalytics")?.checked),
+          showInventoryAlerts: Boolean(byId("setShowInventoryAlerts")?.checked),
+          lowStockThreshold: Math.max(0, Number(byId("setLowStockThreshold")?.value ?? 2)),
+          showTabShop: Boolean(byId("setShowTabShop")?.checked),
+          showTabRequest: Boolean(byId("setShowTabRequest")?.checked),
+          showTabChat: Boolean(byId("setShowTabChat")?.checked),
+          showTabCart: Boolean(byId("setShowTabCart")?.checked),
+          showDockCartBadge: Boolean(byId("setShowDockCartBadge")?.checked),
+          showTopCartBtn: Boolean(byId("setShowTopCartBtn")?.checked),
+          mobileTabLabels: (byId("setMobileTabLabels")?.value || "").trim() || DEFAULT_EXTRA_SETTINGS.mobileTabLabels,
+          showWatchAd: Boolean(byId("setShowWatchAd")?.checked),
+          showVendorBadges: Boolean(byId("setShowVendorBadges")?.checked),
+          showStockOnCards: Boolean(byId("setShowStockOnCards")?.checked),
+          hideOutOfStock: Boolean(byId("setHideOutOfStock")?.checked),
+          searchPlaceholder: (byId("setSearchPlaceholder")?.value || "").trim() || "Search products...",
+          paymentInstructions: (byId("setPaymentInstructions")?.value || "").trim(),
+          chatHelperSubtitle: (byId("setChatHelperSubtitle")?.value || "").trim() || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle,
+          autoPinMode: Boolean(byId("setAutoPinMode")?.checked),
+          pinFieldLabel: (byId("setPinFieldLabel")?.value || "").trim() || DEFAULT_EXTRA_SETTINGS.pinFieldLabel,
+          orderNotePlaceholder: (byId("setOrderNotePlaceholder")?.value || "").trim() || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder,
+          footerText: (byId("setFooterText")?.value || "").trim(),
+          receiptFooter: (byId("setReceiptFooter")?.value || "").trim() || "Thank you for your patronage!",
+          showRotatingTicker: byId("setShowRotatingTicker") ? Boolean(byId("setShowRotatingTicker").checked) : true,
+          tickerIntervalSec: normalizeTickerIntervalSec(byId("setTickerIntervalSec")?.value),
+          tickerMessages: (byId("setTickerMessages")?.value || "").trim(),
+          showAwarenessFloat: Boolean(byId("setShowAwarenessFloat")?.checked),
+          awarenessAutoSlide: Boolean(byId("setAwarenessAutoSlide")?.checked),
           awarenessImageUrl: awarenessImgVal,
-          awarenessCaption: document.getElementById("setAwarenessCaption").value.trim(),
+          awarenessCaption: (byId("setAwarenessCaption")?.value || "").trim(),
         };
 
         state.awarenessDismissed = false;
@@ -2575,8 +2733,8 @@
 
         try {
           await apiRequest("/api/settings", { method: "POST", body: fd });
-          document.getElementById("setBroadcastVideoFile").value = "";
-          document.getElementById("setAwarenessImageFile").value = "";
+          setElValue("setBroadcastVideoFile", "");
+          setElValue("setAwarenessImageFile", "");
           await loadSettings();
           showBanner("All app settings saved and applied!", "success");
         } catch (err) {
@@ -2593,7 +2751,7 @@
       state.paidDebtorIds = readIdSetFromStorage(PAID_DEBTOR_IDS_KEY);
       state.vendorOverrides = readVendorOverrides();
 
-      const awarenessCard = document.getElementById("customerAwarenessFloat");
+      const awarenessCard = byId("customerAwarenessFloat");
       if (awarenessCard) {
         awarenessCard.addEventListener("pointerdown", (ev) => {
           if (ev.target.closest("button")) return;

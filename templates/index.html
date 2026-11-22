@@ -1,4 +1,1292 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sammyreks Business Center</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #f6f8fb;
+      color: #1f2937;
+    }
+    .sidebar {
+      background: #ffffff;
+      border-right: 1px solid #e5e7eb;
+      min-height: 100vh;
+    }
+    .product-card .product-img-wrap {
+      aspect-ratio: 1 / 1;
+      width: 100%;
+      background-color: #f8f9fa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: 6px;
+      border-bottom: 1px solid #eef0f3;
+    }
+    .product-card .product-img-wrap img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+    .rotating-tip-bar {
+      background: #ffffff;
+      border: 1px solid #dbeafe;
+      border-left: 4px solid #0d6efd;
+      border-radius: 8px;
+    }
+    .tip-fade {
+      transition: opacity 0.2s ease;
+    }
+    .floating-awareness-card {
+      position: fixed;
+      right: 14px;
+      bottom: 84px;
+      width: 240px;
+      max-width: calc(100vw - 28px);
+      z-index: 1025;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+    }
+    .floating-awareness-card img {
+      width: 100%;
+      max-height: 170px;
+      object-fit: cover;
+      display: block;
+      background: #f8fafc;
+      touch-action: pan-y;
+    }
+    .floating-awareness-close {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 24px;
+      height: 24px;
+      border-radius: 999px;
+      border: none;
+      background: rgba(15, 23, 42, 0.72);
+      color: #ffffff;
+      font-size: 0.75rem;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .floating-awareness-caption {
+      padding: 8px 10px;
+      font-size: 0.78rem;
+      line-height: 1.35;
+      color: #1e293b;
+      background: #ffffff;
+      border-top: 1px solid #eef2f6;
+      word-break: break-word;
+    }
+    @media (min-width: 768px) {
+      .floating-awareness-card {
+        right: 22px;
+        bottom: 76px;
+        width: 270px;
+      }
+      .floating-awareness-card img {
+        max-height: 195px;
+      }
+    }
+    .chat-box {
+      max-height: 400px;
+      overflow-y: auto;
+      background: #ffffff;
+    }
+    .records-list-box {
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .nav-pill-btn.active {
+      font-weight: 600;
+    }
+    .broadcast-player {
+      max-height: 360px;
+      width: 100%;
+      object-fit: contain;
+      background: #000000;
+      border-radius: 6px;
+    }
+    .product-ad-player {
+      max-height: 420px;
+      width: 100%;
+      background: #000000;
+      border-radius: 6px;
+    }
+    .order-entry {
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+    .order-entry:hover {
+      border-color: #0d6efd !important;
+      background-color: #f8fbff !important;
+    }
+    .thermal-paper {
+      font-family: "Courier New", Courier, monospace;
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+      background: #ffffff;
+      color: #111827;
+      border: 1px dashed #6b7280;
+      padding: 14px;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+    .store-footer {
+      border-top: 1px solid #e5e7eb;
+      color: #6b7280;
+      font-size: 0.85rem;
+    }
+    .analytics-metric-card {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 14px;
+      height: 100%;
+    }
+    #customerSection.has-bottom-dock {
+      padding-bottom: 104px;
+    }
+    #customerTabs.bottom-tab-dock {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1030;
+      margin: 0 !important;
+      padding: 8px 8px calc(10px + env(safe-area-inset-bottom));
+      background: #ffffff;
+      border-top: 2px solid #dbe3ee;
+      box-shadow: 0 -6px 20px rgba(15, 23, 42, 0.12);
+      display: flex !important;
+      flex-wrap: nowrap;
+      gap: 6px !important;
+    }
+    #customerTabs.bottom-tab-dock .nav-item {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    #customerTabs.bottom-tab-dock .nav-link {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 54px;
+      padding: 6px 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1.15;
+      text-align: center;
+      color: #1e293b;
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      white-space: normal;
+      word-break: break-word;
+      transition: all 0.15s ease;
+    }
+    #customerTabs.bottom-tab-dock .nav-link i {
+      margin-right: 0 !important;
+      font-size: 1.05rem;
+      color: #0d6efd;
+    }
+    #customerTabs.bottom-tab-dock .nav-link.active {
+      color: #ffffff;
+      background-color: #0d6efd;
+      border-color: #0d6efd;
+      box-shadow: 0 3px 10px rgba(13, 110, 253, 0.32);
+    }
+    #customerTabs.bottom-tab-dock .nav-link.active i {
+      color: #ffffff;
+    }
+    .dock-cart-pill {
+      position: absolute;
+      top: 3px;
+      right: 5px;
+      font-size: 0.65rem;
+      padding: 2px 5px;
+      border-radius: 999px;
+      background: #198754;
+      color: #ffffff;
+      font-weight: 700;
+      line-height: 1;
+    }
+    @media (min-width: 768px) {
+      #customerTabs.bottom-tab-dock {
+        padding: 10px 24px;
+        gap: 12px !important;
+      }
+      #customerTabs.bottom-tab-dock .nav-link {
+        min-height: 44px;
+        flex-direction: row;
+        gap: 8px;
+        font-size: 0.9rem;
+        padding: 9px 14px;
+      }
+      #customerTabs.bottom-tab-dock .nav-link i {
+        font-size: 0.95rem;
+      }
+      .dock-cart-pill {
+        position: static;
+        font-size: 0.75rem;
+        padding: 3px 7px;
+      }
+    }
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #thermalReceiptModal,
+      #thermalReceiptModal * {
+        visibility: visible !important;
+      }
+      #thermalReceiptModal {
+        position: static !important;
+        left: 0 !important;
+        top: 0 !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Staff / Admin Sidebar (Hidden in Customer Storefront Mode) -->
+      <aside id="staffSidebarCol" class="col-lg-3 col-xl-2 sidebar p-3 d-none">
+        <div class="mb-3">
+          <h4 class="fw-bold mb-1"><i class="fa-solid fa-store text-primary me-2"></i>Staff Portal</h4>
+          <small class="text-muted" id="sidebarBusinessName">Sammyreks Business Center</small>
+        </div>
+
+        <div class="mb-2">
+          <span id="authBadge" class="badge bg-secondary">Staff Mode</span>
+        </div>
+
+        <form id="loginForm" class="border rounded p-3 bg-light mb-3">
+          <label class="form-label small fw-semibold">Portal Access</label>
+          <select id="loginMode" class="form-select form-select-sm mb-2">
+            <option value="admin">Admin Login</option>
+            <option value="staff">Staff Login</option>
+          </select>
+
+          <input type="text" id="loginUsername" class="form-control form-control-sm mb-2" value="admin" placeholder="Username" required />
+          <input type="password" id="loginPassword" class="form-control form-control-sm mb-2" placeholder="Password" required />
+
+          <button type="submit" id="loginBtn" class="btn btn-primary btn-sm w-100">
+            <i class="fa-solid fa-right-to-bracket me-1"></i>Login
+          </button>
+          <button type="button" id="logoutBtn" class="btn btn-outline-secondary btn-sm w-100 mt-2 d-none">
+            <i class="fa-solid fa-right-from-bracket me-1"></i>Logout
+          </button>
+        </form>
+
+        <div class="d-grid gap-1">
+          <button type="button" class="btn btn-outline-dark btn-sm text-start nav-pill-btn active" data-action="switch-section" data-section="customerSection">
+            <i class="fa-solid fa-bag-shopping me-2"></i>Back to Storefront
+          </button>
+          <button type="button" class="btn btn-outline-primary btn-sm text-start nav-pill-btn" data-action="switch-section" data-section="staffSection">
+            <i class="fa-solid fa-gauge-high me-2"></i>Management Panel
+          </button>
+        </div>
+
+        <hr />
+        <div class="small text-muted">
+          <div>v24.4 | 2026</div>
+        </div>
+      </aside>
+
+      <!-- Main Content Area (Full Width for Customers) -->
+      <main id="mainContentCol" class="col-12 p-3 p-md-4">
+        <!-- Live Feedback Banner -->
+        <div id="appFeedbackBanner" class="alert alert-info d-none d-flex align-items-center justify-content-between py-2 px-3 mb-3" role="alert">
+          <span id="appFeedbackText"></span>
+          <button type="button" class="btn-close btn-sm" data-action="dismiss-banner" aria-label="Close"></button>
+        </div>
+
+        <!-- ================================================================ -->
+        <!-- CUSTOMER SECTION                                                 -->
+        <!-- ================================================================ -->
+        <section id="customerSection" class="has-bottom-dock">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3 pb-2 border-bottom">
+            <div>
+              <h1 class="h4 fw-bold mb-0" id="businessTitleDisplay">Sammyreks Business Center</h1>
+              <small class="text-muted" id="businessTaglineDisplay">Quality products, fast orders &amp; live support</small>
+            </div>
+            <button type="button" id="topCartSummaryBtn" class="btn btn-success btn-sm px-3" data-action="switch-customer-tab" data-tab="cartTab">
+              <i class="fa-solid fa-cart-shopping me-1"></i>Cart (<span id="cartCountBadge">0</span>) &bull; <span id="cartTotalBadge">&#8358;0.00</span>
+            </button>
+          </div>
+
+          <!-- Always-Visible Customer Notice & Broadcast Video -->
+          <div id="customerNoticeAlert" class="alert alert-primary py-2 px-3 mb-3 d-none"></div>
+
+          <!-- Client-Side Rotating Tips Strip (Zero Extra DB/API Cost) -->
+          <div id="customerTickerBanner" class="rotating-tip-bar px-3 py-2 mb-3 d-flex align-items-center justify-content-between gap-2">
+            <div class="d-flex align-items-center gap-2 overflow-hidden">
+              <span class="badge bg-primary flex-shrink-0" id="customerTickerBadge">Did You Know?</span>
+              <span id="customerTickerText" class="small fw-medium text-dark tip-fade"></span>
+            </div>
+            <span class="text-muted small flex-shrink-0" id="customerTickerTimerLabel"><i class="fa-solid fa-rotate me-1"></i>5s</span>
+          </div>
+
+          <div id="customerBroadcastCard" class="card shadow-sm mb-3 d-none">
+            <div class="card-body py-2">
+              <div class="small fw-semibold text-primary mb-2">
+                <i class="fa-solid fa-video me-1"></i>Featured Announcement
+              </div>
+              <div id="customerBroadcastPlayerWrap"></div>
+            </div>
+          </div>
+
+          <!-- Tab 1: Shop & Cart -->
+          <div id="shopTab" class="customer-tab-pane">
+            <div class="row g-2 mb-3">
+              <div class="col-md-4">
+                <select id="shopCategorySelect" class="form-select">
+                  <option value="All Categories">All Categories</option>
+                </select>
+              </div>
+              <div class="col-md-8">
+                <input type="text" id="shopSearchInput" class="form-control" placeholder="Search products..." />
+              </div>
+            </div>
+            <div class="row g-3" id="productsGrid">
+              <div class="col-12 text-muted">Loading products...</div>
+            </div>
+          </div>
+
+          <!-- Tab 2: Multi-Item Request -->
+          <div id="requestTab" class="customer-tab-pane d-none">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Multi-Item Request</h5>
+                <form id="multiRequestForm" class="row g-3">
+                  <div class="col-md-4">
+                    <label class="form-label">Your Full Name</label>
+                    <input type="text" id="reqName" class="form-control" placeholder="Your name" required />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Your Phone Number</label>
+                    <input type="text" id="reqPhone" class="form-control" placeholder="e.g. 08012345678" required />
+                  </div>
+                  <div class="col-md-4" id="reqPinFieldWrap">
+                    <label class="form-label" id="reqPinLabel">4-Digit Chat PIN (Leave blank — auto-generated)</label>
+                    <input type="password" id="reqPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">Items Needed &amp; Quantities</label>
+                    <textarea id="reqItemsText" class="form-control" rows="3" placeholder="List items, sizes, or quantities you need..." required></textarea>
+                  </div>
+                  <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-paper-plane me-1"></i>Send Request to Private Chat
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 3: Private Live Chat & Receipts -->
+          <div id="chatTab" class="customer-tab-pane d-none">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                  <div>
+                    <h5 class="card-title mb-0"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Private Order Portfolio, Chat &amp; Receipts</h5>
+                    <small class="text-muted" id="chatHelperSubtitle">First time here? Place an order in Checkout or Request first—your private chat unlocks automatically with your new PIN!</small>
+                  </div>
+                  <button type="button" id="lockChatBtn" class="btn btn-outline-secondary btn-sm d-none" data-action="lock-customer-chat">
+                    <i class="fa-solid fa-lock me-1"></i>Lock Session
+                  </button>
+                </div>
+
+                <div id="chatPaymentInfoAlert" class="alert alert-warning py-2 px-3 small d-none"></div>
+                <div id="customerCredentialNotice" class="alert alert-success py-2 px-3 small d-none"></div>
+
+                <form id="unlockChatForm" class="row g-2 mb-3">
+                  <div class="col-md-5">
+                    <input type="text" id="chatPhoneFilter" class="form-control" placeholder="Your registered phone number" required />
+                  </div>
+                  <div class="col-md-4">
+                    <input type="password" id="chatPinFilter" class="form-control" placeholder="4-Digit Chat PIN or Order Ref (e.g. SRK-4247)" required />
+                  </div>
+                  <div class="col-md-3 d-grid">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-unlock-keyhole me-1"></i>Unlock My Chat
+                    </button>
+                  </div>
+                </form>
+
+                <div id="chatMessagesBox" class="border rounded p-3 mb-3 chat-box">
+                  <div class="text-muted small py-3 text-center">
+                    <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
+                    <span id="chatLockedPlaceholderText">Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.</span>
+                  </div>
+                </div>
+
+                <form id="chatSendForm" enctype="multipart/form-data" class="row g-2 d-none">
+                  <div class="col-md-7">
+                    <input type="text" name="text" id="chatSendText" class="form-control" placeholder="Write a message to support..." />
+                  </div>
+                  <div class="col-md-3">
+                    <input type="file" name="proof_file" id="chatProofFile" class="form-control" accept="image/*" />
+                  </div>
+                  <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-success">
+                      <i class="fa-solid fa-paper-plane me-1"></i>Send
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab 4: View Cart & Checkout -->
+          <div id="cartTab" class="customer-tab-pane d-none">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-cart-shopping me-2 text-primary"></i>Your Cart &amp; Order Checkout</h5>
+                <div id="checkoutPaymentInfoAlert" class="alert alert-info py-2 px-3 small d-none"></div>
+                <div id="cartItemsContainer" class="mb-3">
+                  <p class="text-muted">Your cart is empty.</p>
+                </div>
+                <form id="customerOrderForm" class="row g-3">
+                  <div class="col-md-3">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" id="orderCustomerName" class="form-control" placeholder="Your full name" required />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Customer Phone Number</label>
+                    <input type="text" id="orderPhone" class="form-control" placeholder="e.g. 08012345678" required />
+                  </div>
+                  <div class="col-md-3" id="orderPinFieldWrap">
+                    <label class="form-label" id="orderPinLabel">4-Digit Chat PIN (Leave blank — auto-generated)</label>
+                    <input type="password" id="orderPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Delivery / Order Note</label>
+                    <input type="text" id="orderNote" class="form-control" placeholder="Optional note..." />
+                  </div>
+                  <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                      <i class="fa-solid fa-check me-1"></i>Submit Order to Private Chat
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" data-action="clear-cart">
+                      <i class="fa-solid fa-trash me-1"></i>Clear Cart
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          <!-- Floating Awareness Photo Card (Slideable Customer Storefront) -->
+          <div id="customerAwarenessFloat" class="floating-awareness-card d-none" role="region" aria-label="Store Update">
+            <button type="button" class="floating-awareness-close" data-action="dismiss-awareness-float" aria-label="Close image notice">&times;</button>
+            <img id="customerAwarenessImg" src="" alt="Store Awareness" />
+            <div id="customerAwarenessNavBar" class="d-none d-flex align-items-center justify-content-between px-2 py-1 bg-light border-top small">
+              <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" data-action="prev-awareness-slide" aria-label="Previous slide">&lsaquo; Prev</button>
+              <span id="customerAwarenessCounter" class="text-muted fw-semibold">1 / 1</span>
+              <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" data-action="next-awareness-slide" aria-label="Next slide">Next &rsaquo;</button>
+            </div>
+            <div id="customerAwarenessCaption" class="floating-awareness-caption d-none"></div>
+          </div>
+
+          <!-- Discreet Store Footer -->
+          <footer class="store-footer mt-5 pt-3 pb-2 d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div id="footerCopyrightText">&copy; <span id="footerBusinessName">Sammyreks Business Center</span>. All rights reserved.</div>
+            <button type="button" class="btn btn-link btn-sm text-decoration-none text-muted p-0" data-action="open-staff-portal">
+              Staff Sign-In
+            </button>
+          </footer>
+
+          <!-- Stationary Mobile-Friendly Bottom Navigation Tabs -->
+          <ul class="nav nav-pills bottom-tab-dock" id="customerTabs">
+            <li class="nav-item" id="navItemShopTab">
+              <button type="button" class="nav-link active" data-action="switch-customer-tab" data-tab="shopTab">
+                <i class="fa-solid fa-shop"></i>
+                <span class="dock-short-label d-md-none" id="dockShortShop">Shop</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullShop">Shop &amp; Cart</span>
+              </button>
+            </li>
+            <li class="nav-item" id="navItemRequestTab">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="requestTab">
+                <i class="fa-solid fa-list-check"></i>
+                <span class="dock-short-label d-md-none" id="dockShortRequest">Request</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullRequest">Multi-Item Request</span>
+              </button>
+            </li>
+            <li class="nav-item" id="navItemChatTab">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="chatTab">
+                <i class="fa-solid fa-comments"></i>
+                <span class="dock-short-label d-md-none" id="dockShortChat">Chat &amp; Receipts</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullChat">Live Chat &amp; Receipts</span>
+              </button>
+            </li>
+            <li class="nav-item" id="navItemCartTab">
+              <button type="button" class="nav-link" data-action="switch-customer-tab" data-tab="cartTab">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span class="dock-short-label d-md-none" id="dockShortCart">Checkout</span>
+                <span class="dock-full-label d-none d-md-inline" id="dockFullCart">View Cart &amp; Checkout</span>
+                <span class="dock-cart-pill" id="dockCartCountBadge">0</span>
+              </button>
+            </li>
+          </ul>
+        </section>
+
+        <!-- ================================================================ -->
+        <!-- STAFF / ADMIN SECTION                                            -->
+        <!-- ================================================================ -->
+        <section id="staffSection" class="d-none">
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+            <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-toolbox me-2 text-primary"></i>Staff &amp; Admin Workspace</h2>
+            <span class="badge bg-success" id="staffSessionLabel">Logged In</span>
+          </div>
+
+          <!-- Toggleable Business Analytics (Cash Flow) Card -->
+          <div id="businessAnalyticsCard" class="card shadow-sm mb-3 d-none">
+            <div class="card-body">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <h5 class="card-title mb-0"><i class="fa-solid fa-chart-column me-2 text-primary"></i>Business Analytics</h5>
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-analytics">
+                  <i class="fa-solid fa-rotate-right me-1"></i>Refresh Cash Flow
+                </button>
+              </div>
+              <div class="row g-3">
+                <div class="col-6 col-md-3">
+                  <div class="analytics-metric-card">
+                    <div class="small text-muted">Total Revenue</div>
+                    <div class="fs-5 fw-bold mt-1" id="metricTotalRevenue">&#8358;0.00</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="analytics-metric-card">
+                    <div class="small text-muted">Total Profit</div>
+                    <div class="fs-5 fw-bold mt-1" id="metricTotalProfit">&#8358;0.00</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="analytics-metric-card">
+                    <div class="small text-muted">Total Expenses</div>
+                    <div class="fs-5 fw-bold mt-1" id="metricTotalExpenses">&#8358;0.00</div>
+                  </div>
+                </div>
+                <div class="col-6 col-md-3">
+                  <div class="analytics-metric-card">
+                    <div class="small text-muted">Net Cashflow</div>
+                    <div class="fs-5 fw-bold mt-1" id="metricNetCashflow">&#8358;0.00</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Toggleable Low-Stock & Expiry Alerts Card -->
+          <div id="inventoryAlertsCard" class="card border-warning shadow-sm mb-3 d-none">
+            <div class="card-body py-2 px-3">
+              <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                <h6 class="fw-bold text-warning-emphasis mb-0">
+                  <i class="fa-solid fa-triangle-exclamation me-1 text-warning"></i>Low-Stock &amp; Expiry Alerts
+                </h6>
+                <span class="badge bg-warning text-dark" id="inventoryAlertsBadge">0 Alerts</span>
+              </div>
+              <div id="inventoryAlertsList" class="small"></div>
+            </div>
+          </div>
+
+          <ul class="nav nav-tabs mb-3" id="staffTabs">
+            <li class="nav-item">
+              <button type="button" class="nav-link active" data-action="switch-staff-tab" data-tab="inventoryTab">
+                <i class="fa-solid fa-boxes-stacked me-1"></i>Add / Update Item &amp; Inventory
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="posTab">
+                <i class="fa-solid fa-cash-register me-1"></i>POS Sale
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="staffOrdersChatTab">
+                <i class="fa-solid fa-comments me-1"></i>Orders &amp; Live Chat
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="recordsTab">
+                <i class="fa-solid fa-book me-1"></i>Debtors, Expenses &amp; Workers
+              </button>
+            </li>
+            <li class="nav-item">
+              <button type="button" class="nav-link" data-action="switch-staff-tab" data-tab="settingsTab">
+                <i class="fa-solid fa-gear me-1"></i>Overall App Settings
+              </button>
+            </li>
+          </ul>
+
+          <!-- Staff Tab 1: Add / Update Item & Inventory Table -->
+          <div id="inventoryTab" class="staff-tab-pane">
+            <div class="card shadow-sm mb-4" id="addUpdateItemCard">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="card-title mb-0"><i class="fa-solid fa-pen-to-square me-2 text-primary"></i>Add / Update Item</h5>
+                  <span class="badge bg-light text-dark border" id="formModeIndicator">Mode: Add New Item</span>
+                </div>
+
+                <form id="addProductForm" enctype="multipart/form-data">
+                  <div class="mb-3">
+                    <label class="form-label fw-semibold d-block">Action</label>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="action_mode" id="actionAddNew" value="create" checked />
+                      <label class="form-check-label" for="actionAddNew">Add New Item</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                      <input class="form-check-input" type="radio" name="action_mode" id="actionUpdateExisting" value="update" />
+                      <label class="form-check-label" for="actionUpdateExisting">Update Existing Item</label>
+                    </div>
+                  </div>
+
+                  <div id="existingProductSelectorWrap" class="mb-3 d-none">
+                    <label class="form-label fw-semibold">Select Existing Product to Update</label>
+                    <select id="existingProductSelect" name="existing_product_id" class="form-select">
+                      <option value="">-- Choose saved product --</option>
+                    </select>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold">Upload Product Image</label>
+                      <input type="file" name="image_file" id="prodImageFile" class="form-control" accept="image/png,image/jpeg,image/webp,image/*" />
+                      <div class="form-text">PNG, JPG, WEBP</div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold">Upload Direct MP4 Video File</label>
+                      <input type="file" name="video_file" id="prodVideoFile" class="form-control" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" />
+                      <div class="form-text">MP4, MOV, WEBM, MKV</div>
+                    </div>
+                  </div>
+
+                  <div class="alert alert-info py-2 small">
+                    <i class="fa-solid fa-pen me-1"></i><strong>Category, Vendor / Sponsor &amp; Box Headings:</strong> Type any category or vendor/sponsor name below and click <strong>Save Product Data</strong> to update.
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                      <label class="form-label">Product Category</label>
+                      <input type="text" name="category" id="prodCategory" class="form-control" value="General" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label fw-semibold">Vendor / Ad Sponsor Name</label>
+                      <input type="text" name="vendor_name" id="prodVendorName" class="form-control" placeholder="e.g. Gladosmit Drinks or Partner Vendor" />
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Main Unit Name (e.g. Carton)</label>
+                      <input type="text" name="main_unit" id="prodMainUnit" class="form-control" value="Carton" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Sub-Unit Name (e.g. Pack)</label>
+                      <input type="text" name="sub_unit" id="prodSubUnit" class="form-control" value="Pack" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Retail Name (e.g. Piece)</label>
+                      <input type="text" name="retail_unit" id="prodRetailUnit" class="form-control" value="Retail Unit" />
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Product Name</label>
+                      <input type="text" name="name" id="prodName" class="form-control" placeholder="Product Name" required />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Price (Per Carton)</label>
+                      <input type="number" step="0.01" name="price_carton" id="prodPriceCarton" class="form-control" value="0.00" required />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Total Stock (Cartons)</label>
+                      <input type="number" step="0.01" name="stock_cartons" id="prodStockCartons" class="form-control" value="0.00" required />
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Cost Price (Per Carton)</label>
+                      <input type="number" step="0.01" name="cost_price_carton" id="prodCostCarton" class="form-control" value="0.00" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Price (Per Pack)</label>
+                      <input type="number" step="0.01" name="price_pack" id="prodPricePack" class="form-control" value="0.00" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Count of Packs in 1 Carton</label>
+                      <input type="number" min="1" name="packs_per_carton" id="prodPacksPerCarton" class="form-control" value="1" />
+                    </div>
+                  </div>
+
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                      <label class="form-label">Shelf Location</label>
+                      <input type="text" name="shelf_location" id="prodShelfLocation" class="form-control" placeholder="Shelf Location" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Price (Per Retail Unit)</label>
+                      <input type="number" step="0.01" name="price_retail" id="prodPriceRetail" class="form-control" value="0.00" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label">Count of Retail Units in 1 Pack</label>
+                      <input type="number" min="1" name="retail_per_pack" id="prodRetailPerPack" class="form-control" value="1" />
+                    </div>
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Expiry Date</label>
+                    <input type="date" name="expiry_date" id="prodExpiryDate" class="form-control" />
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">OR YouTube / Cloud Video Link</label>
+                    <input type="url" name="video_link" id="prodVideoLink" class="form-control" placeholder="https://..." />
+                  </div>
+
+                  <div class="mb-3">
+                    <label class="form-label">Product Description</label>
+                    <textarea name="description" id="prodDescription" class="form-control" rows="3" placeholder="Product Description"></textarea>
+                  </div>
+
+                  <button type="submit" id="saveProductBtn" class="btn btn-primary">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Save Product Data
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h5 class="card-title mb-0"><i class="fa-solid fa-table me-2 text-secondary"></i>Saved Inventory</h5>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-products">
+                    <i class="fa-solid fa-rotate-right me-1"></i>Refresh
+                  </button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-sm table-bordered table-hover align-middle">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Product Name</th>
+                        <th>Category</th>
+                        <th>Vendor / Sponsor</th>
+                        <th>Price (Per Carton)</th>
+                        <th>Total Stock (Cartons)</th>
+                        <th>Cost Price (Per Carton)</th>
+                        <th>Price (Per Pack)</th>
+                        <th>Price (Per Retail Unit)</th>
+                        <th>Count of Packs in 1 Carton</th>
+                        <th>Count of Retail Units in 1 Pack</th>
+                        <th>Shelf Location</th>
+                        <th>Expiry Date</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="adminProductsTableBody">
+                      <tr><td colspan="13" class="text-muted">No inventory items loaded yet.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Tab 2: POS Sale -->
+          <div id="posTab" class="staff-tab-pane d-none">
+            <div class="card shadow-sm mb-3">
+              <div class="card-body">
+                <h5 class="card-title"><i class="fa-solid fa-cash-register me-1 text-success"></i>Record POS Sale</h5>
+                <form id="posSaleForm" class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">Search &amp; Select Item</label>
+                    <select id="posProductSelect" class="form-select"></select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Selling Unit</label>
+                    <select id="posUnitSelect" class="form-select"></select>
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" id="posQty" class="form-control" value="1" min="1" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" id="posCustomerName" class="form-control" value="Walk-in Customer" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Customer WhatsApp Number</label>
+                    <input type="text" id="posPhone" class="form-control" placeholder="e.g. 08012345678" />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Payment Gateway / Source</label>
+                    <select id="posPaymentMethod" class="form-select">
+                      <option value="Moniepoint MFB">Moniepoint MFB</option>
+                      <option value="OPay">OPay</option>
+                      <option value="Access Bank">Access Bank</option>
+                      <option value="Cash">Cash</option>
+                      <option value="Transfer">Transfer</option>
+                    </select>
+                  </div>
+                  <div class="col-12">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="posSendReceiptToWhatsApp" />
+                      <label class="form-check-label small fw-semibold" for="posSendReceiptToWhatsApp">
+                        Send receipt to Customer WhatsApp for future evidence (when customer chooses &amp; WhatsApp number is provided)
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-12 d-flex flex-wrap gap-2 align-items-center">
+                    <button type="submit" class="btn btn-success">
+                      <i class="fa-solid fa-check-circle me-1"></i>Cash Sale &amp; Generate Receipt
+                    </button>
+                    <button type="button" class="btn btn-warning" data-action="pos-debt">
+                      <i class="fa-solid fa-book me-1"></i>Record Debt
+                    </button>
+                    <span class="ms-auto fw-bold">Total: <span id="posTotalPreview">&#8358;0.00</span></span>
+                  </div>
+                </form>
+                <div id="posReceiptBox" class="mt-3"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Tab 3: Orders & Live Chat -->
+          <div id="staffOrdersChatTab" class="staff-tab-pane d-none">
+            <div class="row g-3">
+              <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                      <h5 class="card-title mb-0"><i class="fa-solid fa-receipt me-1 text-primary"></i>Cart Orders &amp; Multi-Item Requests</h5>
+                      <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-staff-orders-chat">
+                        <i class="fa-solid fa-rotate-right me-1"></i>Refresh
+                      </button>
+                    </div>
+                    <div class="btn-group btn-group-sm w-100 mb-2" role="group" id="staffOrdersFilterGroup">
+                      <button type="button" class="btn btn-outline-primary active" data-action="filter-staff-orders" data-filter="all">All</button>
+                      <button type="button" class="btn btn-outline-primary" data-action="filter-staff-orders" data-filter="pending">Pending</button>
+                      <button type="button" class="btn btn-outline-primary" data-action="filter-staff-orders" data-filter="verified">Verified</button>
+                      <button type="button" class="btn btn-outline-primary" data-action="filter-staff-orders" data-filter="requests">Requests</button>
+                    </div>
+                    <div class="small text-muted mb-2">Click any order card to load that customer's Live Chat &amp; payment proofs.</div>
+                    <div id="staffOrdersBox" class="chat-box border rounded p-2">
+                      <div class="text-muted small">Loading customer orders and multi-item requests...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-lg-6">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                      <h5 class="card-title mb-0"><i class="fa-solid fa-comments me-1 text-success"></i>Live Chat &amp; Receipts</h5>
+                      <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-all-chat-photos" title="Remove stored chat images to free storage">
+                        <i class="fa-solid fa-images me-1"></i>Delete All Chat Photos
+                      </button>
+                    </div>
+                    <div class="row g-2 mb-3">
+                      <div class="col-md-8">
+                        <input type="text" id="staffChatPhoneFilter" class="form-control form-control-sm" placeholder="Filter by customer phone (leave blank for all)" />
+                      </div>
+                      <div class="col-md-4 d-grid">
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-action="load-staff-chat">
+                          <i class="fa-solid fa-rotate me-1"></i>Load Chat
+                        </button>
+                      </div>
+                    </div>
+
+                    <div id="staffChatMessagesBox" class="border rounded p-3 mb-3 chat-box">
+                      <div class="text-muted small">Loading customer chats and payment receipts...</div>
+                    </div>
+
+                    <form id="staffChatSendForm" class="row g-2">
+                      <div class="col-md-4">
+                        <input type="text" id="staffChatSendPhone" class="form-control form-control-sm" placeholder="Customer phone" required />
+                      </div>
+                      <div class="col-md-6">
+                        <input type="text" id="staffChatSendText" class="form-control form-control-sm" placeholder="Reply to customer..." required />
+                      </div>
+                      <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-success btn-sm">
+                          <i class="fa-solid fa-paper-plane me-1"></i>Reply
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Tab 4: Debtors, Expenses & Workers -->
+          <div id="recordsTab" class="staff-tab-pane d-none">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h5 class="mb-0 fw-bold"><i class="fa-solid fa-book me-2 text-primary"></i>Debtors, Expenses &amp; Staff Directory</h5>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-action="refresh-records">
+                <i class="fa-solid fa-rotate-right me-1"></i>Refresh Records
+              </button>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body d-flex flex-column">
+                    <h6 class="fw-bold">Add Debtor</h6>
+                    <form id="debtorForm" class="mb-3">
+                      <input type="text" id="debtorName" class="form-control form-control-sm mb-2" placeholder="Customer name" required />
+                      <input type="text" id="debtorPhone" class="form-control form-control-sm mb-2" placeholder="Phone" required />
+                      <input type="number" step="0.01" id="debtorAmount" class="form-control form-control-sm mb-2" placeholder="Amount owed (&#8358;)" required />
+                      <input type="text" id="debtorNote" class="form-control form-control-sm mb-2" placeholder="Note / Items bought" />
+                      <button type="submit" class="btn btn-warning btn-sm w-100">Save Debtor</button>
+                    </form>
+                    <div class="small fw-semibold text-muted border-top pt-2 mb-1">Active Debtors</div>
+                    <div id="debtorsListBox" class="records-list-box small">
+                      <div class="text-muted">Loading debtors...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body d-flex flex-column">
+                    <h6 class="fw-bold">Add Expense</h6>
+                    <form id="expenseForm" class="mb-3">
+                      <input type="text" id="expenseTitle" class="form-control form-control-sm mb-2" placeholder="Expense title / category" required />
+                      <input type="number" step="0.01" id="expenseAmount" class="form-control form-control-sm mb-2" placeholder="Amount (&#8358;)" required />
+                      <input type="text" id="expenseCategory" class="form-control form-control-sm mb-2" value="Operations" />
+                      <input type="text" id="expenseNote" class="form-control form-control-sm mb-2" placeholder="Note" />
+                      <button type="submit" class="btn btn-danger btn-sm w-100">Save Expense</button>
+                    </form>
+                    <div class="small fw-semibold text-muted border-top pt-2 mb-1">Recent Expenses</div>
+                    <div id="expensesListBox" class="records-list-box small">
+                      <div class="text-muted">Loading expenses...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="col-md-4">
+                <div class="card shadow-sm h-100">
+                  <div class="card-body d-flex flex-column">
+                    <h6 class="fw-bold">Add Worker / Staff</h6>
+                    <form id="workerForm" class="mb-3">
+                      <input type="text" id="workerName" class="form-control form-control-sm mb-2" placeholder="Full name" required />
+                      <input type="text" id="workerRole" class="form-control form-control-sm mb-2" value="Staff" />
+                      <input type="text" id="workerUsername" class="form-control form-control-sm mb-2" placeholder="Login username" />
+                      <input type="password" id="workerPassword" class="form-control form-control-sm mb-2" placeholder="Login password" />
+                      <button type="submit" class="btn btn-dark btn-sm w-100">Save Worker</button>
+                    </form>
+                    <div class="small fw-semibold text-muted border-top pt-2 mb-1">Saved Workers / Staff</div>
+                    <div id="workersListBox" class="records-list-box small">
+                      <div class="text-muted">Loading workers...</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Staff Tab 5: Overall App Settings -->
+          <div id="settingsTab" class="staff-tab-pane d-none">
+            <div class="card shadow-sm">
+              <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <div>
+                    <h5 class="card-title mb-0"><i class="fa-solid fa-sliders me-1 text-primary"></i>Overall App Settings (No GitHub Needed)</h5>
+                    <small class="text-muted">Control storefront text, bottom navigation tabs, payment info, PIN guidance, alerts, and product display directly here.</small>
+                  </div>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-action="reset-extra-settings">
+                    <i class="fa-solid fa-rotate-left me-1"></i>Reset UI Toggles to Default
+                  </button>
+                </div>
+
+                <form id="settingsForm" enctype="multipart/form-data">
+                  <!-- Group 1: Branding & Announcements -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">1. Branding, Currency &amp; Announcements</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-5">
+                      <label class="form-label">Business Name</label>
+                      <input type="text" name="business_name" id="setBusinessName" class="form-control" value="Sammyreks Business Center" required />
+                    </div>
+                    <div class="col-md-5">
+                      <label class="form-label">Tagline</label>
+                      <input type="text" name="tagline" id="setTagline" class="form-control" placeholder="Quality products, fast orders &amp; live support" />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label">Currency</label>
+                      <input type="text" id="setCurrency" class="form-control" value="&#8358;" maxlength="5" />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label">Top Storefront Notice Banner</label>
+                      <input type="text" name="active_notice" id="setNotice" class="form-control" placeholder="e.g. Free delivery within Calabar on orders above ₦20,000!" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Upload Broadcast Video File</label>
+                      <input type="file" name="broadcast_video_file" id="setBroadcastVideoFile" class="form-control" accept="video/mp4,video/quicktime,video/webm,video/x-matroska,video/*" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">OR Broadcast Video Link</label>
+                      <input type="text" name="broadcast_video_url" id="setBroadcastVideo" class="form-control" placeholder="https://..." />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Footer Copyright Text (Optional override)</label>
+                      <input type="text" id="setFooterText" class="form-control" placeholder="Leave blank to use default business copyright" />
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Thermal Receipt Footer Message</label>
+                      <input type="text" id="setReceiptFooter" class="form-control" value="Thank you for your patronage!" />
+                    </div>
+                  </div>
+
+                  <!-- Group 2: Bottom Navigation, Analytics & Mobile Dock Controls -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">2. Bottom Navigation Tabs, Cash Flow Analytics &amp; Alerts</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowBusinessAnalytics" />
+                        <label class="form-check-label" for="setShowBusinessAnalytics">Show <strong>Business Analytics</strong> (Cash Flow)</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowInventoryAlerts" checked />
+                        <label class="form-check-label" for="setShowInventoryAlerts">Show <strong>Low-Stock &amp; Expiry Alerts</strong></label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <label class="form-label small mb-1">Low-Stock Alert Threshold (Cartons)</label>
+                      <input type="number" step="0.5" min="0" id="setLowStockThreshold" class="form-control form-control-sm" value="2" />
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabShop" checked />
+                        <label class="form-check-label" for="setShowTabShop">Show <strong>Shop</strong> Tab</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabRequest" checked />
+                        <label class="form-check-label" for="setShowTabRequest">Show <strong>Request</strong> Tab</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabChat" checked />
+                        <label class="form-check-label" for="setShowTabChat">Show <strong>Chat &amp; Receipts</strong></label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTabCart" checked />
+                        <label class="form-check-label" for="setShowTabCart">Show <strong>Checkout</strong> Tab</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowDockCartBadge" checked />
+                        <label class="form-check-label" for="setShowDockCartBadge">Show Live Cart Count Badge</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowTopCartBtn" checked />
+                        <label class="form-check-label" for="setShowTopCartBtn">Show Top Header Cart Button</label>
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small mb-1">Custom Mobile Tab Names (Shop | Request | Chat | Checkout)</label>
+                      <input type="text" id="setMobileTabLabels" class="form-control form-control-sm" value="Shop | Request | Chat &amp; Receipts | Checkout" />
+                    </div>
+                  </div>
+
+                  <!-- Group 3: Shop Display & Product Cards -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">3. Shop Display &amp; Product Cards</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowWatchAd" checked />
+                        <label class="form-check-label" for="setShowWatchAd">Show <strong>Watch Ad</strong> Buttons</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowVendorBadges" checked />
+                        <label class="form-check-label" for="setShowVendorBadges">Show <strong>Vendor / Sponsor</strong> Tags</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowStockOnCards" checked />
+                        <label class="form-check-label" for="setShowStockOnCards">Show Stock Count on Cards</label>
+                      </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setHideOutOfStock" />
+                        <label class="form-check-label" for="setHideOutOfStock">Hide Out-of-Stock Items</label>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label small mb-1">Search Box Placeholder</label>
+                      <input type="text" id="setSearchPlaceholder" class="form-control form-control-sm" value="Search products..." />
+                    </div>
+                  </div>
+
+                  <!-- Group 4: Checkout, Payment Info & PIN Guidance -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">4. Checkout, Bank Details &amp; Automatic PIN Help</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                      <label class="form-label">Bank Account / Transfer Details (Shown in Checkout &amp; Chat)</label>
+                      <textarea id="setPaymentInstructions" class="form-control" rows="2" placeholder="e.g. Moniepoint MFB | 1234567890 | Sammyreks Business Center — Upload receipt in Chat after transfer."></textarea>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">Customer PIN Helper Message (Shown on Chat Tab)</label>
+                      <textarea id="setChatHelperSubtitle" class="form-control" rows="2">First time here? Place an order in Checkout or Request first—your private chat unlocks automatically with your new PIN!</textarea>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setAutoPinMode" checked />
+                        <label class="form-check-label" for="setAutoPinMode">Auto-Generate PIN (Hide manual PIN confusion)</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">PIN Field Label (When Manual PIN is Shown)</label>
+                      <input type="text" id="setPinFieldLabel" class="form-control form-control-sm" value="4-Digit Chat PIN (Leave blank — auto-generated)" />
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">Order Note Placeholder</label>
+                      <input type="text" id="setOrderNotePlaceholder" class="form-control form-control-sm" value="Optional delivery address or note..." />
+                    </div>
+                  </div>
+
+                  <!-- Group 5: Rotating Storefront Tips -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">5. Rotating Storefront Tips (Rotates Together With Built-In Tips)</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowRotatingTicker" checked />
+                        <label class="form-check-label" for="setShowRotatingTicker">Show <strong>Rotating Tips Strip</strong></label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <label class="form-label small mb-1" for="setTickerIntervalSec">Seconds Each Tip Stays</label>
+                      <input type="number" min="2" max="3600" id="setTickerIntervalSec" class="form-control form-control-sm" value="5" />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small mb-1" for="setTickerMessages">Extra Rotating Tips (One per line or separate with <code>|</code> — e.g. <code>Motivational: Keep going!</code>)</label>
+                      <textarea id="setTickerMessages" class="form-control form-control-sm" rows="3" placeholder="Type extra tips here (one per line or separated by |). These rotate alongside your built-in tips!"></textarea>
+                    </div>
+                  </div>
+
+                  <!-- Group 6: Floating Awareness Slides & Bottom Caption -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">6. Floating Awareness Photos (Slideable) &amp; Bottom Description</h6>
+                  <div class="row g-3 mb-4">
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setShowAwarenessFloat" />
+                        <label class="form-check-label" for="setShowAwarenessFloat">Show <strong>Floating Awareness Card</strong></label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setAwarenessAutoSlide" />
+                        <label class="form-check-label" for="setAwarenessAutoSlide">Auto-Slide Photos (Every 5s)</label>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1" for="setAwarenessImageFile">Upload Awareness Photo(s)</label>
+                      <input type="file" name="awareness_image_file" id="setAwarenessImageFile" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp,image/*" multiple />
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small mb-1" for="setAwarenessImageUrl">Image Links / Saved Slides (One per line or separate with <code>|</code>)</label>
+                      <div class="input-group input-group-sm">
+                        <textarea id="setAwarenessImageUrl" class="form-control" rows="2" placeholder="https://.../photo1.jpg&#10;https://.../photo2.jpg (or uploaded images)"></textarea>
+                        <button type="button" class="btn btn-outline-danger" data-action="clear-awareness-image" title="Remove floating images">Clear</button>
+                      </div>
+                    </div>
+                    <div class="col-12">
+                      <label class="form-label small mb-1" for="setAwarenessCaption">Bottom Descriptions (One per line or separate with <code>|</code> — matches each photo slide)</label>
+                      <textarea id="setAwarenessCaption" class="form-control form-control-sm" rows="2" placeholder="Slide 1 caption: New stock arrived!&#10;Slide 2 caption: Transfer before 4 PM for same-day delivery."></textarea>
+                    </div>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary px-4">
+                    <i class="fa-solid fa-floppy-disk me-1"></i>Save All App Settings
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Product Advert Modal -->
+  <div class="modal fade" id="productAdModal" tabindex="-1" aria-labelledby="productAdModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="productAdModalLabel">Product Advert</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="productAdModalBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Thermal Receipt Modal -->
+  <div class="modal fade" id="thermalReceiptModal" tabindex="-1" aria-labelledby="thermalReceiptModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header no-print">
+          <h5 class="modal-title" id="thermalReceiptModalLabel"><i class="fa-solid fa-receipt me-2"></i>Thermal Receipt</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="thermalReceiptBody"></div>
+        <div class="modal-footer no-print flex-wrap gap-2">
+          <button type="button" class="btn btn-success btn-sm d-none" id="modalSendReceiptWhatsAppBtn" data-action="send-modal-receipt-whatsapp">
+            <i class="fa-brands fa-whatsapp me-1"></i>Send Receipt to WhatsApp
+          </button>
+          <button type="button" class="btn btn-dark btn-sm" data-action="print-thermal-receipt">
+            <i class="fa-solid fa-print me-1"></i>Print Receipt
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
     const EXTRA_SETTINGS_STORAGE_KEY = "sammyreks_extra_app_settings_v1";
     const DELETED_CHAT_PHOTOS_KEY = "sammyreks_deleted_chat_photo_ids_v1";
     const PAID_DEBTOR_IDS_KEY = "sammyreks_paid_debtor_ids_v1";
@@ -77,81 +1365,7 @@
     let _tickerIndex = 0;
     let _awarenessSlideIndex = 0;
     let _awarenessAutoTimerId = null;
-    let _awarenessDragActive = false;
-    let _awarenessDragMoved = false;
-    let _awarenessPointerStartX = 0;
-    let _awarenessPointerStartY = 0;
-    let _awarenessOffsetX = 0;
-    let _awarenessOffsetY = 0;
-    let _awarenessBaseOffsetX = 0;
-    let _awarenessBaseOffsetY = 0;
-
-    function byId(id) {
-      return document.getElementById(id);
-    }
-
-    function setElValue(id, value) {
-      const el = byId(id);
-      if (el) el.value = value;
-      return el;
-    }
-
-    function setElChecked(id, checked) {
-      const el = byId(id);
-      if (el) el.checked = Boolean(checked);
-      return el;
-    }
-
-    function setElText(id, text) {
-      const el = byId(id);
-      if (el) el.textContent = text;
-      return el;
-    }
-
-    function setElHidden(id, hidden) {
-      const el = byId(id);
-      if (el) el.classList.toggle("d-none", Boolean(hidden));
-      return el;
-    }
-
-    function onEl(id, eventName, handler) {
-      const el = byId(id);
-      if (!el) return null;
-      el.addEventListener(eventName, handler);
-      return el;
-    }
-
-    function createSafeModal(id) {
-      const el = byId(id);
-      if (!el || typeof bootstrap === "undefined" || !bootstrap.Modal) {
-        return {
-          show() {},
-          hide() {},
-        };
-      }
-      try {
-        return new bootstrap.Modal(el);
-      } catch (_) {
-        return {
-          show() {},
-          hide() {},
-        };
-      }
-    }
-
-    function applyAwarenessPosition() {
-      const card = byId("customerAwarenessFloat");
-      if (!card) return;
-      card.style.transform = `translate3d(${_awarenessOffsetX}px, ${_awarenessOffsetY}px, 0)`;
-    }
-
-    function resetAwarenessPosition() {
-      _awarenessOffsetX = 0;
-      _awarenessOffsetY = 0;
-      _awarenessBaseOffsetX = 0;
-      _awarenessBaseOffsetY = 0;
-      applyAwarenessPosition();
-    }
+    let _awarenessTouchStartX = 0;
 
     function normalizeTickerIntervalSec(rawVal) {
       const parsed = parseInt(rawVal ?? 5, 10);
@@ -187,10 +1401,10 @@
     }
 
     function startRotatingTicker() {
-      const banner = byId("customerTickerBanner");
-      const badgeEl = byId("customerTickerBadge");
-      const textEl = byId("customerTickerText");
-      const timerLabel = byId("customerTickerTimerLabel");
+      const banner = document.getElementById("customerTickerBanner");
+      const badgeEl = document.getElementById("customerTickerBadge");
+      const textEl = document.getElementById("customerTickerText");
+      const timerLabel = document.getElementById("customerTickerTimerLabel");
       if (!banner || !badgeEl || !textEl) return;
 
       if (_tickerTimerId) {
@@ -272,11 +1486,11 @@
     }
 
     function renderFloatingAwarenessCard() {
-      const card = byId("customerAwarenessFloat");
-      const imgEl = byId("customerAwarenessImg");
-      const capEl = byId("customerAwarenessCaption");
-      const navBar = byId("customerAwarenessNavBar");
-      const counterEl = byId("customerAwarenessCounter");
+      const card = document.getElementById("customerAwarenessFloat");
+      const imgEl = document.getElementById("customerAwarenessImg");
+      const capEl = document.getElementById("customerAwarenessCaption");
+      const navBar = document.getElementById("customerAwarenessNavBar");
+      const counterEl = document.getElementById("customerAwarenessCounter");
       if (!card || !imgEl || !capEl) return;
 
       if (_awarenessAutoTimerId) {
@@ -314,7 +1528,6 @@
         }
       }
 
-      applyAwarenessPosition();
       card.classList.remove("d-none");
 
       if (cfg.awarenessAutoSlide && slides.length > 1) {
@@ -373,16 +1586,13 @@
       return results;
     }
 
-    const productAdModalEl = byId("productAdModal");
-    const productAdModal = createSafeModal("productAdModal");
-    const thermalReceiptModal = createSafeModal("thermalReceiptModal");
+    const productAdModalEl = document.getElementById("productAdModal");
+    const productAdModal = new bootstrap.Modal(productAdModalEl);
+    const thermalReceiptModal = new bootstrap.Modal(document.getElementById("thermalReceiptModal"));
 
-    if (productAdModalEl) {
-      productAdModalEl.addEventListener("hidden.bs.modal", () => {
-        const body = byId("productAdModalBody");
-        if (body) body.innerHTML = "";
-      });
-    }
+    productAdModalEl.addEventListener("hidden.bs.modal", () => {
+      document.getElementById("productAdModalBody").innerHTML = "";
+    });
 
     function formatMoney(amount) {
       const num = Number(amount || 0);
@@ -464,9 +1674,9 @@
     }
 
     function renderInventoryAlerts() {
-      const card = byId("inventoryAlertsCard");
-      const badge = byId("inventoryAlertsBadge");
-      const listEl = byId("inventoryAlertsList");
+      const card = document.getElementById("inventoryAlertsCard");
+      const badge = document.getElementById("inventoryAlertsBadge");
+      const listEl = document.getElementById("inventoryAlertsList");
       if (!card || !badge || !listEl) return;
 
       if (!state.isLoggedIn || !state.extraSettings.showInventoryAlerts) {
@@ -516,10 +1726,16 @@
     }
 
     function renderAnalyticsMetrics({ totalRevenue = 0, totalProfit = 0, totalExpenses = 0, netCashflow = 0 }) {
-      setElText("metricTotalRevenue", formatMoney(totalRevenue));
-      setElText("metricTotalProfit", formatMoney(totalProfit));
-      setElText("metricTotalExpenses", formatMoney(totalExpenses));
-      setElText("metricNetCashflow", formatMoney(netCashflow));
+      const revEl = document.getElementById("metricTotalRevenue");
+      const profEl = document.getElementById("metricTotalProfit");
+      const expEl = document.getElementById("metricTotalExpenses");
+      const cashEl = document.getElementById("metricNetCashflow");
+      if (!revEl || !profEl || !expEl || !cashEl) return;
+
+      revEl.textContent = formatMoney(totalRevenue);
+      profEl.textContent = formatMoney(totalProfit);
+      expEl.textContent = formatMoney(totalExpenses);
+      cashEl.textContent = formatMoney(netCashflow);
     }
 
     async function loadBusinessAnalytics() {
@@ -672,103 +1888,95 @@
       cfg.tickerIntervalSec = normalizeTickerIntervalSec(cfg.tickerIntervalSec);
       state.extraSettings = cfg;
 
-      setElValue("setCurrency", state.currency || "\u20a6");
-      setElValue("setFooterText", cfg.footerText || "");
-      setElValue("setReceiptFooter", cfg.receiptFooter || "Thank you for your patronage!");
-      setElChecked("setShowBusinessAnalytics", cfg.showBusinessAnalytics);
-      setElChecked("setShowInventoryAlerts", cfg.showInventoryAlerts);
-      setElValue("setLowStockThreshold", Number(cfg.lowStockThreshold ?? 2));
-      setElChecked("setShowTabShop", cfg.showTabShop);
-      setElChecked("setShowTabRequest", cfg.showTabRequest);
-      setElChecked("setShowTabChat", cfg.showTabChat);
-      setElChecked("setShowTabCart", cfg.showTabCart);
-      setElChecked("setShowDockCartBadge", cfg.showDockCartBadge);
-      setElChecked("setShowTopCartBtn", cfg.showTopCartBtn);
-      setElValue("setMobileTabLabels", cfg.mobileTabLabels || DEFAULT_EXTRA_SETTINGS.mobileTabLabels);
-      setElChecked("setShowWatchAd", cfg.showWatchAd);
-      setElChecked("setShowVendorBadges", cfg.showVendorBadges);
-      setElChecked("setShowStockOnCards", cfg.showStockOnCards);
-      setElChecked("setHideOutOfStock", cfg.hideOutOfStock);
-      setElValue("setSearchPlaceholder", cfg.searchPlaceholder || "Search products...");
-      setElValue("setPaymentInstructions", cfg.paymentInstructions || "");
-      setElValue("setChatHelperSubtitle", cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle);
-      setElChecked("setAutoPinMode", cfg.autoPinMode);
-      setElValue("setPinFieldLabel", cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel);
-      setElValue("setOrderNotePlaceholder", cfg.orderNotePlaceholder || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder);
-      setElChecked("setShowRotatingTicker", cfg.showRotatingTicker !== false);
-      setElValue("setTickerIntervalSec", cfg.tickerIntervalSec);
-      setElValue("setTickerMessages", cfg.tickerMessages || "");
-      setElChecked("setShowAwarenessFloat", cfg.showAwarenessFloat);
-      setElChecked("setAwarenessAutoSlide", cfg.awarenessAutoSlide);
-      setElValue("setAwarenessImageUrl", Array.isArray(cfg.awarenessImageUrl)
+      document.getElementById("setCurrency").value = state.currency || "\u20a6";
+      document.getElementById("setFooterText").value = cfg.footerText || "";
+      document.getElementById("setReceiptFooter").value = cfg.receiptFooter || "Thank you for your patronage!";
+      document.getElementById("setShowBusinessAnalytics").checked = Boolean(cfg.showBusinessAnalytics);
+      document.getElementById("setShowInventoryAlerts").checked = Boolean(cfg.showInventoryAlerts);
+      document.getElementById("setLowStockThreshold").value = Number(cfg.lowStockThreshold ?? 2);
+      document.getElementById("setShowTabShop").checked = Boolean(cfg.showTabShop);
+      document.getElementById("setShowTabRequest").checked = Boolean(cfg.showTabRequest);
+      document.getElementById("setShowTabChat").checked = Boolean(cfg.showTabChat);
+      document.getElementById("setShowTabCart").checked = Boolean(cfg.showTabCart);
+      document.getElementById("setShowDockCartBadge").checked = Boolean(cfg.showDockCartBadge);
+      document.getElementById("setShowTopCartBtn").checked = Boolean(cfg.showTopCartBtn);
+      document.getElementById("setMobileTabLabels").value = cfg.mobileTabLabels || DEFAULT_EXTRA_SETTINGS.mobileTabLabels;
+      document.getElementById("setShowWatchAd").checked = Boolean(cfg.showWatchAd);
+      document.getElementById("setShowVendorBadges").checked = Boolean(cfg.showVendorBadges);
+      document.getElementById("setShowStockOnCards").checked = Boolean(cfg.showStockOnCards);
+      document.getElementById("setHideOutOfStock").checked = Boolean(cfg.hideOutOfStock);
+      document.getElementById("setSearchPlaceholder").value = cfg.searchPlaceholder || "Search products...";
+      document.getElementById("setPaymentInstructions").value = cfg.paymentInstructions || "";
+      document.getElementById("setChatHelperSubtitle").value = cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle;
+      document.getElementById("setAutoPinMode").checked = Boolean(cfg.autoPinMode);
+      document.getElementById("setPinFieldLabel").value = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
+      document.getElementById("setOrderNotePlaceholder").value = cfg.orderNotePlaceholder || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder;
+      document.getElementById("setShowRotatingTicker").checked = cfg.showRotatingTicker !== false;
+      document.getElementById("setTickerIntervalSec").value = cfg.tickerIntervalSec;
+      document.getElementById("setTickerMessages").value = cfg.tickerMessages || "";
+      document.getElementById("setShowAwarenessFloat").checked = Boolean(cfg.showAwarenessFloat);
+      document.getElementById("setAwarenessAutoSlide").checked = Boolean(cfg.awarenessAutoSlide);
+      document.getElementById("setAwarenessImageUrl").value = Array.isArray(cfg.awarenessImageUrl)
         ? cfg.awarenessImageUrl.join("\n")
-        : (cfg.awarenessImageUrl || ""));
-      setElValue("setAwarenessCaption", Array.isArray(cfg.awarenessCaption)
+        : (cfg.awarenessImageUrl || "");
+      document.getElementById("setAwarenessCaption").value = Array.isArray(cfg.awarenessCaption)
         ? cfg.awarenessCaption.join("\n")
-        : (cfg.awarenessCaption || ""));
+        : (cfg.awarenessCaption || "");
 
+      const analyticsCard = document.getElementById("businessAnalyticsCard");
       const showAnalytics = Boolean(state.isLoggedIn && cfg.showBusinessAnalytics);
-      setElHidden("businessAnalyticsCard", !showAnalytics);
+      analyticsCard.classList.toggle("d-none", !showAnalytics);
       if (showAnalytics) {
         loadBusinessAnalytics();
       }
       renderInventoryAlerts();
 
-      setElHidden("navItemShopTab", !cfg.showTabShop);
-      setElHidden("navItemRequestTab", !cfg.showTabRequest);
-      setElHidden("navItemChatTab", !cfg.showTabChat);
-      setElHidden("navItemCartTab", !cfg.showTabCart);
-      setElHidden("dockCartCountBadge", !cfg.showDockCartBadge);
-      setElHidden("topCartSummaryBtn", !cfg.showTopCartBtn);
+      document.getElementById("navItemShopTab").classList.toggle("d-none", !cfg.showTabShop);
+      document.getElementById("navItemRequestTab").classList.toggle("d-none", !cfg.showTabRequest);
+      document.getElementById("navItemChatTab").classList.toggle("d-none", !cfg.showTabChat);
+      document.getElementById("navItemCartTab").classList.toggle("d-none", !cfg.showTabCart);
+      document.getElementById("dockCartCountBadge").classList.toggle("d-none", !cfg.showDockCartBadge);
+      document.getElementById("topCartSummaryBtn").classList.toggle("d-none", !cfg.showTopCartBtn);
 
       const parts = String(cfg.mobileTabLabels || "").split("|").map((s) => s.trim());
-      if (parts[0]) setElText("dockShortShop", parts[0]);
-      if (parts[1]) setElText("dockShortRequest", parts[1]);
-      if (parts[2]) setElText("dockShortChat", parts[2]);
-      if (parts[3]) setElText("dockShortCart", parts[3]);
+      if (parts[0]) document.getElementById("dockShortShop").textContent = parts[0];
+      if (parts[1]) document.getElementById("dockShortRequest").textContent = parts[1];
+      if (parts[2]) document.getElementById("dockShortChat").textContent = parts[2];
+      if (parts[3]) document.getElementById("dockShortCart").textContent = parts[3];
 
-      const searchInp = byId("shopSearchInput");
-      if (searchInp) searchInp.placeholder = cfg.searchPlaceholder || "Search products...";
-      const orderNoteInp = byId("orderNote");
-      if (orderNoteInp) orderNoteInp.placeholder = cfg.orderNotePlaceholder || "Optional note...";
-      setElText("chatHelperSubtitle", cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle);
+      document.getElementById("shopSearchInput").placeholder = cfg.searchPlaceholder || "Search products...";
+      document.getElementById("orderNote").placeholder = cfg.orderNotePlaceholder || "Optional note...";
+      document.getElementById("chatHelperSubtitle").textContent = cfg.chatHelperSubtitle || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle;
 
       const hideManualPin = Boolean(cfg.autoPinMode);
-      setElHidden("reqPinFieldWrap", hideManualPin);
-      setElHidden("orderPinFieldWrap", hideManualPin);
+      document.getElementById("reqPinFieldWrap").classList.toggle("d-none", hideManualPin);
+      document.getElementById("orderPinFieldWrap").classList.toggle("d-none", hideManualPin);
       if (hideManualPin) {
-        setElValue("reqPin", "");
-        setElValue("orderPin", "");
+        document.getElementById("reqPin").value = "";
+        document.getElementById("orderPin").value = "";
       } else {
-        setElText("reqPinLabel", cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel);
-        setElText("orderPinLabel", cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel);
+        document.getElementById("reqPinLabel").textContent = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
+        document.getElementById("orderPinLabel").textContent = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
       }
 
       const payText = String(cfg.paymentInstructions || "").trim();
-      const checkoutPayBox = byId("checkoutPaymentInfoAlert");
-      const chatPayBox = byId("chatPaymentInfoAlert");
+      const checkoutPayBox = document.getElementById("checkoutPaymentInfoAlert");
+      const chatPayBox = document.getElementById("chatPaymentInfoAlert");
       if (payText) {
-        const payHtml = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
-        if (checkoutPayBox) {
-          checkoutPayBox.innerHTML = payHtml;
-          checkoutPayBox.classList.remove("d-none");
-        }
-        if (chatPayBox) {
-          chatPayBox.innerHTML = payHtml;
-          chatPayBox.classList.remove("d-none");
-        }
+        checkoutPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
+        chatPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
+        checkoutPayBox.classList.remove("d-none");
+        chatPayBox.classList.remove("d-none");
       } else {
-        if (checkoutPayBox) checkoutPayBox.classList.add("d-none");
-        if (chatPayBox) chatPayBox.classList.add("d-none");
+        checkoutPayBox.classList.add("d-none");
+        chatPayBox.classList.add("d-none");
       }
 
-      const footerWrap = byId("footerCopyrightText");
-      if (footerWrap) {
-        if (cfg.footerText && cfg.footerText.trim()) {
-          footerWrap.textContent = cfg.footerText.trim();
-        } else {
-          footerWrap.innerHTML = `&copy; <span id="footerBusinessName">${escapeHtml(state.businessName)}</span>. All rights reserved.`;
-        }
+      const footerWrap = document.getElementById("footerCopyrightText");
+      if (cfg.footerText && cfg.footerText.trim()) {
+        footerWrap.textContent = cfg.footerText.trim();
+      } else {
+        footerWrap.innerHTML = `&copy; <span id="footerBusinessName">${escapeHtml(state.businessName)}</span>. All rights reserved.`;
       }
 
       startRotatingTicker();
@@ -776,27 +1984,25 @@
     }
 
     function syncLayoutChrome() {
-      const sidebarCol = byId("staffSidebarCol");
-      const mainCol = byId("mainContentCol");
-      const bottomDock = byId("customerTabs");
-      const customerSec = byId("customerSection");
+      const sidebarCol = document.getElementById("staffSidebarCol");
+      const mainCol = document.getElementById("mainContentCol");
+      const bottomDock = document.getElementById("customerTabs");
+      const customerSec = document.getElementById("customerSection");
       const showSidebar = Boolean(state.isLoggedIn);
-      const isCustomerVisible = customerSec ? !customerSec.classList.contains("d-none") : false;
+      const isCustomerVisible = !customerSec.classList.contains("d-none");
 
-      if (sidebarCol) sidebarCol.classList.toggle("d-none", !showSidebar);
-      if (bottomDock) bottomDock.classList.toggle("d-none", !isCustomerVisible);
-      if (customerSec) customerSec.classList.toggle("has-bottom-dock", isCustomerVisible);
+      sidebarCol.classList.toggle("d-none", !showSidebar);
+      bottomDock.classList.toggle("d-none", !isCustomerVisible);
+      customerSec.classList.toggle("has-bottom-dock", isCustomerVisible);
 
-      if (mainCol) {
-        if (showSidebar) {
-          mainCol.className = "col-lg-9 col-xl-10 p-3 p-md-4";
-        } else {
-          mainCol.className = "col-12 p-3 p-md-4";
-        }
+      if (showSidebar) {
+        mainCol.className = "col-lg-9 col-xl-10 p-3 p-md-4";
+      } else {
+        mainCol.className = "col-12 p-3 p-md-4";
       }
 
       const showAnalytics = Boolean(state.isLoggedIn && state.extraSettings.showBusinessAnalytics);
-      setElHidden("businessAnalyticsCard", !showAnalytics);
+      document.getElementById("businessAnalyticsCard").classList.toggle("d-none", !showAnalytics);
       if (showAnalytics) {
         loadBusinessAnalytics();
       }
@@ -807,9 +2013,8 @@
       if (!state.isLoggedIn && type !== "danger" && type !== "warning") {
         return;
       }
-      const banner = byId("appFeedbackBanner");
-      const textEl = byId("appFeedbackText");
-      if (!banner || !textEl) return;
+      const banner = document.getElementById("appFeedbackBanner");
+      const textEl = document.getElementById("appFeedbackText");
       banner.className = `alert alert-${type} d-flex align-items-center justify-content-between py-2 px-3 mb-3`;
       banner.classList.remove("d-none");
       textEl.innerHTML = `<i class="fa-solid ${type === "danger" ? "fa-triangle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info"} me-2"></i>${escapeHtml(message)}`;
@@ -831,12 +2036,9 @@
         if (response.status === 401 && state.staffToken && !url.startsWith("/api/messages")) {
           state.isLoggedIn = false;
           state.staffToken = "";
-          const badge = byId("authBadge");
-          if (badge) {
-            badge.className = "badge bg-secondary";
-            badge.textContent = "Staff Mode";
-          }
-          setElHidden("logoutBtn", true);
+          document.getElementById("authBadge").className = "badge bg-secondary";
+          document.getElementById("authBadge").textContent = "Staff Mode";
+          document.getElementById("logoutBtn").classList.add("d-none");
           syncLayoutChrome();
         }
         throw new Error(data.detail || data.message || `Request failed (${response.status})`);
@@ -1017,27 +2219,25 @@
           }
         : null;
 
-      setElHidden("modalSendReceiptWhatsAppBtn", !canSendWhatsApp);
+      const waBtn = document.getElementById("modalSendReceiptWhatsAppBtn");
+      waBtn.classList.toggle("d-none", !canSendWhatsApp);
 
-      const receiptBody = byId("thermalReceiptBody");
-      if (receiptBody) {
-        receiptBody.innerHTML = `
-          <div class="thermal-paper">
-            <div class="text-center fw-bold">${escapeHtml(state.businessName)}</div>
-            <div class="text-center small">${escapeHtml(title)}</div>
-            <hr class="my-2" />
-            <div><strong>Customer:</strong> ${escapeHtml(customer)}</div>
-            <div><strong>Phone:</strong> ${escapeHtml(cleanPhone || "N/A")}</div>
-            ${ref ? `<div><strong>Ref:</strong> ${escapeHtml(ref)}</div>` : ""}
-            ${timestamp ? `<div><strong>Date:</strong> ${escapeHtml(timestamp)}</div>` : ""}
-            <hr class="my-2" />
-            ${linesHtml}
-            <hr class="my-2" />
-            ${total ? `<div class="fw-bold">TOTAL: ${escapeHtml(total)}</div>` : ""}
-            <div class="text-center small mt-2">${escapeHtml(receiptFooterText)}</div>
-          </div>
-        `;
-      }
+      document.getElementById("thermalReceiptBody").innerHTML = `
+        <div class="thermal-paper">
+          <div class="text-center fw-bold">${escapeHtml(state.businessName)}</div>
+          <div class="text-center small">${escapeHtml(title)}</div>
+          <hr class="my-2" />
+          <div><strong>Customer:</strong> ${escapeHtml(customer)}</div>
+          <div><strong>Phone:</strong> ${escapeHtml(cleanPhone || "N/A")}</div>
+          ${ref ? `<div><strong>Ref:</strong> ${escapeHtml(ref)}</div>` : ""}
+          ${timestamp ? `<div><strong>Date:</strong> ${escapeHtml(timestamp)}</div>` : ""}
+          <hr class="my-2" />
+          ${linesHtml}
+          <hr class="my-2" />
+          ${total ? `<div class="fw-bold">TOTAL: ${escapeHtml(total)}</div>` : ""}
+          <div class="text-center small mt-2">${escapeHtml(receiptFooterText)}</div>
+        </div>
+      `;
       thermalReceiptModal.show();
     }
 
@@ -1110,31 +2310,27 @@
     function openProductAd(prod) {
       const cleanUrl = String(prod.video_url ?? "").trim();
       const sponsorTag = prod.vendor_name ? ` (${prod.vendor_name})` : "";
-      setElText("productAdModalLabel", `${prod.name || "Product"}${sponsorTag} \u2014 Advert`);
+      document.getElementById("productAdModalLabel").textContent = `${prod.name || "Product"}${sponsorTag} \u2014 Advert`;
       const ytEmbed = getYouTubeEmbedUrl(cleanUrl);
-      const modalBody = byId("productAdModalBody");
-      if (modalBody) {
-        modalBody.innerHTML = ytEmbed
-          ? `
-            <div class="ratio ratio-16x9">
-              <iframe src="${escapeHtml(ytEmbed)}" title="${escapeHtml(prod.name || "Product Ad")}" allowfullscreen></iframe>
-            </div>
-          `
-          : `
-            <video class="product-ad-player" controls autoplay preload="metadata" playsinline>
-              <source src="${escapeHtml(cleanUrl)}" />
-              Your browser does not support video playback.
-            </video>
-          `;
-      }
+      document.getElementById("productAdModalBody").innerHTML = ytEmbed
+        ? `
+          <div class="ratio ratio-16x9">
+            <iframe src="${escapeHtml(ytEmbed)}" title="${escapeHtml(prod.name || "Product Ad")}" allowfullscreen></iframe>
+          </div>
+        `
+        : `
+          <video class="product-ad-player" controls autoplay preload="metadata" playsinline>
+            <source src="${escapeHtml(cleanUrl)}" />
+            Your browser does not support video playback.
+          </video>
+        `;
       productAdModal.show();
     }
 
     function renderBroadcastVideo(videoUrl) {
-      const card = byId("customerBroadcastCard");
-      const wrap = byId("customerBroadcastPlayerWrap");
+      const card = document.getElementById("customerBroadcastCard");
+      const wrap = document.getElementById("customerBroadcastPlayerWrap");
       const cleanUrl = String(videoUrl ?? "").trim();
-      if (!card || !wrap) return;
 
       if (!hasValidVideoUrl(cleanUrl)) {
         card.classList.add("d-none");
@@ -1171,12 +2367,11 @@
     function updateCartSummary() {
       const count = state.cart.reduce((sum, item) => sum + Number(item.qty || 1), 0);
       const total = state.cart.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.qty || 1), 0);
-      setElText("cartCountBadge", count);
-      setElText("dockCartCountBadge", count);
-      setElText("cartTotalBadge", formatMoney(total));
+      document.getElementById("cartCountBadge").textContent = count;
+      document.getElementById("dockCartCountBadge").textContent = count;
+      document.getElementById("cartTotalBadge").textContent = formatMoney(total);
 
-      const container = byId("cartItemsContainer");
-      if (!container) return;
+      const container = document.getElementById("cartItemsContainer");
       if (!state.cart.length) {
         container.innerHTML = `<p class="text-muted">Your cart is empty.</p>`;
         return;
@@ -1202,36 +2397,35 @@
 
     function populateFormFromProduct(prod) {
       if (!prod) return;
-      setElValue("prodName", prod.name || "");
-      setElValue("prodCategory", prod.category || "General");
-      setElValue("prodVendorName", prod.vendor_name || "");
-      setElValue("prodMainUnit", prod.unit_main_label || "Carton");
-      setElValue("prodSubUnit", prod.unit_pack_label || "Pack");
-      setElValue("prodRetailUnit", prod.unit_retail_label || "Retail Unit");
-      setElValue("prodPriceCarton", Number(prod.price_carton ?? prod.price ?? 0).toFixed(2));
-      setElValue("prodStockCartons", Number(prod.qty_cartons ?? prod.stock ?? 0).toFixed(2));
-      setElValue("prodCostCarton", Number(prod.cost ?? 0).toFixed(2));
-      setElValue("prodPricePack", Number(prod.price_pack ?? 0).toFixed(2));
-      setElValue("prodPacksPerCarton", prod.packs_per_carton ?? 1);
-      setElValue("prodShelfLocation", prod.shelf || "");
-      setElValue("prodPriceRetail", Number(prod.price_retail ?? 0).toFixed(2));
-      setElValue("prodRetailPerPack", prod.units_per_pack ?? 1);
-      setElValue("prodExpiryDate", prod.expiry || "");
-      setElValue("prodVideoLink", prod.video_url || "");
-      setElValue("prodDescription", prod.description || "");
+      document.getElementById("prodName").value = prod.name || "";
+      document.getElementById("prodCategory").value = prod.category || "General";
+      document.getElementById("prodVendorName").value = prod.vendor_name || "";
+      document.getElementById("prodMainUnit").value = prod.unit_main_label || "Carton";
+      document.getElementById("prodSubUnit").value = prod.unit_pack_label || "Pack";
+      document.getElementById("prodRetailUnit").value = prod.unit_retail_label || "Retail Unit";
+      document.getElementById("prodPriceCarton").value = Number(prod.price_carton ?? prod.price ?? 0).toFixed(2);
+      document.getElementById("prodStockCartons").value = Number(prod.qty_cartons ?? prod.stock ?? 0).toFixed(2);
+      document.getElementById("prodCostCarton").value = Number(prod.cost ?? 0).toFixed(2);
+      document.getElementById("prodPricePack").value = Number(prod.price_pack ?? 0).toFixed(2);
+      document.getElementById("prodPacksPerCarton").value = prod.packs_per_carton ?? 1;
+      document.getElementById("prodShelfLocation").value = prod.shelf || "";
+      document.getElementById("prodPriceRetail").value = Number(prod.price_retail ?? 0).toFixed(2);
+      document.getElementById("prodRetailPerPack").value = prod.units_per_pack ?? 1;
+      document.getElementById("prodExpiryDate").value = prod.expiry || "";
+      document.getElementById("prodVideoLink").value = prod.video_url || "";
+      document.getElementById("prodDescription").value = prod.description || "";
     }
 
     function toggleUpdateMode() {
-      const updateRadio = byId("actionUpdateExisting");
-      const isUpdate = Boolean(updateRadio && updateRadio.checked);
-      setElHidden("existingProductSelectorWrap", !isUpdate);
-      setElText("formModeIndicator", isUpdate ? "Mode: Update Existing Item" : "Mode: Add New Item");
+      const isUpdate = document.getElementById("actionUpdateExisting").checked;
+      document.getElementById("existingProductSelectorWrap").classList.toggle("d-none", !isUpdate);
+      document.getElementById("formModeIndicator").textContent = isUpdate ? "Mode: Update Existing Item" : "Mode: Add New Item";
     }
 
-    onEl("actionAddNew", "change", toggleUpdateMode);
-    onEl("actionUpdateExisting", "change", toggleUpdateMode);
+    document.getElementById("actionAddNew").addEventListener("change", toggleUpdateMode);
+    document.getElementById("actionUpdateExisting").addEventListener("change", toggleUpdateMode);
 
-    onEl("existingProductSelect", "change", (e) => {
+    document.getElementById("existingProductSelect").addEventListener("change", (e) => {
       const prod = state.products.find((p) => String(p.id) === String(e.target.value));
       populateFormFromProduct(prod);
     });
@@ -1239,29 +2433,25 @@
     function startEditingProduct(prodId, focusVendor = false) {
       const prod = state.products.find((p) => String(p.id) === String(prodId));
       if (!prod) return;
-      setElChecked("actionUpdateExisting", true);
+      document.getElementById("actionUpdateExisting").checked = true;
       toggleUpdateMode();
-      setElValue("existingProductSelect", String(prod.id));
+      document.getElementById("existingProductSelect").value = String(prod.id);
       populateFormFromProduct(prod);
-      const card = byId("addUpdateItemCard");
+      const card = document.getElementById("addUpdateItemCard");
       if (card) card.scrollIntoView({ behavior: "smooth", block: "start" });
       if (focusVendor) {
-        const vendorInp = byId("prodVendorName");
-        if (vendorInp) {
-          setTimeout(() => {
-            vendorInp.focus();
-            if (typeof vendorInp.select === "function") vendorInp.select();
-          }, 250);
-        }
+        const vendorInp = document.getElementById("prodVendorName");
+        setTimeout(() => {
+          vendorInp.focus();
+          vendorInp.select();
+        }, 250);
       }
       showBanner(`Loaded "${prod.name}" into editor — update Vendor / Sponsor and click Save Product Data.`, "info");
     }
 
     function syncPosUnitOptions() {
-      const posSel = byId("posProductSelect");
-      const unitSel = byId("posUnitSelect");
-      if (!posSel || !unitSel) return;
-      const prod = state.products.find((p) => String(p.id) === String(posSel.value));
+      const prod = state.products.find((p) => String(p.id) === String(document.getElementById("posProductSelect").value));
+      const unitSel = document.getElementById("posUnitSelect");
       if (!prod) {
         unitSel.innerHTML = `<option value="Carton">Carton</option>`;
         updatePosTotalPreview();
@@ -1273,41 +2463,33 @@
     }
 
     function updatePosTotalPreview() {
-      const posSel = byId("posProductSelect");
-      const qtyInp = byId("posQty");
-      const unitSel = byId("posUnitSelect");
-      if (!posSel || !qtyInp || !unitSel) return;
-      const prod = state.products.find((p) => String(p.id) === String(posSel.value));
-      const qty = Math.max(1, Number(qtyInp.value || 1));
-      const unit = unitSel.value;
+      const prod = state.products.find((p) => String(p.id) === String(document.getElementById("posProductSelect").value));
+      const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
+      const unit = document.getElementById("posUnitSelect").value;
       const unitPrice = prod ? getPriceForUnit(prod, unit) : 0;
-      setElText("posTotalPreview", formatMoney(unitPrice * qty));
+      document.getElementById("posTotalPreview").textContent = formatMoney(unitPrice * qty);
     }
 
-    onEl("posProductSelect", "change", syncPosUnitOptions);
-    onEl("posUnitSelect", "change", updatePosTotalPreview);
-    onEl("posQty", "input", updatePosTotalPreview);
+    document.getElementById("posProductSelect").addEventListener("change", syncPosUnitOptions);
+    document.getElementById("posUnitSelect").addEventListener("change", updatePosTotalPreview);
+    document.getElementById("posQty").addEventListener("input", updatePosTotalPreview);
 
     function renderProducts() {
-      const grid = byId("productsGrid");
-      const tbody = byId("adminProductsTableBody");
-      const posSelect = byId("posProductSelect");
-      const existingSelect = byId("existingProductSelect");
-      const catSelect = byId("shopCategorySelect");
-      const searchInp = byId("shopSearchInput");
+      const grid = document.getElementById("productsGrid");
+      const tbody = document.getElementById("adminProductsTableBody");
+      const posSelect = document.getElementById("posProductSelect");
+      const existingSelect = document.getElementById("existingProductSelect");
+      const catSelect = document.getElementById("shopCategorySelect");
       const cfg = state.extraSettings;
 
-      const prevCat = catSelect ? catSelect.value : "All Categories";
+      const prevCat = catSelect.value;
       const cats = ["All Categories", ...Array.from(new Set(state.products.map((p) => p.category || "General"))).sort()];
-      if (catSelect) {
-        catSelect.innerHTML = cats.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
-        if (cats.includes(prevCat)) catSelect.value = prevCat;
-      }
+      catSelect.innerHTML = cats.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+      if (cats.includes(prevCat)) catSelect.value = prevCat;
 
-      const queryText = searchInp ? searchInp.value.trim().toLowerCase() : "";
-      const activeCat = catSelect ? catSelect.value : "All Categories";
+      const queryText = document.getElementById("shopSearchInput").value.trim().toLowerCase();
       const filtered = state.products.filter((p) => {
-        const okCat = activeCat === "All Categories" || (p.category || "General") === activeCat;
+        const okCat = catSelect.value === "All Categories" || (p.category || "General") === catSelect.value;
         const okSearch =
           !queryText ||
           String(p.name || "").toLowerCase().includes(queryText) ||
@@ -1316,147 +2498,139 @@
         return okCat && okSearch && okStock;
       });
 
-      if (grid) {
-        if (!filtered.length) {
-          grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products match your selection right now.</div></div>`;
-        } else {
-          grid.innerHTML = filtered.map((p) => {
-            const imgSrc = p.image_url || "";
-            const mLbl = p.unit_main_label || "Carton";
-            const pLbl = p.unit_pack_label || "Pack";
-            const rLbl = p.unit_retail_label || "Retail Unit";
-            const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
-            const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
-            const hasAd = cfg.showWatchAd && hasValidVideoUrl(p.video_url);
-            const vendorBadgeHtml = cfg.showVendorBadges && p.vendor_name
-              ? `<div class="mb-1"><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="fa-solid fa-store me-1"></i>${escapeHtml(p.vendor_name)}</span></div>`
-              : "";
-            const imgHtml = imgSrc
-              ? `<div class="product-img-wrap"><img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(p.name)}" loading="lazy" /></div>`
-              : `<div class="product-img-wrap text-muted"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
+      if (!filtered.length) {
+        grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products match your selection right now.</div></div>`;
+      } else {
+        grid.innerHTML = filtered.map((p) => {
+          const imgSrc = p.image_url || "";
+          const mLbl = p.unit_main_label || "Carton";
+          const pLbl = p.unit_pack_label || "Pack";
+          const rLbl = p.unit_retail_label || "Retail Unit";
+          const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
+          const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+          const hasAd = cfg.showWatchAd && hasValidVideoUrl(p.video_url);
+          const vendorBadgeHtml = cfg.showVendorBadges && p.vendor_name
+            ? `<div class="mb-1"><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="fa-solid fa-store me-1"></i>${escapeHtml(p.vendor_name)}</span></div>`
+            : "";
+          const imgHtml = imgSrc
+            ? `<div class="product-img-wrap"><img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(p.name)}" loading="lazy" /></div>`
+            : `<div class="product-img-wrap text-muted"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
 
-            const metaLine = cfg.showStockOnCards
-              ? `Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}`
-              : `${escapeHtml(p.category || "General")}`;
+          const metaLine = cfg.showStockOnCards
+            ? `Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}`
+            : `${escapeHtml(p.category || "General")}`;
 
-            return `
-              <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm product-card">
-                  ${imgHtml}
-                  <div class="card-body d-flex flex-column">
-                    <h6 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h6>
-                    ${vendorBadgeHtml}
-                    <div class="text-primary fw-semibold mb-1">${formatMoney(displayPrice)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
-                    <div class="small text-muted mb-2">${metaLine}</div>
-                    <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
-                    ${hasAd ? `
-                      <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" data-action="watch-ad" data-id="${escapeHtml(p.id)}">
-                        <i class="fa-solid fa-play me-1"></i>Watch Ad
-                      </button>
-                    ` : ""}
-                    <div class="row g-1 mb-2">
-                      <div class="col-7">
-                        <select class="form-select form-select-sm card-unit-sel">
-                          <option value="${escapeHtml(rLbl)}">${escapeHtml(rLbl)} (${formatMoney(p.price_retail ?? displayPrice)})</option>
-                          <option value="${escapeHtml(pLbl)}">${escapeHtml(pLbl)} (${formatMoney(p.price_pack ?? displayPrice)})</option>
-                          <option value="${escapeHtml(mLbl)}">${escapeHtml(mLbl)} (${formatMoney(p.price_carton ?? displayPrice)})</option>
-                        </select>
-                      </div>
-                      <div class="col-5">
-                        <input type="number" min="1" value="1" class="form-control form-control-sm card-qty-inp" />
-                      </div>
-                    </div>
-                    <button type="button" class="btn btn-primary btn-sm w-100" data-action="add-to-cart" data-id="${escapeHtml(p.id)}">
-                      <i class="fa-solid fa-cart-plus me-1"></i>Add to Cart
+          return `
+            <div class="col-6 col-md-4 col-lg-3">
+              <div class="card h-100 shadow-sm product-card">
+                ${imgHtml}
+                <div class="card-body d-flex flex-column">
+                  <h6 class="card-title fw-bold mb-1">${escapeHtml(p.name)}</h6>
+                  ${vendorBadgeHtml}
+                  <div class="text-primary fw-semibold mb-1">${formatMoney(displayPrice)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
+                  <div class="small text-muted mb-2">${metaLine}</div>
+                  <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
+                  ${hasAd ? `
+                    <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" data-action="watch-ad" data-id="${escapeHtml(p.id)}">
+                      <i class="fa-solid fa-play me-1"></i>Watch Ad
                     </button>
+                  ` : ""}
+                  <div class="row g-1 mb-2">
+                    <div class="col-7">
+                      <select class="form-select form-select-sm card-unit-sel">
+                        <option value="${escapeHtml(rLbl)}">${escapeHtml(rLbl)} (${formatMoney(p.price_retail ?? displayPrice)})</option>
+                        <option value="${escapeHtml(pLbl)}">${escapeHtml(pLbl)} (${formatMoney(p.price_pack ?? displayPrice)})</option>
+                        <option value="${escapeHtml(mLbl)}">${escapeHtml(mLbl)} (${formatMoney(p.price_carton ?? displayPrice)})</option>
+                      </select>
+                    </div>
+                    <div class="col-5">
+                      <input type="number" min="1" value="1" class="form-control form-control-sm card-qty-inp" />
+                    </div>
                   </div>
+                  <button type="button" class="btn btn-primary btn-sm w-100" data-action="add-to-cart" data-id="${escapeHtml(p.id)}">
+                    <i class="fa-solid fa-cart-plus me-1"></i>Add to Cart
+                  </button>
                 </div>
               </div>
-            `;
-          }).join("");
-        }
+            </div>
+          `;
+        }).join("");
       }
 
       if (!state.products.length) {
-        if (tbody) tbody.innerHTML = `<tr><td colspan="13" class="text-muted">No inventory items yet.</td></tr>`;
-        if (posSelect) posSelect.innerHTML = `<option value="">No products available</option>`;
-        if (existingSelect) existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="text-muted">No inventory items yet.</td></tr>`;
+        posSelect.innerHTML = `<option value="">No products available</option>`;
+        existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>`;
         syncPosUnitOptions();
         renderInventoryAlerts();
         return;
       }
 
-      if (tbody) {
-        tbody.innerHTML = state.products.map((p) => {
-          const pCarton = Number(p.price_carton ?? p.price ?? 0);
-          const stockCartons = Number(p.qty_cartons ?? p.stock ?? 0);
-          const cCarton = Number(p.cost ?? 0);
-          const pPack = Number(p.price_pack ?? 0);
-          const pRetail = Number(p.price_retail ?? 0);
-          const packsCount = Number(p.packs_per_carton ?? 1);
-          const retailCount = Number(p.units_per_pack ?? 1);
-          const alertInfo = getProductAlertInfo(p);
+      tbody.innerHTML = state.products.map((p) => {
+        const pCarton = Number(p.price_carton ?? p.price ?? 0);
+        const stockCartons = Number(p.qty_cartons ?? p.stock ?? 0);
+        const cCarton = Number(p.cost ?? 0);
+        const pPack = Number(p.price_pack ?? 0);
+        const pRetail = Number(p.price_retail ?? 0);
+        const packsCount = Number(p.packs_per_carton ?? 1);
+        const retailCount = Number(p.units_per_pack ?? 1);
+        const alertInfo = getProductAlertInfo(p);
 
-          const stockFlag = alertInfo.isLowStock
-            ? ` <span class="badge ${stockCartons <= 0 ? "bg-danger" : "bg-warning text-dark"}">Low</span>`
+        const stockFlag = alertInfo.isLowStock
+          ? ` <span class="badge ${stockCartons <= 0 ? "bg-danger" : "bg-warning text-dark"}">Low</span>`
+          : "";
+        const expFlag = alertInfo.isExpired
+          ? ` <span class="badge bg-danger">Expired</span>`
+          : alertInfo.isExpiringSoon
+            ? ` <span class="badge bg-warning text-dark">${alertInfo.daysLeft}d</span>`
             : "";
-          const expFlag = alertInfo.isExpired
-            ? ` <span class="badge bg-danger">Expired</span>`
-            : alertInfo.isExpiringSoon
-              ? ` <span class="badge bg-warning text-dark">${alertInfo.daysLeft}d</span>`
-              : "";
 
-          return `
-            <tr>
-              <td class="fw-semibold">${escapeHtml(p.name)}</td>
-              <td>${escapeHtml(p.category || "General")}</td>
-              <td>${escapeHtml(p.vendor_name || "-")}</td>
-              <td>${formatMoney(pCarton)}</td>
-              <td>${stockCartons.toFixed(2)}${stockFlag}</td>
-              <td>${formatMoney(cCarton)}</td>
-              <td>${formatMoney(pPack)}</td>
-              <td>${formatMoney(pRetail)}</td>
-              <td>${packsCount}</td>
-              <td>${retailCount}</td>
-              <td>${escapeHtml(p.shelf || "-")}</td>
-              <td>${escapeHtml(p.expiry || "-")}${expFlag}</td>
-              <td class="text-nowrap">
-                <button type="button" class="btn btn-outline-primary btn-sm me-1" data-action="edit-product-vendor" data-id="${escapeHtml(p.id)}" title="Edit product & vendor/sponsor">
-                  <i class="fa-solid fa-pen"></i>
-                </button>
-                <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
-                  <i class="fa-solid fa-trash"></i>
-                </button>
-              </td>
-            </tr>
-          `;
-        }).join("");
-      }
+        return `
+          <tr>
+            <td class="fw-semibold">${escapeHtml(p.name)}</td>
+            <td>${escapeHtml(p.category || "General")}</td>
+            <td>${escapeHtml(p.vendor_name || "-")}</td>
+            <td>${formatMoney(pCarton)}</td>
+            <td>${stockCartons.toFixed(2)}${stockFlag}</td>
+            <td>${formatMoney(cCarton)}</td>
+            <td>${formatMoney(pPack)}</td>
+            <td>${formatMoney(pRetail)}</td>
+            <td>${packsCount}</td>
+            <td>${retailCount}</td>
+            <td>${escapeHtml(p.shelf || "-")}</td>
+            <td>${escapeHtml(p.expiry || "-")}${expFlag}</td>
+            <td class="text-nowrap">
+              <button type="button" class="btn btn-outline-primary btn-sm me-1" data-action="edit-product-vendor" data-id="${escapeHtml(p.id)}" title="Edit product & vendor/sponsor">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join("");
 
-      if (posSelect) {
-        const prevPos = posSelect.value;
-        posSelect.innerHTML = state.products.map((p) => {
-          const priceVal = Number(p.price_carton ?? p.price ?? 0);
-          const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
-          return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${formatMoney(priceVal)} &bull; Stock: ${stockVal.toFixed(2)})</option>`;
-        }).join("");
-        if (prevPos) posSelect.value = prevPos;
-      }
+      const prevPos = posSelect.value;
+      posSelect.innerHTML = state.products.map((p) => {
+        const priceVal = Number(p.price_carton ?? p.price ?? 0);
+        const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+        return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${formatMoney(priceVal)} &bull; Stock: ${stockVal.toFixed(2)})</option>`;
+      }).join("");
+      if (prevPos) posSelect.value = prevPos;
 
-      if (existingSelect) {
-        const prevExisting = existingSelect.value;
-        existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>` + state.products.map((p) =>
-          `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${escapeHtml(p.category || "General")})</option>`
-        ).join("");
-        if (prevExisting) existingSelect.value = prevExisting;
-      }
+      const prevExisting = existingSelect.value;
+      existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>` + state.products.map((p) =>
+        `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${escapeHtml(p.category || "General")})</option>`
+      ).join("");
+      if (prevExisting) existingSelect.value = prevExisting;
 
       syncPosUnitOptions();
       renderInventoryAlerts();
     }
 
-    onEl("shopCategorySelect", "change", renderProducts);
-    onEl("shopSearchInput", "input", renderProducts);
+    document.getElementById("shopCategorySelect").addEventListener("change", renderProducts);
+    document.getElementById("shopSearchInput").addEventListener("input", renderProducts);
 
     async function loadProducts() {
       try {
@@ -1481,17 +2655,17 @@
         if (s.business_name) {
           state.businessName = s.business_name;
           document.title = s.business_name;
-          setElText("businessTitleDisplay", s.business_name);
-          setElText("sidebarBusinessName", s.business_name);
-          setElValue("setBusinessName", s.business_name);
+          document.getElementById("businessTitleDisplay").textContent = s.business_name;
+          document.getElementById("sidebarBusinessName").textContent = s.business_name;
+          document.getElementById("setBusinessName").value = s.business_name;
         }
         if (s.tagline) {
-          setElText("businessTaglineDisplay", s.tagline);
-          setElValue("setTagline", s.tagline);
+          document.getElementById("businessTaglineDisplay").textContent = s.tagline;
+          document.getElementById("setTagline").value = s.tagline;
         }
         if (s.currency) state.currency = s.currency;
-        setElValue("setNotice", s.active_notice || "");
-        setElValue("setBroadcastVideo", s.broadcast_video_url || "");
+        document.getElementById("setNotice").value = s.active_notice || "";
+        document.getElementById("setBroadcastVideo").value = s.broadcast_video_url || "";
 
         if (s.extra_settings) {
           const parsedExtra = typeof s.extra_settings === "string"
@@ -1507,14 +2681,12 @@
           state.extraSettings.awarenessImageUrl = s.awareness_image_url;
         }
 
-        const noticeEl = byId("customerNoticeAlert");
-        if (noticeEl) {
-          if (s.active_notice && s.active_notice.trim()) {
-            noticeEl.textContent = s.active_notice.trim();
-            noticeEl.classList.remove("d-none");
-          } else {
-            noticeEl.classList.add("d-none");
-          }
+        const noticeEl = document.getElementById("customerNoticeAlert");
+        if (s.active_notice && s.active_notice.trim()) {
+          noticeEl.textContent = s.active_notice.trim();
+          noticeEl.classList.remove("d-none");
+        } else {
+          noticeEl.classList.add("d-none");
         }
 
         renderBroadcastVideo(s.broadcast_video_url || "");
@@ -1526,7 +2698,6 @@
     }
 
     function renderChatList(container, msgs, emptyText, { allowPhotoDelete = false } = {}) {
-      if (!container) return;
       if (!msgs.length) {
         container.innerHTML = `<div class="text-muted small">${escapeHtml(emptyText)}</div>`;
         return;
@@ -1570,26 +2741,21 @@
 
     function lockCustomerChatView() {
       state.customerAuth = { unlocked: false, phone: "", pin: "" };
-      setElHidden("chatSendForm", true);
-      setElHidden("lockChatBtn", true);
-      setElHidden("customerCredentialNotice", true);
-      const box = byId("chatMessagesBox");
-      if (box) {
-        box.innerHTML = `
-          <div class="text-muted small py-3 text-center">
-            <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
-            Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.
-          </div>
-        `;
-      }
+      document.getElementById("chatSendForm").classList.add("d-none");
+      document.getElementById("lockChatBtn").classList.add("d-none");
+      document.getElementById("customerCredentialNotice").classList.add("d-none");
+      document.getElementById("chatMessagesBox").innerHTML = `
+        <div class="text-muted small py-3 text-center">
+          <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
+          Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.
+        </div>
+      `;
     }
 
     async function loadCustomerPrivateChat() {
-      const phoneInp = byId("chatPhoneFilter");
-      const pinInp = byId("chatPinFilter");
-      const phone = (state.customerAuth.phone || (phoneInp ? phoneInp.value : "")).trim();
-      const pin = (state.customerAuth.pin || (pinInp ? pinInp.value : "")).trim();
-      const box = byId("chatMessagesBox");
+      const phone = (state.customerAuth.phone || document.getElementById("chatPhoneFilter").value).trim();
+      const pin = (state.customerAuth.pin || document.getElementById("chatPinFilter").value).trim();
+      const box = document.getElementById("chatMessagesBox");
 
       if (!phone || !pin) {
         lockCustomerChatView();
@@ -1602,26 +2768,23 @@
         const msgs = (res.messages || res.data || []).map(normalizeMessageClient);
 
         state.customerAuth = { unlocked: true, phone, pin };
-        setElHidden("chatSendForm", false);
-        setElHidden("lockChatBtn", false);
+        document.getElementById("chatSendForm").classList.remove("d-none");
+        document.getElementById("lockChatBtn").classList.remove("d-none");
 
         renderChatList(box, msgs, `No messages or receipts found for ${phone}.`, { allowPhotoDelete: false });
       } catch (err) {
         lockCustomerChatView();
-        if (box) {
-          box.innerHTML = `
-            <div class="text-danger small py-3 text-center">
-              <i class="fa-solid fa-circle-exclamation fa-lg mb-2 d-block"></i>
-              ${escapeHtml(err.message)}
-            </div>
-          `;
-        }
+        document.getElementById("chatMessagesBox").innerHTML = `
+          <div class="text-danger small py-3 text-center">
+            <i class="fa-solid fa-circle-exclamation fa-lg mb-2 d-block"></i>
+            ${escapeHtml(err.message)}
+          </div>
+        `;
       }
     }
 
     function renderStaffOrdersList() {
-      const box = byId("staffOrdersBox");
-      if (!box) return;
+      const box = document.getElementById("staffOrdersBox");
       const filterMode = state.ordersFilter || "all";
 
       const filteredOrders = (state.ordersFeed || []).filter((o) => {
@@ -1696,7 +2859,7 @@
     }
 
     async function loadStaffOrders() {
-      const box = byId("staffOrdersBox");
+      const box = document.getElementById("staffOrdersBox");
       try {
         const res = await apiRequest("/api/orders");
         const rawOrders = (res.orders || res.data || []).map(normalizeOrderClient);
@@ -1712,14 +2875,13 @@
         state.ordersFeed = orders;
         renderStaffOrdersList();
       } catch (err) {
-        if (box) box.innerHTML = `<div class="text-danger small p-2">Failed to load orders: ${escapeHtml(err.message)}</div>`;
+        box.innerHTML = `<div class="text-danger small p-2">Failed to load orders: ${escapeHtml(err.message)}</div>`;
       }
     }
 
     async function loadStaffChatMessages() {
-      const filterInp = byId("staffChatPhoneFilter");
-      const phone = filterInp ? filterInp.value.trim() : "";
-      const box = byId("staffChatMessagesBox");
+      const phone = document.getElementById("staffChatPhoneFilter").value.trim();
+      const box = document.getElementById("staffChatMessagesBox");
       try {
         const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
         const res = await apiRequest(`/api/messages${query}`);
@@ -1727,14 +2889,14 @@
         state.staffMessagesFeed = msgs;
         renderChatList(box, msgs, "No chat messages or receipts found.", { allowPhotoDelete: true });
       } catch (err) {
-        if (box) box.innerHTML = `<div class="text-danger small">Failed to load chat: ${escapeHtml(err.message)}</div>`;
+        box.innerHTML = `<div class="text-danger small">Failed to load chat: ${escapeHtml(err.message)}</div>`;
       }
     }
 
     function renderRecordsLists() {
-      const debtorsBox = byId("debtorsListBox");
-      const expensesBox = byId("expensesListBox");
-      const workersBox = byId("workersListBox");
+      const debtorsBox = document.getElementById("debtorsListBox");
+      const expensesBox = document.getElementById("expensesListBox");
+      const workersBox = document.getElementById("workersListBox");
 
       if (debtorsBox) {
         const activeDebtors = (state.debtorsList || []).filter((d) => {
@@ -1824,12 +2986,9 @@
     }
 
     function openStaffPortalLogin() {
-      const sidebarCol = byId("staffSidebarCol");
-      const mainCol = byId("mainContentCol");
-      const loginUser = byId("loginUsername");
-      if (sidebarCol) sidebarCol.classList.remove("d-none");
-      if (mainCol) mainCol.className = "col-lg-9 col-xl-10 p-3 p-md-4";
-      if (loginUser) loginUser.focus();
+      document.getElementById("staffSidebarCol").classList.remove("d-none");
+      document.getElementById("mainContentCol").className = "col-lg-9 col-xl-10 p-3 p-md-4";
+      document.getElementById("loginUsername").focus();
       showBanner("Enter your staff or admin credentials on the left to sign in.", "info");
     }
 
@@ -1838,8 +2997,8 @@
         openStaffPortalLogin();
         return;
       }
-      setElHidden("customerSection", sectionId !== "customerSection");
-      setElHidden("staffSection", sectionId !== "staffSection");
+      document.getElementById("customerSection").classList.toggle("d-none", sectionId !== "customerSection");
+      document.getElementById("staffSection").classList.toggle("d-none", sectionId !== "staffSection");
       document.querySelectorAll(".nav-pill-btn").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.section === sectionId);
       });
@@ -1907,14 +3066,12 @@
       };
     }
 
-    onEl("unlockChatForm", "submit", async (e) => {
+    document.getElementById("unlockChatForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("unlock-customer-chat", 600, btn, "Unlocking...", async () => {
-        const phoneInp = byId("chatPhoneFilter");
-        const pinInp = byId("chatPinFilter");
-        state.customerAuth.phone = phoneInp ? phoneInp.value.trim() : "";
-        state.customerAuth.pin = pinInp ? pinInp.value.trim() : "";
+        state.customerAuth.phone = document.getElementById("chatPhoneFilter").value.trim();
+        state.customerAuth.pin = document.getElementById("chatPinFilter").value.trim();
         await loadCustomerPrivateChat();
       });
     });
@@ -1926,7 +3083,7 @@
       const action = target.dataset.action;
 
       if (action === "dismiss-banner") {
-        setElHidden("appFeedbackBanner", true);
+        document.getElementById("appFeedbackBanner").classList.add("d-none");
       } else if (action === "dismiss-awareness-float") {
         state.awarenessDismissed = true;
         renderFloatingAwarenessCard();
@@ -1935,11 +3092,10 @@
       } else if (action === "next-awareness-slide") {
         stepAwarenessSlide(1);
       } else if (action === "clear-awareness-image") {
-        setElValue("setAwarenessImageFile", "");
-        setElValue("setAwarenessImageUrl", "");
-        setElChecked("setShowAwarenessFloat", false);
+        document.getElementById("setAwarenessImageFile").value = "";
+        document.getElementById("setAwarenessImageUrl").value = "";
+        document.getElementById("setShowAwarenessFloat").checked = false;
         _awarenessSlideIndex = 0;
-        resetAwarenessPosition();
         state.extraSettings.awarenessImageUrl = "";
         state.extraSettings.showAwarenessFloat = false;
         renderFloatingAwarenessCard();
@@ -2009,13 +3165,12 @@
         state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS };
         state.awarenessDismissed = false;
         _awarenessSlideIndex = 0;
-        resetAwarenessPosition();
         saveLocalExtraSettings(state.extraSettings);
         applyExtraSettingsToUI();
         renderProducts();
         showBanner("UI toggles reset to defaults. Click 'Save All App Settings' to sync.", "info");
       } else if (action === "lock-customer-chat") {
-        setElValue("chatPinFilter", "");
+        document.getElementById("chatPinFilter").value = "";
         lockCustomerChatView();
       } else if (action === "open-staff-portal") {
         openStaffPortalLogin();
@@ -2045,8 +3200,8 @@
       } else if (action === "select-order-phone") {
         const phone = (target.dataset.phone || "").trim();
         if (phone) {
-          setElValue("staffChatPhoneFilter", phone);
-          setElValue("staffChatSendPhone", phone);
+          document.getElementById("staffChatPhoneFilter").value = phone;
+          document.getElementById("staffChatSendPhone").value = phone;
           await loadStaffChatMessages();
           showBanner(`Loaded chat for ${phone}.`, "info");
         }
@@ -2089,8 +3244,8 @@
               body: JSON.stringify({ verified_by: state.user?.username || "admin" }),
             });
             if (phone) {
-              setElValue("staffChatPhoneFilter", phone);
-              setElValue("staffChatSendPhone", phone);
+              document.getElementById("staffChatPhoneFilter").value = phone;
+              document.getElementById("staffChatSendPhone").value = phone;
             }
             await loadStaffOrders();
             await loadStaffChatMessages();
@@ -2168,10 +3323,8 @@
         const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
         if (!prod) return;
         const card = target.closest(".card");
-        const unitSel = card ? card.querySelector(".card-unit-sel") : null;
-        const qtyInp = card ? card.querySelector(".card-qty-inp") : null;
-        const unit = unitSel ? unitSel.value : (prod.unit_retail_label || "Retail Unit");
-        const qty = qtyInp ? Math.max(1, Number(qtyInp.value || 1)) : 1;
+        const unit = card ? card.querySelector(".card-unit-sel").value : (prod.unit_retail_label || "Retail Unit");
+        const qty = card ? Math.max(1, Number(card.querySelector(".card-qty-inp").value || 1)) : 1;
         const unitPrice = getPriceForUnit(prod, unit);
         const existing = state.cart.find((c) => String(c.id) === String(prod.id) && c.unit === unit);
         if (existing) {
@@ -2205,17 +3358,12 @@
           }
         });
       } else if (action === "pos-debt") {
-        const prodSel = byId("posProductSelect");
-        const unitSel = byId("posUnitSelect");
-        const qtyInp = byId("posQty");
-        const custInp = byId("posCustomerName");
-        const phoneInp = byId("posPhone");
-        const prodId = prodSel ? prodSel.value : "";
+        const prodId = document.getElementById("posProductSelect").value;
         const prod = state.products.find((p) => String(p.id) === String(prodId));
-        const unitType = unitSel ? unitSel.value : "Carton";
-        const qty = Math.max(1, Number(qtyInp ? qtyInp.value : 1) || 1);
-        const custName = custInp ? custInp.value.trim() : "";
-        const phone = phoneInp ? phoneInp.value.trim() : "";
+        const unitType = document.getElementById("posUnitSelect").value;
+        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
+        const custName = document.getElementById("posCustomerName").value.trim();
+        const phone = document.getElementById("posPhone").value.trim();
         if (!custName || custName === "Walk-in Customer") {
           showBanner("Enter the customer's name to record a debt.", "warning");
           return;
@@ -2246,22 +3394,20 @@
       }
     });
 
-    onEl("staffChatSendForm", "submit", async (e) => {
+    document.getElementById("staffChatSendForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("staff-chat-send", 1200, btn, "Sending...", async () => {
-        const phoneInp = byId("staffChatSendPhone");
-        const textInp = byId("staffChatSendText");
-        const phone = phoneInp ? phoneInp.value.trim() : "";
-        const text = textInp ? textInp.value.trim() : "";
+        const phone = document.getElementById("staffChatSendPhone").value.trim();
+        const text = document.getElementById("staffChatSendText").value.trim();
         const fd = new FormData();
         fd.append("phone", phone);
         fd.append("sender", "Staff");
         fd.append("text", text);
         try {
           await apiRequest("/api/messages", { method: "POST", body: fd });
-          if (textInp) textInp.value = "";
-          setElValue("staffChatPhoneFilter", phone);
+          document.getElementById("staffChatSendText").value = "";
+          document.getElementById("staffChatPhoneFilter").value = phone;
           await loadStaffChatMessages();
           showBanner("Reply sent to customer chat!", "success");
         } catch (err) {
@@ -2270,16 +3416,13 @@
       });
     });
 
-    onEl("loginForm", "submit", async (e) => {
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = byId("loginBtn");
+      const btn = document.getElementById("loginBtn");
       await runGuardedAction("login-submit", 1000, btn, "Logging in...", async () => {
-        const userInp = byId("loginUsername");
-        const passInp = byId("loginPassword");
-        const modeSel = byId("loginMode");
-        const username = userInp ? userInp.value.trim() : "";
-        const password = passInp ? passInp.value : "";
-        const mode = modeSel ? modeSel.value : "admin";
+        const username = document.getElementById("loginUsername").value.trim();
+        const password = document.getElementById("loginPassword").value;
+        const mode = document.getElementById("loginMode").value;
 
         try {
           const res = await apiRequest("/api/login", {
@@ -2290,14 +3433,11 @@
           state.isLoggedIn = true;
           state.user = res;
           state.staffToken = res.token || "";
-          const badge = byId("authBadge");
-          if (badge) {
-            badge.className = "badge bg-success";
-            badge.textContent = `${res.role || "Admin"}: ${res.username || username}`;
-          }
-          setElText("staffSessionLabel", `Signed in as ${res.username || username}`);
-          setElHidden("logoutBtn", false);
-          if (passInp) passInp.value = "";
+          document.getElementById("authBadge").className = "badge bg-success";
+          document.getElementById("authBadge").textContent = `${res.role || "Admin"}: ${res.username || username}`;
+          document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username}`;
+          document.getElementById("logoutBtn").classList.remove("d-none");
+          document.getElementById("loginPassword").value = "";
           switchSection("staffSection");
           await loadProducts();
           await loadRecordsData();
@@ -2308,29 +3448,25 @@
       });
     });
 
-    onEl("logoutBtn", "click", () => {
+    document.getElementById("logoutBtn").addEventListener("click", () => {
       state.isLoggedIn = false;
       state.user = null;
       state.staffToken = "";
-      const badge = byId("authBadge");
-      if (badge) {
-        badge.className = "badge bg-secondary";
-        badge.textContent = "Staff Mode";
-      }
-      setElHidden("logoutBtn", true);
+      document.getElementById("authBadge").className = "badge bg-secondary";
+      document.getElementById("authBadge").textContent = "Staff Mode";
+      document.getElementById("logoutBtn").classList.add("d-none");
       switchSection("customerSection");
       showBanner("Logged out.", "info");
     });
 
-    onEl("addProductForm", "submit", async (e) => {
+    document.getElementById("addProductForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = byId("saveProductBtn");
+      const btn = document.getElementById("saveProductBtn");
       await runGuardedAction("save-product", 1500, btn, "Saving...", async () => {
         const formData = new FormData(e.target);
         const submittedName = String(formData.get("name") || "").trim();
         const submittedVendor = String(formData.get("vendor_name") || "").trim();
-        const existingSel = byId("existingProductSelect");
-        const selectedExistingId = existingSel ? String(existingSel.value || "").trim() : "";
+        const selectedExistingId = String(document.getElementById("existingProductSelect").value || "").trim();
 
         try {
           const res = await apiRequest("/api/products", { method: "POST", body: formData });
@@ -2338,20 +3474,20 @@
           saveVendorOverride(savedId, submittedName, submittedVendor);
 
           e.target.reset();
-          setElChecked("actionAddNew", true);
+          document.getElementById("actionAddNew").checked = true;
           toggleUpdateMode();
-          setElValue("prodCategory", "General");
-          setElValue("prodVendorName", "");
-          setElValue("prodMainUnit", "Carton");
-          setElValue("prodSubUnit", "Pack");
-          setElValue("prodRetailUnit", "Retail Unit");
-          setElValue("prodPriceCarton", "0.00");
-          setElValue("prodStockCartons", "0.00");
-          setElValue("prodCostCarton", "0.00");
-          setElValue("prodPricePack", "0.00");
-          setElValue("prodPacksPerCarton", "1");
-          setElValue("prodPriceRetail", "0.00");
-          setElValue("prodRetailPerPack", "1");
+          document.getElementById("prodCategory").value = "General";
+          document.getElementById("prodVendorName").value = "";
+          document.getElementById("prodMainUnit").value = "Carton";
+          document.getElementById("prodSubUnit").value = "Pack";
+          document.getElementById("prodRetailUnit").value = "Retail Unit";
+          document.getElementById("prodPriceCarton").value = "0.00";
+          document.getElementById("prodStockCartons").value = "0.00";
+          document.getElementById("prodCostCarton").value = "0.00";
+          document.getElementById("prodPricePack").value = "0.00";
+          document.getElementById("prodPacksPerCarton").value = "1";
+          document.getElementById("prodPriceRetail").value = "0.00";
+          document.getElementById("prodRetailPerPack").value = "1";
           await loadProducts();
           showBanner(`Saved "${submittedName}"${submittedVendor ? ` (Vendor/Sponsor: ${submittedVendor})` : ""}.`, "success");
         } catch (err) {
@@ -2364,24 +3500,22 @@
       const cleanPin = String(pin || "").trim();
       const cleanRef = String(refCode || "").trim();
       state.customerAuth = { unlocked: true, phone, pin: cleanPin || cleanRef };
-      setElValue("chatPhoneFilter", phone);
-      setElValue("chatPinFilter", cleanPin || cleanRef);
+      document.getElementById("chatPhoneFilter").value = phone;
+      document.getElementById("chatPinFilter").value = cleanPin || cleanRef;
 
-      const noticeEl = byId("customerCredentialNotice");
-      if (noticeEl) {
-        noticeEl.innerHTML = `
-          <strong><i class="fa-solid fa-key me-1"></i>Save Your Private Access Credentials:</strong>
-          Phone: <strong>${escapeHtml(phone)}</strong> &bull;
-          Chat PIN: <strong>${escapeHtml(cleanPin || "N/A")}</strong>
-          ${cleanRef ? `&bull; Order Ref: <strong>${escapeHtml(cleanRef)}</strong>` : ""}
-          <span class="d-block mt-1">Use your phone number and PIN (or Order Ref) anytime to unlock your private chat and receipts.</span>
-        `;
-        noticeEl.classList.remove("d-none");
-      }
+      const noticeEl = document.getElementById("customerCredentialNotice");
+      noticeEl.innerHTML = `
+        <strong><i class="fa-solid fa-key me-1"></i>Save Your Private Access Credentials:</strong>
+        Phone: <strong>${escapeHtml(phone)}</strong> &bull;
+        Chat PIN: <strong>${escapeHtml(cleanPin || "N/A")}</strong>
+        ${cleanRef ? `&bull; Order Ref: <strong>${escapeHtml(cleanRef)}</strong>` : ""}
+        <span class="d-block mt-1">Use your phone number and PIN (or Order Ref) anytime to unlock your private chat and receipts.</span>
+      `;
+      noticeEl.classList.remove("d-none");
       switchCustomerTab("chatTab");
     }
 
-    onEl("customerOrderForm", "submit", async (e) => {
+    document.getElementById("customerOrderForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!state.cart.length) {
         showBanner("Add at least one product to your cart before submitting an order.", "warning");
@@ -2389,14 +3523,10 @@
       }
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("submit-order", 2000, btn, "Submitting...", async () => {
-        const nameInp = byId("orderCustomerName");
-        const phoneInp = byId("orderPhone");
-        const pinInp = byId("orderPin");
-        const noteInp = byId("orderNote");
-        const customerName = nameInp ? nameInp.value.trim() : "";
-        const phone = phoneInp ? phoneInp.value.trim() : "";
-        const pin = state.extraSettings.autoPinMode ? "" : (pinInp ? pinInp.value.trim() : "");
-        const note = noteInp ? noteInp.value.trim() : "";
+        const customerName = document.getElementById("orderCustomerName").value.trim();
+        const phone = document.getElementById("orderPhone").value.trim();
+        const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("orderPin").value.trim();
+        const note = document.getElementById("orderNote").value.trim();
         const mappedItems = state.cart.map((i) => ({
           name: i.name,
           unit: i.unit || "Unit",
@@ -2425,18 +3555,14 @@
       });
     });
 
-    onEl("multiRequestForm", "submit", async (e) => {
+    document.getElementById("multiRequestForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("multi-request", 2000, btn, "Sending...", async () => {
-        const nameInp = byId("reqName");
-        const phoneInp = byId("reqPhone");
-        const pinInp = byId("reqPin");
-        const itemsInp = byId("reqItemsText");
-        const customerName = nameInp ? nameInp.value.trim() : "";
-        const phone = phoneInp ? phoneInp.value.trim() : "";
-        const pin = state.extraSettings.autoPinMode ? "" : (pinInp ? pinInp.value.trim() : "");
-        const itemsText = itemsInp ? itemsInp.value.trim() : "";
+        const customerName = document.getElementById("reqName").value.trim();
+        const phone = document.getElementById("reqPhone").value.trim();
+        const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("reqPin").value.trim();
+        const itemsText = document.getElementById("reqItemsText").value.trim();
         try {
           const res = await apiRequest("/api/orders", {
             method: "POST",
@@ -2456,7 +3582,7 @@
       });
     });
 
-    onEl("chatSendForm", "submit", async (e) => {
+    document.getElementById("chatSendForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!state.customerAuth.unlocked) {
         showBanner("Please unlock your private chat first.", "warning");
@@ -2465,12 +3591,9 @@
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("customer-chat-send", 1200, btn, "Sending...", async () => {
         const phone = state.customerAuth.phone;
-        const pinInp = byId("chatPinFilter");
-        const textInp = byId("chatSendText");
-        const proofInp = byId("chatProofFile");
-        const pin = state.customerAuth.pin || (pinInp ? pinInp.value.trim() : "");
-        const text = textInp ? textInp.value.trim() : "";
-        const proofFile = proofInp && proofInp.files ? proofInp.files[0] : null;
+        const pin = state.customerAuth.pin || document.getElementById("chatPinFilter").value.trim();
+        const text = document.getElementById("chatSendText").value.trim();
+        const proofFile = document.getElementById("chatProofFile").files[0];
         const fd = new FormData();
         fd.append("phone", phone);
         fd.append("pin", pin);
@@ -2480,8 +3603,8 @@
 
         try {
           await apiRequest("/api/messages", { method: "POST", body: fd });
-          if (textInp) textInp.value = "";
-          if (proofInp) proofInp.value = "";
+          document.getElementById("chatSendText").value = "";
+          document.getElementById("chatProofFile").value = "";
           await loadCustomerPrivateChat();
         } catch (err) {
           showBanner(`Failed to send message: ${err.message}`, "danger");
@@ -2489,21 +3612,13 @@
       });
     });
 
-    onEl("posSaleForm", "submit", async (e) => {
+    document.getElementById("posSaleForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("pos-sale", 1500, btn, "Recording...", async () => {
-        const prodSel = byId("posProductSelect");
-        const unitSel = byId("posUnitSelect");
-        const qtyInp = byId("posQty");
-        const custInp = byId("posCustomerName");
-        const phoneInp = byId("posPhone");
-        const paySel = byId("posPaymentMethod");
-        const waChk = byId("posSendReceiptToWhatsApp");
-
-        const prodId = prodSel ? prodSel.value : "";
-        const unitType = unitSel ? unitSel.value : "Carton";
-        const qty = Math.max(1, Number(qtyInp ? qtyInp.value : 1) || 1);
+        const prodId = document.getElementById("posProductSelect").value;
+        const unitType = document.getElementById("posUnitSelect").value;
+        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
         const prod = state.products.find((p) => String(p.id) === String(prodId));
         if (!prod) {
           showBanner("Please select a valid product.", "warning");
@@ -2511,10 +3626,10 @@
         }
         const unitPrice = getPriceForUnit(prod, unitType);
         const totalAmount = unitPrice * qty;
-        const custName = (custInp ? custInp.value.trim() : "") || "Walk-in Customer";
-        const custPhone = (phoneInp ? phoneInp.value.trim() : "") || "N/A";
-        const paySource = paySel ? paySel.value : "Cash";
-        const sendWhatsAppOpt = Boolean(waChk && waChk.checked);
+        const custName = document.getElementById("posCustomerName").value.trim() || "Walk-in Customer";
+        const custPhone = document.getElementById("posPhone").value.trim() || "N/A";
+        const paySource = document.getElementById("posPaymentMethod").value;
+        const sendWhatsAppOpt = document.getElementById("posSendReceiptToWhatsApp").checked;
 
         try {
           const res = await apiRequest("/api/sales", {
@@ -2557,25 +3672,22 @@
             }
           }
 
-          const receiptBox = byId("posReceiptBox");
-          if (receiptBox) {
-            receiptBox.innerHTML = `
-              <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
-                <div>
-                  <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${formattedTotal}</strong>
-                  ${waStatusHtml}
-                </div>
-                <div class="d-flex gap-1">
-                  <button type="button" class="btn btn-success btn-sm" data-action="send-pos-receipt-whatsapp" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
-                    <i class="fa-brands fa-whatsapp me-1"></i>Send to WhatsApp
-                  </button>
-                  <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
-                    <i class="fa-solid fa-print me-1"></i>Thermal Receipt
-                  </button>
-                </div>
+          document.getElementById("posReceiptBox").innerHTML = `
+            <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
+              <div>
+                <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${formattedTotal}</strong>
+                ${waStatusHtml}
               </div>
-            `;
-          }
+              <div class="d-flex gap-1">
+                <button type="button" class="btn btn-success btn-sm" data-action="send-pos-receipt-whatsapp" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+                  <i class="fa-brands fa-whatsapp me-1"></i>Send to WhatsApp
+                </button>
+                <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+                  <i class="fa-solid fa-print me-1"></i>Thermal Receipt
+                </button>
+              </div>
+            </div>
+          `;
           await loadProducts();
           showBanner(`Recorded sale of ${formattedTotal} and updated stock.`, "success");
         } catch (err) {
@@ -2584,7 +3696,7 @@
       });
     });
 
-    onEl("debtorForm", "submit", async (e) => {
+    document.getElementById("debtorForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("save-debtor", 1200, btn, "Saving...", async () => {
@@ -2593,10 +3705,10 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              customer: (byId("debtorName")?.value || "").trim(),
-              phone: (byId("debtorPhone")?.value || "").trim(),
-              amount: Number(byId("debtorAmount")?.value || 0),
-              items_bought: (byId("debtorNote")?.value || "").trim(),
+              customer: document.getElementById("debtorName").value.trim(),
+              phone: document.getElementById("debtorPhone").value.trim(),
+              amount: Number(document.getElementById("debtorAmount").value),
+              items_bought: document.getElementById("debtorNote").value.trim(),
             }),
           });
           e.target.reset();
@@ -2608,25 +3720,22 @@
       });
     });
 
-    onEl("expenseForm", "submit", async (e) => {
+    document.getElementById("expenseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("save-expense", 1200, btn, "Saving...", async () => {
-        const catInp = byId("expenseCategory");
-        const titleInp = byId("expenseTitle");
-        const noteInp = byId("expenseNote");
         try {
           await apiRequest("/api/expenses", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              category: (catInp?.value || "").trim() || (titleInp?.value || "").trim() || "Operations",
-              amount: Number(byId("expenseAmount")?.value || 0),
-              note: (noteInp?.value || "").trim() || (titleInp?.value || "").trim(),
+              category: document.getElementById("expenseCategory").value.trim() || document.getElementById("expenseTitle").value.trim() || "Operations",
+              amount: Number(document.getElementById("expenseAmount").value),
+              note: document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim(),
             }),
           });
           e.target.reset();
-          setElValue("expenseCategory", "Operations");
+          document.getElementById("expenseCategory").value = "Operations";
           await loadRecordsData();
           if (state.isLoggedIn && state.extraSettings.showBusinessAnalytics) {
             await loadBusinessAnalytics();
@@ -2638,7 +3747,7 @@
       });
     });
 
-    onEl("workerForm", "submit", async (e) => {
+    document.getElementById("workerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("save-worker", 1200, btn, "Saving...", async () => {
@@ -2647,14 +3756,14 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              name: (byId("workerName")?.value || "").trim(),
-              role: (byId("workerRole")?.value || "").trim() || "Staff",
-              username: (byId("workerUsername")?.value || "").trim(),
-              password: byId("workerPassword")?.value || "",
+              name: document.getElementById("workerName").value.trim(),
+              role: document.getElementById("workerRole").value.trim() || "Staff",
+              username: document.getElementById("workerUsername").value.trim(),
+              password: document.getElementById("workerPassword").value,
             }),
           });
           e.target.reset();
-          setElValue("workerRole", "Staff");
+          document.getElementById("workerRole").value = "Staff";
           await loadRecordsData();
           showBanner("Worker saved.", "success");
         } catch (err) {
@@ -2663,26 +3772,23 @@
       });
     });
 
-    onEl("settingsForm", "submit", async (e) => {
+    document.getElementById("settingsForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("save-settings", 1500, btn, "Saving...", async () => {
-        const currencyInp = byId("setCurrency");
-        const currencyVal = (currencyInp ? currencyInp.value.trim() : "") || "\u20a6";
+        const currencyVal = document.getElementById("setCurrency").value.trim() || "\u20a6";
         state.currency = currencyVal;
 
-        const awarenessFileInp = byId("setAwarenessImageFile");
-        const awarenessUrlInp = byId("setAwarenessImageUrl");
-        const awarenessFiles = awarenessFileInp ? awarenessFileInp.files : null;
-        let awarenessImgVal = awarenessUrlInp ? awarenessUrlInp.value.trim() : "";
+        const awarenessFiles = document.getElementById("setAwarenessImageFile").files;
+        let awarenessImgVal = document.getElementById("setAwarenessImageUrl").value.trim();
         if (awarenessFiles && awarenessFiles.length > 0) {
           try {
             const uploadedList = await readAwarenessFilesAsDataUrls(awarenessFiles);
             const existingList = parseAwarenessList(awarenessImgVal);
             const mergedList = [...existingList, ...uploadedList];
             awarenessImgVal = mergedList.join("\n");
-            setElValue("setAwarenessImageUrl", awarenessImgVal);
-            setElChecked("setShowAwarenessFloat", true);
+            document.getElementById("setAwarenessImageUrl").value = awarenessImgVal;
+            document.getElementById("setShowAwarenessFloat").checked = true;
           } catch (fileErr) {
             showBanner(fileErr.message, "warning");
             return;
@@ -2690,40 +3796,39 @@
         }
 
         const nextExtra = {
-          showBusinessAnalytics: Boolean(byId("setShowBusinessAnalytics")?.checked),
-          showInventoryAlerts: Boolean(byId("setShowInventoryAlerts")?.checked),
-          lowStockThreshold: Math.max(0, Number(byId("setLowStockThreshold")?.value ?? 2)),
-          showTabShop: Boolean(byId("setShowTabShop")?.checked),
-          showTabRequest: Boolean(byId("setShowTabRequest")?.checked),
-          showTabChat: Boolean(byId("setShowTabChat")?.checked),
-          showTabCart: Boolean(byId("setShowTabCart")?.checked),
-          showDockCartBadge: Boolean(byId("setShowDockCartBadge")?.checked),
-          showTopCartBtn: Boolean(byId("setShowTopCartBtn")?.checked),
-          mobileTabLabels: (byId("setMobileTabLabels")?.value || "").trim() || DEFAULT_EXTRA_SETTINGS.mobileTabLabels,
-          showWatchAd: Boolean(byId("setShowWatchAd")?.checked),
-          showVendorBadges: Boolean(byId("setShowVendorBadges")?.checked),
-          showStockOnCards: Boolean(byId("setShowStockOnCards")?.checked),
-          hideOutOfStock: Boolean(byId("setHideOutOfStock")?.checked),
-          searchPlaceholder: (byId("setSearchPlaceholder")?.value || "").trim() || "Search products...",
-          paymentInstructions: (byId("setPaymentInstructions")?.value || "").trim(),
-          chatHelperSubtitle: (byId("setChatHelperSubtitle")?.value || "").trim() || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle,
-          autoPinMode: Boolean(byId("setAutoPinMode")?.checked),
-          pinFieldLabel: (byId("setPinFieldLabel")?.value || "").trim() || DEFAULT_EXTRA_SETTINGS.pinFieldLabel,
-          orderNotePlaceholder: (byId("setOrderNotePlaceholder")?.value || "").trim() || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder,
-          footerText: (byId("setFooterText")?.value || "").trim(),
-          receiptFooter: (byId("setReceiptFooter")?.value || "").trim() || "Thank you for your patronage!",
-          showRotatingTicker: byId("setShowRotatingTicker") ? Boolean(byId("setShowRotatingTicker").checked) : true,
-          tickerIntervalSec: normalizeTickerIntervalSec(byId("setTickerIntervalSec")?.value),
-          tickerMessages: (byId("setTickerMessages")?.value || "").trim(),
-          showAwarenessFloat: Boolean(byId("setShowAwarenessFloat")?.checked),
-          awarenessAutoSlide: Boolean(byId("setAwarenessAutoSlide")?.checked),
+          showBusinessAnalytics: document.getElementById("setShowBusinessAnalytics").checked,
+          showInventoryAlerts: document.getElementById("setShowInventoryAlerts").checked,
+          lowStockThreshold: Math.max(0, Number(document.getElementById("setLowStockThreshold").value || 2)),
+          showTabShop: document.getElementById("setShowTabShop").checked,
+          showTabRequest: document.getElementById("setShowTabRequest").checked,
+          showTabChat: document.getElementById("setShowTabChat").checked,
+          showTabCart: document.getElementById("setShowTabCart").checked,
+          showDockCartBadge: document.getElementById("setShowDockCartBadge").checked,
+          showTopCartBtn: document.getElementById("setShowTopCartBtn").checked,
+          mobileTabLabels: document.getElementById("setMobileTabLabels").value.trim() || DEFAULT_EXTRA_SETTINGS.mobileTabLabels,
+          showWatchAd: document.getElementById("setShowWatchAd").checked,
+          showVendorBadges: document.getElementById("setShowVendorBadges").checked,
+          showStockOnCards: document.getElementById("setShowStockOnCards").checked,
+          hideOutOfStock: document.getElementById("setHideOutOfStock").checked,
+          searchPlaceholder: document.getElementById("setSearchPlaceholder").value.trim() || "Search products...",
+          paymentInstructions: document.getElementById("setPaymentInstructions").value.trim(),
+          chatHelperSubtitle: document.getElementById("setChatHelperSubtitle").value.trim() || DEFAULT_EXTRA_SETTINGS.chatHelperSubtitle,
+          autoPinMode: document.getElementById("setAutoPinMode").checked,
+          pinFieldLabel: document.getElementById("setPinFieldLabel").value.trim() || DEFAULT_EXTRA_SETTINGS.pinFieldLabel,
+          orderNotePlaceholder: document.getElementById("setOrderNotePlaceholder").value.trim() || DEFAULT_EXTRA_SETTINGS.orderNotePlaceholder,
+          footerText: document.getElementById("setFooterText").value.trim(),
+          receiptFooter: document.getElementById("setReceiptFooter").value.trim() || "Thank you for your patronage!",
+          showRotatingTicker: document.getElementById("setShowRotatingTicker").checked,
+          tickerIntervalSec: normalizeTickerIntervalSec(document.getElementById("setTickerIntervalSec").value),
+          tickerMessages: document.getElementById("setTickerMessages").value.trim(),
+          showAwarenessFloat: document.getElementById("setShowAwarenessFloat").checked,
+          awarenessAutoSlide: document.getElementById("setAwarenessAutoSlide").checked,
           awarenessImageUrl: awarenessImgVal,
-          awarenessCaption: (byId("setAwarenessCaption")?.value || "").trim(),
+          awarenessCaption: document.getElementById("setAwarenessCaption").value.trim(),
         };
 
         state.awarenessDismissed = false;
         _awarenessSlideIndex = 0;
-        resetAwarenessPosition();
         state.extraSettings = nextExtra;
         saveLocalExtraSettings(nextExtra);
 
@@ -2733,8 +3838,8 @@
 
         try {
           await apiRequest("/api/settings", { method: "POST", body: fd });
-          setElValue("setBroadcastVideoFile", "");
-          setElValue("setAwarenessImageFile", "");
+          document.getElementById("setBroadcastVideoFile").value = "";
+          document.getElementById("setAwarenessImageFile").value = "";
           await loadSettings();
           showBanner("All app settings saved and applied!", "success");
         } catch (err) {
@@ -2751,60 +3856,18 @@
       state.paidDebtorIds = readIdSetFromStorage(PAID_DEBTOR_IDS_KEY);
       state.vendorOverrides = readVendorOverrides();
 
-      const awarenessCard = byId("customerAwarenessFloat");
-      if (awarenessCard) {
-        awarenessCard.addEventListener("pointerdown", (ev) => {
-          if (ev.target.closest("button")) return;
-          _awarenessDragActive = true;
-          _awarenessDragMoved = false;
-          _awarenessPointerStartX = ev.clientX;
-          _awarenessPointerStartY = ev.clientY;
-          _awarenessBaseOffsetX = _awarenessOffsetX;
-          _awarenessBaseOffsetY = _awarenessOffsetY;
-          awarenessCard.classList.add("is-dragging");
-          try { awarenessCard.setPointerCapture(ev.pointerId); } catch (_) {}
-        });
-
-        awarenessCard.addEventListener("pointermove", (ev) => {
-          if (!_awarenessDragActive) return;
-          const dx = ev.clientX - _awarenessPointerStartX;
-          const dy = ev.clientY - _awarenessPointerStartY;
-          if (Math.abs(dx) > 6 || Math.abs(dy) > 6) {
-            _awarenessDragMoved = true;
+      const awarenessImg = document.getElementById("customerAwarenessImg");
+      if (awarenessImg) {
+        awarenessImg.addEventListener("touchstart", (ev) => {
+          _awarenessTouchStartX = ev.changedTouches?.[0]?.clientX || 0;
+        }, { passive: true });
+        awarenessImg.addEventListener("touchend", (ev) => {
+          const endX = ev.changedTouches?.[0]?.clientX || 0;
+          const diffX = endX - _awarenessTouchStartX;
+          if (Math.abs(diffX) > 35) {
+            stepAwarenessSlide(diffX < 0 ? 1 : -1);
           }
-          if (_awarenessDragMoved) {
-            const rect = awarenessCard.getBoundingClientRect();
-            const baseLeft = rect.left - _awarenessBaseOffsetX;
-            const baseTop = rect.top - _awarenessBaseOffsetY;
-            const minX = 8 - baseLeft;
-            const maxX = (window.innerWidth - rect.width - 8) - baseLeft;
-            const minY = 8 - baseTop;
-            const maxY = (window.innerHeight - rect.height - 8) - baseTop;
-            _awarenessOffsetX = Math.min(Math.max(_awarenessBaseOffsetX + dx, minX), maxX);
-            _awarenessOffsetY = Math.min(Math.max(_awarenessBaseOffsetY + dy, minY), maxY);
-            applyAwarenessPosition();
-          }
-        });
-
-        const finishAwarenessPointer = (ev) => {
-          if (!_awarenessDragActive) return;
-          _awarenessDragActive = false;
-          awarenessCard.classList.remove("is-dragging");
-          try { awarenessCard.releasePointerCapture(ev.pointerId); } catch (_) {}
-
-          const dx = ev.clientX - _awarenessPointerStartX;
-          const dy = ev.clientY - _awarenessPointerStartY;
-          const clickedImg = Boolean(ev.target.closest("#customerAwarenessImg"));
-          if (clickedImg && Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.2) {
-            _awarenessOffsetX = _awarenessBaseOffsetX;
-            _awarenessOffsetY = _awarenessBaseOffsetY;
-            applyAwarenessPosition();
-            stepAwarenessSlide(dx < 0 ? 1 : -1);
-          }
-        };
-
-        awarenessCard.addEventListener("pointerup", finishAwarenessPointer);
-        awarenessCard.addEventListener("pointercancel", finishAwarenessPointer);
+        }, { passive: true });
       }
 
       syncLayoutChrome();
@@ -2814,3 +3877,5 @@
       await loadProducts();
     })();
   </script>
+</body>
+</html>

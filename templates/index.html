@@ -62,6 +62,7 @@
       object-fit: cover;
       display: block;
       background: #f8fafc;
+      touch-action: pan-y;
     }
     .floating-awareness-close {
       position: absolute;
@@ -500,10 +501,15 @@
             </div>
           </div>
 
-          <!-- Floating Awareness Photo Card (Customer Storefront) -->
+          <!-- Floating Awareness Photo Card (Slideable Customer Storefront) -->
           <div id="customerAwarenessFloat" class="floating-awareness-card d-none" role="region" aria-label="Store Update">
             <button type="button" class="floating-awareness-close" data-action="dismiss-awareness-float" aria-label="Close image notice">&times;</button>
             <img id="customerAwarenessImg" src="" alt="Store Awareness" />
+            <div id="customerAwarenessNavBar" class="d-none d-flex align-items-center justify-content-between px-2 py-1 bg-light border-top small">
+              <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" data-action="prev-awareness-slide" aria-label="Previous slide">&lsaquo; Prev</button>
+              <span id="customerAwarenessCounter" class="text-muted fw-semibold">1 / 1</span>
+              <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" data-action="next-awareness-slide" aria-label="Next slide">Next &rsaquo;</button>
+            </div>
             <div id="customerAwarenessCaption" class="floating-awareness-caption d-none"></div>
           </div>
 
@@ -1200,29 +1206,35 @@
                     </div>
                   </div>
 
-                  <!-- Group 6: Floating Awareness Photo & Bottom Caption -->
-                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">6. Floating Awareness Photo &amp; Bottom Description</h6>
+                  <!-- Group 6: Floating Awareness Slides & Bottom Caption -->
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">6. Floating Awareness Photos (Slideable) &amp; Bottom Description</h6>
                   <div class="row g-3 mb-4">
                     <div class="col-md-4 col-6">
                       <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="setShowAwarenessFloat" />
-                        <label class="form-check-label" for="setShowAwarenessFloat">Show <strong>Floating Awareness Image</strong></label>
+                        <label class="form-check-label" for="setShowAwarenessFloat">Show <strong>Floating Awareness Card</strong></label>
+                      </div>
+                    </div>
+                    <div class="col-md-4 col-6">
+                      <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="setAwarenessAutoSlide" />
+                        <label class="form-check-label" for="setAwarenessAutoSlide">Auto-Slide Photos (Every 5s)</label>
                       </div>
                     </div>
                     <div class="col-md-4">
-                      <label class="form-label small mb-1" for="setAwarenessImageFile">Upload Awareness Photo</label>
-                      <input type="file" name="awareness_image_file" id="setAwarenessImageFile" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp,image/*" />
+                      <label class="form-label small mb-1" for="setAwarenessImageFile">Upload Awareness Photo(s)</label>
+                      <input type="file" name="awareness_image_file" id="setAwarenessImageFile" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp,image/*" multiple />
                     </div>
-                    <div class="col-md-4">
-                      <label class="form-label small mb-1" for="setAwarenessImageUrl">OR Image Link / Saved Preview</label>
+                    <div class="col-12">
+                      <label class="form-label small mb-1" for="setAwarenessImageUrl">Image Links / Saved Slides (One per line or separate with <code>|</code>)</label>
                       <div class="input-group input-group-sm">
-                        <input type="text" id="setAwarenessImageUrl" class="form-control" placeholder="https://... or uploaded image" />
-                        <button type="button" class="btn btn-outline-danger" data-action="clear-awareness-image" title="Remove floating image">Clear</button>
+                        <textarea id="setAwarenessImageUrl" class="form-control" rows="2" placeholder="https://.../photo1.jpg&#10;https://.../photo2.jpg (or uploaded images)"></textarea>
+                        <button type="button" class="btn btn-outline-danger" data-action="clear-awareness-image" title="Remove floating images">Clear</button>
                       </div>
                     </div>
                     <div class="col-12">
-                      <label class="form-label small mb-1" for="setAwarenessCaption">Bottom Description / Awareness Message</label>
-                      <textarea id="setAwarenessCaption" class="form-control form-control-sm" rows="2" placeholder="Describe what this photo is meant for (shown at the bottom of the floating image)..."></textarea>
+                      <label class="form-label small mb-1" for="setAwarenessCaption">Bottom Descriptions (One per line or separate with <code>|</code> — matches each photo slide)</label>
+                      <textarea id="setAwarenessCaption" class="form-control form-control-sm" rows="2" placeholder="Slide 1 caption: New stock arrived!&#10;Slide 2 caption: Transfer before 4 PM for same-day delivery."></textarea>
                     </div>
                   </div>
 
@@ -1307,6 +1319,7 @@
       tickerIntervalSec: 5,
       tickerMessages: "",
       showAwarenessFloat: false,
+      awarenessAutoSlide: false,
       awarenessImageUrl: "",
       awarenessCaption: "",
     };
@@ -1350,6 +1363,9 @@
 
     let _tickerTimerId = null;
     let _tickerIndex = 0;
+    let _awarenessSlideIndex = 0;
+    let _awarenessAutoTimerId = null;
+    let _awarenessTouchStartX = 0;
 
     function normalizeTickerIntervalSec(rawVal) {
       const parsed = parseInt(rawVal ?? 5, 10);
@@ -1442,31 +1458,81 @@
       return false;
     }
 
+    function parseAwarenessList(rawVal) {
+      if (Array.isArray(rawVal)) {
+        return rawVal.map((v) => String(v || "").trim()).filter(Boolean);
+      }
+      return String(rawVal || "")
+        .split(/\||\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+
+    function getAwarenessSlides() {
+      const cfg = state.extraSettings || {};
+      const imgs = parseAwarenessList(cfg.awarenessImageUrl).filter(isSafeImageSrc);
+      const captions = parseAwarenessList(cfg.awarenessCaption);
+      return imgs.map((src, idx) => ({
+        src,
+        caption: captions[idx] || captions[0] || "",
+      }));
+    }
+
+    function stepAwarenessSlide(delta) {
+      const slides = getAwarenessSlides();
+      if (!slides.length) return;
+      _awarenessSlideIndex = (_awarenessSlideIndex + delta + slides.length) % slides.length;
+      renderFloatingAwarenessCard();
+    }
+
     function renderFloatingAwarenessCard() {
       const card = document.getElementById("customerAwarenessFloat");
       const imgEl = document.getElementById("customerAwarenessImg");
       const capEl = document.getElementById("customerAwarenessCaption");
+      const navBar = document.getElementById("customerAwarenessNavBar");
+      const counterEl = document.getElementById("customerAwarenessCounter");
       if (!card || !imgEl || !capEl) return;
 
-      const cfg = state.extraSettings || {};
-      const imgUrl = String(cfg.awarenessImageUrl || "").trim();
-      const caption = String(cfg.awarenessCaption || "").trim();
+      if (_awarenessAutoTimerId) {
+        clearInterval(_awarenessAutoTimerId);
+        _awarenessAutoTimerId = null;
+      }
 
-      if (!cfg.showAwarenessFloat || state.awarenessDismissed || !isSafeImageSrc(imgUrl)) {
+      const cfg = state.extraSettings || {};
+      const slides = getAwarenessSlides();
+
+      if (!cfg.showAwarenessFloat || state.awarenessDismissed || !slides.length) {
         card.classList.add("d-none");
         imgEl.removeAttribute("src");
         return;
       }
 
-      imgEl.src = imgUrl;
-      if (caption) {
-        capEl.textContent = caption;
+      if (_awarenessSlideIndex >= slides.length) _awarenessSlideIndex = 0;
+      const current = slides[_awarenessSlideIndex];
+
+      imgEl.src = current.src;
+      if (current.caption) {
+        capEl.textContent = current.caption;
         capEl.classList.remove("d-none");
       } else {
         capEl.textContent = "";
         capEl.classList.add("d-none");
       }
+
+      if (navBar && counterEl) {
+        if (slides.length > 1) {
+          navBar.classList.remove("d-none");
+          counterEl.textContent = `${_awarenessSlideIndex + 1} / ${slides.length}`;
+        } else {
+          navBar.classList.add("d-none");
+        }
+      }
+
       card.classList.remove("d-none");
+
+      if (cfg.awarenessAutoSlide && slides.length > 1) {
+        _awarenessAutoTimerId = setInterval(() => stepAwarenessSlide(1), 5000);
+      }
     }
 
     function readAwarenessFileAsDataUrl(file) {
@@ -1508,6 +1574,16 @@
         reader.onerror = () => reject(new Error("Failed to load selected awareness image."));
         reader.readAsDataURL(file);
       });
+    }
+
+    async function readAwarenessFilesAsDataUrls(fileList) {
+      const files = Array.from(fileList || []);
+      const results = [];
+      for (const file of files) {
+        const dataUrl = await readAwarenessFileAsDataUrl(file);
+        if (dataUrl) results.push(dataUrl);
+      }
+      return results;
     }
 
     const productAdModalEl = document.getElementById("productAdModal");
@@ -1839,8 +1915,13 @@
       document.getElementById("setTickerIntervalSec").value = cfg.tickerIntervalSec;
       document.getElementById("setTickerMessages").value = cfg.tickerMessages || "";
       document.getElementById("setShowAwarenessFloat").checked = Boolean(cfg.showAwarenessFloat);
-      document.getElementById("setAwarenessImageUrl").value = cfg.awarenessImageUrl || "";
-      document.getElementById("setAwarenessCaption").value = cfg.awarenessCaption || "";
+      document.getElementById("setAwarenessAutoSlide").checked = Boolean(cfg.awarenessAutoSlide);
+      document.getElementById("setAwarenessImageUrl").value = Array.isArray(cfg.awarenessImageUrl)
+        ? cfg.awarenessImageUrl.join("\n")
+        : (cfg.awarenessImageUrl || "");
+      document.getElementById("setAwarenessCaption").value = Array.isArray(cfg.awarenessCaption)
+        ? cfg.awarenessCaption.join("\n")
+        : (cfg.awarenessCaption || "");
 
       const analyticsCard = document.getElementById("businessAnalyticsCard");
       const showAnalytics = Boolean(state.isLoggedIn && cfg.showBusinessAnalytics);
@@ -3006,14 +3087,19 @@
       } else if (action === "dismiss-awareness-float") {
         state.awarenessDismissed = true;
         renderFloatingAwarenessCard();
+      } else if (action === "prev-awareness-slide") {
+        stepAwarenessSlide(-1);
+      } else if (action === "next-awareness-slide") {
+        stepAwarenessSlide(1);
       } else if (action === "clear-awareness-image") {
         document.getElementById("setAwarenessImageFile").value = "";
         document.getElementById("setAwarenessImageUrl").value = "";
         document.getElementById("setShowAwarenessFloat").checked = false;
+        _awarenessSlideIndex = 0;
         state.extraSettings.awarenessImageUrl = "";
         state.extraSettings.showAwarenessFloat = false;
         renderFloatingAwarenessCard();
-        showBanner("Floating awareness image cleared. Click 'Save All App Settings' to confirm.", "info");
+        showBanner("Floating awareness image(s) cleared. Click 'Save All App Settings' to confirm.", "info");
       } else if (action === "edit-product-vendor") {
         startEditingProduct(target.dataset.id, true);
       } else if (action === "refresh-analytics") {
@@ -3078,6 +3164,7 @@
       } else if (action === "reset-extra-settings") {
         state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS };
         state.awarenessDismissed = false;
+        _awarenessSlideIndex = 0;
         saveLocalExtraSettings(state.extraSettings);
         applyExtraSettingsToUI();
         renderProducts();
@@ -3692,11 +3779,14 @@
         const currencyVal = document.getElementById("setCurrency").value.trim() || "\u20a6";
         state.currency = currencyVal;
 
-        const awarenessFile = document.getElementById("setAwarenessImageFile").files[0];
+        const awarenessFiles = document.getElementById("setAwarenessImageFile").files;
         let awarenessImgVal = document.getElementById("setAwarenessImageUrl").value.trim();
-        if (awarenessFile) {
+        if (awarenessFiles && awarenessFiles.length > 0) {
           try {
-            awarenessImgVal = await readAwarenessFileAsDataUrl(awarenessFile);
+            const uploadedList = await readAwarenessFilesAsDataUrls(awarenessFiles);
+            const existingList = parseAwarenessList(awarenessImgVal);
+            const mergedList = [...existingList, ...uploadedList];
+            awarenessImgVal = mergedList.join("\n");
             document.getElementById("setAwarenessImageUrl").value = awarenessImgVal;
             document.getElementById("setShowAwarenessFloat").checked = true;
           } catch (fileErr) {
@@ -3732,11 +3822,13 @@
           tickerIntervalSec: normalizeTickerIntervalSec(document.getElementById("setTickerIntervalSec").value),
           tickerMessages: document.getElementById("setTickerMessages").value.trim(),
           showAwarenessFloat: document.getElementById("setShowAwarenessFloat").checked,
+          awarenessAutoSlide: document.getElementById("setAwarenessAutoSlide").checked,
           awarenessImageUrl: awarenessImgVal,
           awarenessCaption: document.getElementById("setAwarenessCaption").value.trim(),
         };
 
         state.awarenessDismissed = false;
+        _awarenessSlideIndex = 0;
         state.extraSettings = nextExtra;
         saveLocalExtraSettings(nextExtra);
 
@@ -3763,6 +3855,21 @@
       state.deletedPhotoIds = readIdSetFromStorage(DELETED_CHAT_PHOTOS_KEY);
       state.paidDebtorIds = readIdSetFromStorage(PAID_DEBTOR_IDS_KEY);
       state.vendorOverrides = readVendorOverrides();
+
+      const awarenessImg = document.getElementById("customerAwarenessImg");
+      if (awarenessImg) {
+        awarenessImg.addEventListener("touchstart", (ev) => {
+          _awarenessTouchStartX = ev.changedTouches?.[0]?.clientX || 0;
+        }, { passive: true });
+        awarenessImg.addEventListener("touchend", (ev) => {
+          const endX = ev.changedTouches?.[0]?.clientX || 0;
+          const diffX = endX - _awarenessTouchStartX;
+          if (Math.abs(diffX) > 35) {
+            stepAwarenessSlide(diffX < 0 ? 1 : -1);
+          }
+        }, { passive: true });
+      }
+
       syncLayoutChrome();
       lockCustomerChatView();
       updateCartSummary();

@@ -327,7 +327,6 @@ def is_super_admin(staff: Dict[str, str]) -> bool:
 
 
 def resolve_effective_shop_id(staff: Dict[str, str], requested_shop_id: Optional[str] = None) -> str:
-    """CEO can inspect any shop (or 'all'); all other roles are strictly locked to their token's shop_id."""
     if is_super_admin(staff):
         clean_req = (requested_shop_id or "").strip().lower()
         return clean_req if clean_req else MAIN_SHOP_ID
@@ -575,7 +574,7 @@ def upload_to_cloudinary(
 
 
 # ==============================================================================
-# REGISTERED PARTNER SHOPS (SIDE-RAIL DIRECTORY & SUPER-ADMIN MANAGEMENT)
+# REGISTERED PARTNER SHOPS
 # ==============================================================================
 
 @app.get("/api/shops")
@@ -604,7 +603,6 @@ async def register_shop(
     tagline: str = Form(""),
     avatar_file: Optional[UploadFile] = File(None),
 ):
-    """Super Admin (CEO) registers a business owner with an isolated portfolio & login."""
     require_super_admin(request)
     clean_name = name.strip()
     clean_user = owner_username.strip()
@@ -1163,12 +1161,8 @@ async def save_product(
             else (extract_cloudinary_public_id(clean_video_link) or "")
         )
     else:
-        if existing_data and old_video_url:
-            delete_from_cloudinary(
-                public_id=old_video_public_id, url=old_video_url, resource_type="video"
-            )
-        final_video_url = ""
-        final_video_public_id = ""
+        final_video_url = old_video_url
+        final_video_public_id = old_video_public_id
 
     product_doc: Dict[str, Any] = {
         "shop_id": effective_shop,
@@ -2025,12 +2019,8 @@ async def save_settings(
             else (extract_cloudinary_public_id(clean_link) or "")
         )
     else:
-        if old_video:
-            delete_from_cloudinary(
-                public_id=old_video_public_id, url=old_video, resource_type="video"
-            )
-        final_video = ""
-        final_video_public_id = ""
+        final_video = old_video
+        final_video_public_id = old_video_public_id
 
     uploaded_awareness_url, uploaded_awareness_public_id = upload_to_cloudinary(
         awareness_image_file, folder="sammyreks_awareness", resource_type="image", max_dim=800

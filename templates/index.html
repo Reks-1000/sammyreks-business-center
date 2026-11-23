@@ -1248,7 +1248,7 @@
                     <div class="col-md-3 col-6">
                       <div class="form-check form-switch">
                         <input class="form-check-input" type="checkbox" id="setShowStockOnCards" checked />
-                        <label class="form-check-label" for="setShowStockOnCards">Show Stock Count on Cards</label>
+                        <label class="form-check-label" for="setShowStockOnCards">Show Availability (In Stock / Out of Stock) on Cards</label>
                       </div>
                     </div>
                     <div class="col-md-3 col-6">
@@ -2392,6 +2392,7 @@
               count,
               default_stock_cartons: defaultStock,
               fetch_video: fetchVideo,
+              location: "Watt Market, Calabar",
             }),
           });
           state.autoStockItems = Array.isArray(res.items) ? res.items : [];
@@ -2906,6 +2907,7 @@
             const rLbl = p.unit_retail_label || "Retail Unit";
             const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
             const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+            const isAvailable = stockVal > 0;
             const hasAd = cfg.showWatchAd && hasValidVideoUrl(p.video_url);
             const vendorBadgeHtml =
               cfg.showVendorBadges && p.vendor_name
@@ -2915,8 +2917,12 @@
               ? `<div class="product-img-wrap"><img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(p.name)}" loading="lazy" /></div>`
               : `<div class="product-img-wrap text-muted"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
 
+            const availabilityBadge = isAvailable
+              ? `<span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">In Stock</span>`
+              : `<span class="badge bg-danger-subtle text-danger-emphasis border border-danger-subtle">Out of Stock</span>`;
+
             const metaLine = cfg.showStockOnCards
-              ? `Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}`
+              ? `${availabilityBadge} &bull; ${escapeHtml(p.category || "General")}`
               : `${escapeHtml(p.category || "General")}`;
 
             return `
@@ -2940,18 +2946,18 @@
                   }
                   <div class="row g-1 mb-2">
                     <div class="col-7">
-                      <select class="form-select form-select-sm card-unit-sel">
+                      <select class="form-select form-select-sm card-unit-sel" ${isAvailable ? "" : "disabled"}>
                         <option value="${escapeHtml(rLbl)}">${escapeHtml(rLbl)} (${formatMoney(p.price_retail ?? displayPrice)})</option>
                         <option value="${escapeHtml(pLbl)}">${escapeHtml(pLbl)} (${formatMoney(p.price_pack ?? displayPrice)})</option>
                         <option value="${escapeHtml(mLbl)}">${escapeHtml(mLbl)} (${formatMoney(p.price_carton ?? displayPrice)})</option>
                       </select>
                     </div>
                     <div class="col-5">
-                      <input type="number" min="1" value="1" class="form-control form-control-sm card-qty-inp" />
+                      <input type="number" min="1" value="1" class="form-control form-control-sm card-qty-inp" ${isAvailable ? "" : "disabled"} />
                     </div>
                   </div>
-                  <button type="button" class="btn btn-primary btn-sm w-100" data-action="add-to-cart" data-id="${escapeHtml(p.id)}">
-                    <i class="fa-solid fa-cart-plus me-1"></i>Add to Cart
+                  <button type="button" class="btn ${isAvailable ? "btn-primary" : "btn-secondary"} btn-sm w-100" data-action="add-to-cart" data-id="${escapeHtml(p.id)}" ${isAvailable ? "" : "disabled"}>
+                    <i class="fa-solid ${isAvailable ? "fa-cart-plus" : "fa-ban"} me-1"></i>${isAvailable ? "Add to Cart" : "Out of Stock"}
                   </button>
                 </div>
               </div>
@@ -3751,6 +3757,10 @@
       } else if (action === "add-to-cart") {
         const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
         if (!prod) return;
+        if (Number(prod.qty_cartons ?? prod.stock ?? 0) <= 0) {
+          showBanner(`"${prod.name}" is currently out of stock.`, "warning");
+          return;
+        }
         const card = target.closest(".card");
         const unit = card ? card.querySelector(".card-unit-sel").value : prod.unit_retail_label || "Retail Unit";
         const qty = card ? Math.max(1, Number(card.querySelector(".card-qty-inp").value || 1)) : 1;

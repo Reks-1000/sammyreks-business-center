@@ -1,6 +1,7 @@
 import asyncio
 import re
 from typing import Any, Dict, List, Optional
+from urllib.parse import urlparse
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -11,6 +12,19 @@ OFF_SEARCH_URL = "https://world.openfoodfacts.org/cgi/search.pl"
 OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 
 USER_AGENT = "SammyreksBusinessCenter/2.0 (Calabar-Nigeria-POS)"
+
+
+def sanitize_url(url: str) -> str:
+    clean = str(url or "").strip()
+    if not clean:
+        return ""
+    parsed = urlparse(clean)
+    if parsed.scheme in {"http", "https"} and parsed.netloc:
+        return clean
+    if clean.startswith("/static/"):
+        return clean
+    return ""
+
 
 # ==============================================================================
 # 1. NIGERIAN FMCG MASTER CATALOG (Exact Pack Ratios & Naira Benchmarks)
@@ -487,3 +501,40 @@ async def lookup_barcode(barcode: str) -> Dict[str, Any]:
             item["vendor_name"] = str(p["brands"]).split(",")[0].strip()
 
         return {"status": "ok", "item": item}
+
+
+# ==============================================================================
+# 3. LEGACY COMPATIBILITY SHIMS (Prevents ImportError in main.py)
+# ==============================================================================
+def lookup_barcode_or_keyword(query: str, location: str = "Watt Market, Calabar") -> Dict[str, Any]:
+    clean = str(query or "").strip()
+    if clean.isdigit() and len(clean) >= 8:
+        res = asyncio.run(lookup_barcode(clean))
+        return res.get("item", {})
+    async def _run() -> Dict[str, Any]:
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            return await build_enriched_product(client, clean, 5.0, location)
+    return asyncio.run(_run())
+
+
+def fetch_category_preview_items(
+    category: str = "Beverages",
+    limit: int = 8,
+    location: str = "Watt Market, Calabar",
+    **_: Any,
+) -> List[Dict[str, Any]]:
+    matches = [
+        entry["name"]
+        for entry in NIGERIAN_FMCG_CATALOG
+        if category.lower() in {"all", "general"} or entry["category"].lower() == category.lower()
+    ][:limit]
+    if not matches:
+        matches = [entry["name"] for entry in NIGERIAN_FMCG_CATALOG[:limit]]
+
+    async def _run() -> List[Dict[str, Any]]:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            return await asyncio.gather(
+                *[build_enriched_product(client, name, 5.0, location) for name in matches]
+            )
+
+    return asyncio.run(_run())

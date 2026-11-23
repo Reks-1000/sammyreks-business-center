@@ -1,688 +1,489 @@
-import ipaddress
-import json
+import asyncio
 import re
-import socket
-import time
 from typing import Any, Dict, List, Optional
-from urllib.parse import quote, quote_plus, unquote, urlparse
-from urllib.request import Request, urlopen
+import httpx
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
 
-SINGLE_UNIT_CATEGORIES = {
-    "electronics",
-    "electronics & accessories",
-    "accessories",
-    "gadgets",
-    "phones",
-    "appliances",
-    "cosmetics",
-    "fashion",
-    "stationery",
-    "hardware",
-}
+router = APIRouter(prefix="/api/auto-stock", tags=["auto-stock"])
 
-SINGLE_UNIT_KEYWORDS = (
-    "charger",
-    "cable",
-    "earpod",
-    "earbud",
-    "headset",
-    "power bank",
-    "powerbank",
-    "speaker",
-    "watch",
-    "iron",
-    "kettle",
-    "blender",
-    "fan",
-    "bulb",
-    "extension",
-    "adapter",
-    "mouse",
-    "keyboard",
-)
+OFF_SEARCH_URL = "https://world.openfoodfacts.org/cgi/search.pl"
+OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 
-POPULAR_MARKET_CATALOG: Dict[str, List[Dict[str, Any]]] = {
-    "beverages": [
-        {
-            "name": "Maltina Classic Can 330ml",
-            "vendor_name": "Nigerian Breweries",
-            "price_retail": 650.0,
-            "popularity": 98,
-            "markets": ["calabar", "watt market", "marian market", "cross river", "nigeria"],
-            "image_query": "Maltina malt drink can",
-            "description": "Top-selling chilled malt drink across Calabar & Watt Market stalls.",
-        },
-        {
-            "name": "Coca-Cola Pet 500ml",
-            "vendor_name": "Coca-Cola HBC",
-            "price_retail": 450.0,
-            "popularity": 97,
-            "markets": ["calabar", "watt market", "marian market", "cross river", "nigeria"],
-            "image_query": "Coca-Cola 500ml bottle",
-            "description": "High-turnover sparkling cola drink in 500ml PET bottle.",
-        },
-        {
-            "name": "Lacasa Milk Drink 200ml",
-            "vendor_name": "Lacasa",
-            "price_retail": 350.0,
-            "popularity": 94,
-            "markets": ["calabar", "watt market", "cross river", "nigeria"],
-            "image_query": "milk drink carton 200ml",
-            "description": "Fast-moving daily refreshment milk drink pack.",
-        },
-        {
-            "name": "Fearless Energy Drink 500ml",
-            "vendor_name": "Rite Foods",
-            "price_retail": 500.0,
-            "popularity": 92,
-            "markets": ["calabar", "watt market", "marian market", "cross river", "nigeria"],
-            "image_query": "energy drink bottle 500ml",
-            "description": "High-demand energy drink among market traders and commuters.",
-        },
-        {
-            "name": "Chi Exotic Mango Nectar 1L",
-            "vendor_name": "Chi Limited",
-            "price_retail": 2200.0,
-            "popularity": 89,
-            "markets": ["calabar", "watt market", "marian market", "nigeria"],
-            "image_query": "mango fruit juice carton 1L",
-            "description": "Popular family-size tropical fruit juice pack.",
-        },
-        {
-            "name": "Pepsi Pet 500ml",
-            "vendor_name": "Seven-Up Bottling",
-            "price_retail": 400.0,
-            "popularity": 88,
-            "markets": ["calabar", "watt market", "nigeria"],
-            "image_query": "Pepsi bottle 500ml",
-            "description": "Everyday carbonated cola drink in 500ml bottle.",
-        },
-    ],
-    "provisions": [
-        {
-            "name": "Peak Evaporated Milk Tin 150g",
-            "vendor_name": "FrieslandCampina WAMCO",
-            "price_retail": 850.0,
-            "popularity": 99,
-            "markets": ["calabar", "watt market", "marian market", "cross river", "nigeria"],
-            "image_query": "evaporated milk tin",
-            "description": "Household staple evaporated milk tin in high daily demand.",
-        },
-        {
-            "name": "Milo Refill Sachet 400g",
-            "vendor_name": "Nestle Nigeria",
-            "price_retail": 2600.0,
-            "popularity": 96,
-            "markets": ["calabar", "watt market", "marian market", "nigeria"],
-            "image_query": "Nestle Milo chocolate powder pack",
-            "description": "Fast-selling chocolate malt beverage refill pack.",
-        },
-        {
-            "name": "Cowbell Milk Sachet 12g (Roll)",
-            "vendor_name": "Promasidor",
-            "price_retail": 150.0,
-            "popularity": 95,
-            "markets": ["calabar", "watt market", "cross river", "nigeria"],
-            "image_query": "powdered milk sachet",
-            "description": "High-volume single-serve milk sachet for daily retail.",
-        },
-        {
-            "name": "Golden Morn Maize Cereal 450g",
-            "vendor_name": "Nestle Nigeria",
-            "price_retail": 2100.0,
-            "popularity": 91,
-            "markets": ["calabar", "watt market", "marian market", "nigeria"],
-            "image_query": "breakfast cereal pack",
-            "description": "Popular ready-to-eat maize & soya breakfast cereal.",
-        },
-        {
-            "name": "Bournvita Refill Pack 450g",
-            "vendor_name": "Cadbury Nigeria",
-            "price_retail": 2400.0,
-            "popularity": 89,
-            "markets": ["calabar", "watt market", "nigeria"],
-            "image_query": "Bournvita chocolate drink pack",
-            "description": "Rich cocoa food drink refill pack.",
-        },
-    ],
-    "noodles": [
-        {
-            "name": "Indomie Chicken Pepper 70g",
-            "vendor_name": "Dufil Prima Foods",
-            "price_retail": 300.0,
-            "popularity": 99,
-            "markets": ["calabar", "watt market", "marian market", "cross river", "nigeria"],
-            "image_query": "Indomie instant noodles pack",
-            "description": "#1 fastest-selling instant noodle pack in Calabar markets.",
-        },
-        {
-            "name": "Indomie Super Pack 120g",
-            "vendor_name": "Dufil Prima Foods",
-            "price_retail": 500.0,
-            "popularity": 95,
-            "markets": ["calabar", "watt market", "marian market", "nigeria"],
-            "image_query": "instant noodles 120g pack",
-            "description": "Large-portion chicken instant noodles in strong demand.",
-        },
-        {
-            "name": "Golden Penny Noodles Jollof 70g",
-            "vendor_name": "FMN",
-            "price_retail": 300.0,
-            "popularity": 90,
-            "markets": ["calabar", "watt market", "nigeria"],
-            "image_query": "instant noodles packet",
-            "description": "Seasoned Jollof-flavored instant noodles.",
-        },
-        {
-            "name": "Mimee Noodles Chicken 70g",
-            "vendor_name": "May & Baker",
-            "price_retail": 280.0,
-            "popularity": 86,
-            "markets": ["calabar", "watt market", "cross river", "nigeria"],
-            "image_query": "chicken instant noodles",
-            "description": "Value-priced chicken instant noodles.",
-        },
-    ],
-    "soaps & detergents": [
-        {
-            "name": "Sunlight Detergent Powder 900g",
-            "vendor_name": "Unilever",
-            "price_retail": 2600.0,
-            "popularity": 96,
-            "markets": ["calabar", "watt market", "marian market", "nigeria"],
-            "image_query": "washing detergent powder bag",
-            "description": "High-turnover laundry washing powder.",
-        },
-        {
-            "name": "Dettol Antiseptic Bar Soap 110g",
-            "vendor_name": "Reckitt",
-            "price_retail": 950.0,
-            "popularity": 94,
-            "markets": ["calabar", "watt market", "marian market", "nigeria"],
-            "image_query": "antibacterial bar soap",
-            "description": "Trusted antibacterial bathing soap bar.",
-        },
-        {
-            "name": "Viva Plus Detergent 850g",
-            "vendor_name": "Aspira Nigeria",
-            "price_retail": 2200.0,
-            "popularity": 92,
-            "markets": ["calabar", "watt market", "cross river", "nigeria"],
-            "image_query": "laundry detergent packet",
-            "description": "Fast-moving multi-purpose detergent powder.",
-        },
-        {
-            "name": "Joy Beauty Soap 100g",
-            "vendor_name": "PZ Cussons",
-            "price_retail": 550.0,
-            "popularity": 88,
-            "markets": ["calabar", "watt market", "nigeria"],
-            "image_query": "toilet beauty soap bar",
-            "description": "Everyday moisturizing bar soap.",
-        },
-    ],
-    "electronics & accessories": [
-        {
-            "name": "Oraimo Fast Wall Charger 20W",
-            "vendor_name": "Oraimo",
-            "price_retail": 7500.0,
-            "popularity": 98,
-            "markets": ["calabar", "watt market", "marian market", "cross river", "nigeria"],
-            "image_query": "USB wall charger adapter",
-            "description": "Top-requested fast phone charger around Watt Market phone stalls.",
-        },
-        {
-            "name": "Oraimo Type-C Braided Cable 1m",
-            "vendor_name": "Oraimo",
-            "price_retail": 3500.0,
-            "popularity": 96,
-            "markets": ["calabar", "watt market", "marian market", "nigeria"],
-            "image_query": "USB-C braided charging cable",
-            "description": "Durable fast-charge USB-C cable in high daily demand.",
-        },
-        {
-            "name": "Oraimo 20000mAh Power Bank",
-            "vendor_name": "Oraimo",
-            "price_retail": 24000.0,
-            "popularity": 95,
-            "markets": ["calabar", "watt market", "marian market", "cross river", "nigeria"],
-            "image_query": "portable power bank 20000mah",
-            "description": "High-capacity backup power bank sought after by students & traders.",
-        },
-        {
-            "name": "Oraimo FreePods Wireless Earbuds",
-            "vendor_name": "Oraimo",
-            "price_retail": 18500.0,
-            "popularity": 91,
-            "markets": ["calabar", "watt market", "nigeria"],
-            "image_query": "wireless bluetooth earbuds case",
-            "description": "Popular true-wireless Bluetooth earbuds with charging case.",
-        },
-    ],
-}
+USER_AGENT = "SammyreksBusinessCenter/2.0 (Calabar-Nigeria-POS)"
 
-_IMAGE_CACHE: Dict[str, str] = {}
-
-
-def is_safe_public_https_url(url: str) -> bool:
-    clean = (url or "").strip()
-    if not clean:
-        return False
-    if clean.startswith("data:image/svg+xml;utf8,"):
-        return True
-    try:
-        parsed = urlparse(clean)
-    except Exception:
-        return False
-    if parsed.scheme != "https" or not parsed.hostname:
-        return False
-
-    host = parsed.hostname.lower().strip(".")
-    if host in {"localhost", "127.0.0.1", "0.0.0.0", "::1"} or host.endswith(".local"):
-        return False
-
-    try:
-        ip_obj = ipaddress.ip_address(host)
-        if (
-            ip_obj.is_private
-            or ip_obj.is_loopback
-            or ip_obj.is_link_local
-            or ip_obj.is_multicast
-            or ip_obj.is_reserved
-            or ip_obj.is_unspecified
-        ):
-            return False
-        return True
-    except ValueError:
-        pass
-
-    try:
-        infos = socket.getaddrinfo(host, None, type=socket.SOCK_STREAM)
-        for info in infos:
-            addr_str = info[4][0]
-            ip_obj = ipaddress.ip_address(addr_str)
-            if (
-                ip_obj.is_private
-                or ip_obj.is_loopback
-                or ip_obj.is_link_local
-                or ip_obj.is_multicast
-                or ip_obj.is_reserved
-                or ip_obj.is_unspecified
-            ):
-                return False
-    except OSError:
-        return False
-
-    return True
-
-
-def sanitize_url(url: str) -> str:
-    clean = (url or "").strip()
-    return clean if is_safe_public_https_url(clean) else ""
-
-
-def _build_svg_badge_data_url(product_name: str, category: str) -> str:
-    initials = "".join([w[0].upper() for w in re.findall(r"[A-Za-z0-9]+", product_name)[:2]]) or "PR"
-    cat_short = re.sub(r"[^A-Za-z0-9 &]", "", category or "STORE")[:16].upper()
-    svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">'
-        f'<rect width="160" height="160" rx="18" fill="#166534"/>'
-        f'<text x="80" y="86" font-family="Arial,sans-serif" font-size="44" font-weight="bold" '
-        f'fill="#ffffff" text-anchor="middle">{initials}</text>'
-        f'<text x="80" y="128" font-family="Arial,sans-serif" font-size="13" '
-        f'fill="#bbf7d0" text-anchor="middle">{cat_short}</text>'
-        f"</svg>"
-    )
-    return "data:image/svg+xml;utf8," + quote(svg)
-
-
-def _http_get_json(url: str, timeout_sec: float = 3.5, retries: int = 1) -> Optional[Dict[str, Any]]:
-    if not is_safe_public_https_url(url):
-        return None
-    req = Request(
-        url,
-        headers={
-            "User-Agent": "SammyreksBusinessCenter/24.6 (https://example.com; market-sync)",
-            "Accept": "application/json",
-        },
-    )
-    for attempt in range(retries + 1):
-        try:
-            with urlopen(req, timeout=timeout_sec) as resp:
-                raw = resp.read().decode("utf-8", errors="replace")
-                return json.loads(raw)
-        except Exception:
-            if attempt < retries:
-                time.sleep(0.4 * (attempt + 1))
-    return None
-
-
-def resolve_product_image_url(query: str, product_name: str, category: str) -> str:
-    cache_key = f"{query}|{product_name}".lower().strip()
-    if cache_key in _IMAGE_CACHE:
-        return _IMAGE_CACHE[cache_key]
-
-    search_q = (query or product_name or "").strip()
-    if search_q:
-        wiki_url = (
-            "https://commons.wikimedia.org/w/api.php?action=query&generator=search"
-            f"&gsrsearch={quote_plus(search_q)}&gsrnamespace=6&gsrlimit=3"
-            "&prop=imageinfo&iiprop=url&iiurlwidth=320&format=json"
-        )
-        wdata = _http_get_json(wiki_url, timeout_sec=3.0, retries=0)
-        pages = ((wdata or {}).get("query") or {}).get("pages") if isinstance(wdata, dict) else None
-        if isinstance(pages, dict):
-            for page in pages.values():
-                ii = (page or {}).get("imageinfo")
-                if isinstance(ii, list) and ii:
-                    thumb = sanitize_url(ii[0].get("thumburl") or ii[0].get("url") or "")
-                    if thumb and not thumb.lower().endswith(".pdf"):
-                        _IMAGE_CACHE[cache_key] = thumb
-                        return thumb
-
-        off_url = (
-            f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={quote_plus(search_q)}"
-            "&search_simple=1&action=process&json=1&page_size=3"
-        )
-        odata = _http_get_json(off_url, timeout_sec=3.0, retries=0)
-        prods = (odata or {}).get("products") if isinstance(odata, dict) else None
-        if isinstance(prods, list):
-            for p in prods:
-                if not isinstance(p, dict):
-                    continue
-                img = sanitize_url(p.get("image_front_small_url") or p.get("image_front_url") or "")
-                if img:
-                    _IMAGE_CACHE[cache_key] = img
-                    return img
-
-    fallback_svg = _build_svg_badge_data_url(product_name, category)
-    _IMAGE_CACHE[cache_key] = fallback_svg
-    return fallback_svg
-
-
-def infer_packaging_profile(category: str, name: str, base_retail_price: float) -> Dict[str, Any]:
-    cat_key = (category or "").strip().lower()
-    name_key = (name or "").strip().lower()
-    retail = round(max(50.0, float(base_retail_price or 500.0)), 2)
-
-    is_single = cat_key in SINGLE_UNIT_CATEGORIES or any(k in name_key for k in SINGLE_UNIT_KEYWORDS)
-
-    if is_single:
-        return {
-            "main_unit": "Unit",
-            "sub_unit": "Unit",
-            "retail_unit": "Piece",
-            "packs_per_carton": 1,
-            "units_per_pack": 1,
-            "price_carton": retail,
-            "price_pack": retail,
-            "price_retail": retail,
-            "cost_price_carton": round(retail * 0.78, 2),
-            "packaging_note": "Sold individually per single piece/unit.",
-        }
-
-    packs = 12
-    units = 1
-    pack_price = round(retail * 0.92, 2)
-    carton_price = round(pack_price * packs * 0.95, 2)
-    return {
+# ==============================================================================
+# 1. NIGERIAN FMCG MASTER CATALOG (Exact Pack Ratios & Naira Benchmarks)
+# ==============================================================================
+NIGERIAN_FMCG_CATALOG: List[Dict[str, Any]] = [
+    {
+        "keywords": ["maltina", "maltina classic", "maltina can"],
+        "name": "Maltina Classic Can 330ml (x24)",
+        "category": "Beverages",
+        "vendor_name": "Nigerian Breweries",
         "main_unit": "Carton",
         "sub_unit": "Pack",
-        "retail_unit": "Piece",
-        "packs_per_carton": packs,
-        "units_per_pack": units,
-        "price_carton": carton_price,
-        "price_pack": pack_price,
-        "price_retail": retail,
-        "cost_price_carton": round(carton_price * 0.80, 2),
-        "packaging_note": f"Available per Carton ({packs} Packs), Pack, or single Piece.",
+        "retail_unit": "Can",
+        "packs_per_carton": 4,
+        "units_per_pack": 6,
+        "cost_price_carton": 13200.0,
+        "price_carton": 14400.0,
+        "price_pack": 3700.0,
+        "price_retail": 650.0,
+        "description": "Rich non-alcoholic malt drink fortified with vitamins. Available per Carton (24 Cans), 6-Pack, or single Can.",
+        "off_query": "Maltina malt drink",
+    },
+    {
+        "keywords": ["amstel", "amstel malta"],
+        "name": "Amstel Malta Can 330ml (x24)",
+        "category": "Beverages",
+        "vendor_name": "Nigerian Breweries",
+        "main_unit": "Carton",
+        "sub_unit": "Pack",
+        "retail_unit": "Can",
+        "packs_per_carton": 4,
+        "units_per_pack": 6,
+        "cost_price_carton": 13500.0,
+        "price_carton": 14800.0,
+        "price_pack": 3800.0,
+        "price_retail": 650.0,
+        "description": "Low-sugar premium malt beverage brewed with pure malted barley. Sold in Cartons, 6-Packs, or single Cans.",
+        "off_query": "Amstel Malta",
+    },
+    {
+        "keywords": ["sprite", "sprite 50cl"],
+        "name": "Sprite PET Bottle 50cl (x12)",
+        "category": "Beverages",
+        "vendor_name": "Nigerian Bottling Company",
+        "main_unit": "Pack",
+        "sub_unit": "Half-Pack",
+        "retail_unit": "Bottle",
+        "packs_per_carton": 2,
+        "units_per_pack": 6,
+        "cost_price_carton": 4400.0,
+        "price_carton": 5000.0,
+        "price_pack": 2600.0,
+        "price_retail": 450.0,
+        "description": "Crisp lemon-lime sparkling soft drink (50cl PET). Fast-moving chilled refreshment for retail and events.",
+        "off_query": "Sprite 50cl",
+    },
+    {
+        "keywords": ["coca cola", "coke", "coca-cola 50cl"],
+        "name": "Coca-Cola PET Bottle 50cl (x12)",
+        "category": "Beverages",
+        "vendor_name": "Nigerian Bottling Company",
+        "main_unit": "Pack",
+        "sub_unit": "Half-Pack",
+        "retail_unit": "Bottle",
+        "packs_per_carton": 2,
+        "units_per_pack": 6,
+        "cost_price_carton": 4400.0,
+        "price_carton": 5000.0,
+        "price_pack": 2600.0,
+        "price_retail": 450.0,
+        "description": "Classic Coca-Cola 50cl PET bottle pack of 12. High-turnover beverage for stores, restaurants, and events.",
+        "off_query": "Coca-Cola 50cl",
+    },
+    {
+        "keywords": ["fanta", "fanta orange"],
+        "name": "Fanta Orange PET 50cl (x12)",
+        "category": "Beverages",
+        "vendor_name": "Nigerian Bottling Company",
+        "main_unit": "Pack",
+        "sub_unit": "Half-Pack",
+        "retail_unit": "Bottle",
+        "packs_per_carton": 2,
+        "units_per_pack": 6,
+        "cost_price_carton": 4400.0,
+        "price_carton": 5000.0,
+        "price_pack": 2600.0,
+        "price_retail": 450.0,
+        "description": "Fruity orange carbonated soft drink in 50cl PET bottles (12 bottles per pack).",
+        "off_query": "Fanta Orange 50cl",
+    },
+    {
+        "keywords": ["hollandia", "hollandia yoghurt", "hollandia evap"],
+        "name": "Hollandia Yoghurt Plain Sweetened 1L (x10)",
+        "category": "Dairy & Breakfast",
+        "vendor_name": "CHI Limited",
+        "main_unit": "Carton",
+        "sub_unit": "Half-Carton",
+        "retail_unit": "Pack",
+        "packs_per_carton": 2,
+        "units_per_pack": 5,
+        "cost_price_carton": 13500.0,
+        "price_carton": 14800.0,
+        "price_pack": 7500.0,
+        "price_retail": 1550.0,
+        "description": "Creamy, nutritious 1-litre Hollandia drinking yoghurt. Ideal for family breakfast and chilled retail.",
+        "off_query": "Hollandia yoghurt",
+    },
+    {
+        "keywords": ["indomie", "indomie chicken", "indomie super", "indomie onion"],
+        "name": "Indomie Instant Noodles Chicken 70g (x40)",
+        "category": "Noodles & Pasta",
+        "vendor_name": "Dufil Prima Foods",
+        "main_unit": "Carton",
+        "sub_unit": "Half-Carton",
+        "retail_unit": "Pack",
+        "packs_per_carton": 2,
+        "units_per_pack": 20,
+        "cost_price_carton": 8800.0,
+        "price_carton": 9600.0,
+        "price_pack": 4900.0,
+        "price_retail": 260.0,
+        "description": "Nigeria's #1 instant noodles (70g standard pack, 40 packs per carton). Ready in 3 minutes.",
+        "off_query": "Indomie instant noodles",
+    },
+    {
+        "keywords": ["golden penny spaghetti", "spaghetti", "golden penny pasta"],
+        "name": "Golden Penny Spaghetti 500g (x20)",
+        "category": "Noodles & Pasta",
+        "vendor_name": "Flour Mills of Nigeria",
+        "main_unit": "Carton",
+        "sub_unit": "Half-Carton",
+        "retail_unit": "Pack",
+        "packs_per_carton": 2,
+        "units_per_pack": 10,
+        "cost_price_carton": 14600.0,
+        "price_carton": 15800.0,
+        "price_pack": 8000.0,
+        "price_retail": 850.0,
+        "description": "Non-sticky durum wheat spaghetti fortified with vitamins (500g x 20 packs per carton).",
+        "off_query": "Golden Penny spaghetti",
+    },
+    {
+        "keywords": ["peak", "peak milk", "peak refill", "peak evaporated"],
+        "name": "Peak Evaporated Full Cream Milk 160g (x24)",
+        "category": "Dairy & Breakfast",
+        "vendor_name": "FrieslandCampina WAMCO",
+        "main_unit": "Carton",
+        "sub_unit": "Tray",
+        "retail_unit": "Tin",
+        "packs_per_carton": 4,
+        "units_per_pack": 6,
+        "cost_price_carton": 15800.0,
+        "price_carton": 17200.0,
+        "price_pack": 4400.0,
+        "price_retail": 750.0,
+        "description": "Rich, creamy Peak evaporated milk fortified with 28 vitamins & minerals (24 tins per carton).",
+        "off_query": "Peak evaporated milk",
+    },
+    {
+        "keywords": ["milo", "nestle milo", "milo refill"],
+        "name": "Nestle Milo Activ-Go Refill 400g (x12)",
+        "category": "Dairy & Breakfast",
+        "vendor_name": "Nestle Nigeria",
+        "main_unit": "Carton",
+        "sub_unit": "Half-Carton",
+        "retail_unit": "Pack",
+        "packs_per_carton": 2,
+        "units_per_pack": 6,
+        "cost_price_carton": 25200.0,
+        "price_carton": 27000.0,
+        "price_pack": 13600.0,
+        "price_retail": 2350.0,
+        "description": "Nutritious chocolate malt energy food drink for active mornings (400g refill pouch).",
+        "off_query": "Nestle Milo",
+    },
+    {
+        "keywords": ["golden morn"],
+        "name": "Nestle Golden Morn Maize & Soya 500g (x12)",
+        "category": "Dairy & Breakfast",
+        "vendor_name": "Nestle Nigeria",
+        "main_unit": "Carton",
+        "sub_unit": "Half-Carton",
+        "retail_unit": "Pack",
+        "packs_per_carton": 2,
+        "units_per_pack": 6,
+        "cost_price_carton": 17400.0,
+        "price_carton": 18800.0,
+        "price_pack": 9500.0,
+        "price_retail": 1650.0,
+        "description": "Wholesome maize and soya cereal enriched with iron and vitamins. Just add water or milk.",
+        "off_query": "Golden Morn cereal",
+    },
+    {
+        "keywords": ["hypo", "hypo bleach", "hypo sachet"],
+        "name": "Hypo Bleach Super Sachet 50ml (x60)",
+        "category": "Soaps & Detergents",
+        "vendor_name": "Hypo Homecare Products",
+        "main_unit": "Carton",
+        "sub_unit": "Roll",
+        "retail_unit": "Sachet",
+        "packs_per_carton": 6,
+        "units_per_pack": 10,
+        "cost_price_carton": 4200.0,
+        "price_carton": 4800.0,
+        "price_pack": 850.0,
+        "price_retail": 100.0,
+        "description": "Fast-acting germ-killing and stain-removing bleach sachets for laundry and home sanitation.",
+        "off_query": "Hypo bleach",
+    },
+    {
+        "keywords": ["sunlight", "sunlight detergent", "viva", "ariel", "omo"],
+        "name": "Sunlight 2-in-1 Washing Powder 850g (x10)",
+        "category": "Soaps & Detergents",
+        "vendor_name": "Unilever Nigeria",
+        "main_unit": "Carton",
+        "sub_unit": "Half-Carton",
+        "retail_unit": "Pack",
+        "packs_per_carton": 2,
+        "units_per_pack": 5,
+        "cost_price_carton": 16500.0,
+        "price_carton": 18000.0,
+        "price_pack": 9100.0,
+        "price_retail": 1900.0,
+        "description": "Deep-cleansing laundry detergent with long-lasting sensational freshness.",
+        "off_query": "Sunlight washing powder",
+    },
+    {
+        "keywords": ["dettol", "dettol soap", "premier", "lux"],
+        "name": "Dettol Antibacterial Bathing Soap 110g (x48)",
+        "category": "Soaps & Detergents",
+        "vendor_name": "Reckitt Nigeria",
+        "main_unit": "Carton",
+        "sub_unit": "Dozen",
+        "retail_unit": "Tablet",
+        "packs_per_carton": 4,
+        "units_per_pack": 12,
+        "cost_price_carton": 24000.0,
+        "price_carton": 26400.0,
+        "price_pack": 6700.0,
+        "price_retail": 600.0,
+        "description": "Trusted daily antibacterial protection bar soap for healthy family skin hygiene.",
+        "off_query": "Dettol soap",
+    },
+]
+
+# ==============================================================================
+# 2. AUTOMATIC CATEGORY CLASSIFIER (Keyword -> Store Category)
+# ==============================================================================
+CATEGORY_RULES: List[tuple[str, List[str]]] = [
+    ("Beverages", ["malt", "maltina", "amstel", "coke", "coca", "fanta", "sprite", "pepsi", "mirinda", "7up", "chivita", "chi exotic", "fearless", "predator", "monster", "lucozade", "ribena", "water", "eva", "aquafina", "drink", "juice", "soda", "wine"]),
+    ("Noodles & Pasta", ["indomie", "noodle", "spaghetti", "macaroni", "pasta", "golden penny", "minimie", "dangote", "chikki", "tummy"]),
+    ("Dairy & Breakfast", ["milk", "peak", "three crowns", "cowbell", "dano", "loya", "hollandia", "yoghurt", "milo", "bournvita", "ovaltine", "golden morn", "cornflakes", "kellogg", "quaker", "oats", "tea", "lipton", "top tea", "coffee", "nescafe", "sugar"]),
+    ("Soaps & Detergents", ["soap", "detergent", "hypo", "bleach", "omo", "ariel", "sunlight", "viva", "klin", "good mama", "dettol", "premier", "lux", "joy", "morning fresh", "mama lemon", "harpic", "izall"]),
+    ("Biscuits & Snacks", ["biscuit", "cabin", "digestive", "coaster", "shortbread", "gala", "sausage", "chin chin", "plantain chips", "pringles", "cheese balls", "minimie chinchin", "popcorn", "wafer", "sweet", "tom tom", "buttermint"]),
+    ("Cooking & Groceries", ["rice", "beans", "garri", "semovita", "semolina", "wheat", "oil", "power oil", "kings", "mamador", "devon", "maggi", "knorr", "royco", "seasoning", "curry", "thyme", "tomato", "gino", "sonia", "tasty tom", "salt", "flour"]),
+]
+
+
+def classify_product_category(product_name: str, fallback: str = "General") -> str:
+    lower = (product_name or "").strip().lower()
+    if not lower:
+        return fallback
+    for category_name, keywords in CATEGORY_RULES:
+        for kw in keywords:
+            if kw in lower:
+                return category_name
+    return fallback
+
+
+def match_nigerian_catalog(query_name: str) -> Optional[Dict[str, Any]]:
+    q = (query_name or "").strip().lower()
+    if not q:
+        return None
+    best_match = None
+    best_score = 0
+    for entry in NIGERIAN_FMCG_CATALOG:
+        for kw in entry["keywords"]:
+            if kw in q or q in kw:
+                score = len(kw)
+                if score > best_score:
+                    best_score = score
+                    best_match = entry
+    return best_match
+
+
+def _extract_best_off_image(product_obj: Dict[str, Any]) -> str:
+    for key in ("image_front_url", "image_url", "image_front_small_url", "image_small_url"):
+        val = str(product_obj.get(key) or "").strip()
+        if val.startswith("http"):
+            return val
+    return ""
+
+
+async def fetch_off_product_by_name(client: httpx.AsyncClient, search_query: str) -> Dict[str, Any]:
+    params = {
+        "search_terms": search_query,
+        "search_simple": 1,
+        "action": "process",
+        "json": 1,
+        "page_size": 6,
+        "fields": "code,product_name,brands,categories,image_front_url,image_url,quantity,generic_name",
     }
+    try:
+        resp = await client.get(OFF_SEARCH_URL, params=params, headers={"User-Agent": USER_AGENT})
+        if resp.status_code != 200:
+            return {}
+        data = resp.json()
+        products = data.get("products") or []
+        for p in products:
+            img = _extract_best_off_image(p)
+            pname = str(p.get("product_name") or "").strip()
+            if img and pname:
+                return {
+                    "name": pname,
+                    "brand": str(p.get("brands") or "").split(",")[0].strip(),
+                    "image_url": img,
+                    "quantity": str(p.get("quantity") or "").strip(),
+                    "generic_name": str(p.get("generic_name") or "").strip(),
+                }
+        if products:
+            first = products[0]
+            return {
+                "name": str(first.get("product_name") or "").strip(),
+                "brand": str(first.get("brands") or "").split(",")[0].strip(),
+                "image_url": _extract_best_off_image(first),
+                "quantity": str(first.get("quantity") or "").strip(),
+                "generic_name": str(first.get("generic_name") or "").strip(),
+            }
+    except Exception:
+        pass
+    return {}
 
 
-def _location_match_score(location: str, item_markets: List[str], base_popularity: int) -> int:
-    loc = (location or "").strip().lower()
-    score = int(base_popularity or 80)
-    if not loc:
-        return score
-
-    tokens = [t for t in re.split(r"[,/\-\s]+", loc) if len(t) > 2]
-    joined_markets = " ".join(m.lower() for m in item_markets)
-
-    if loc in joined_markets:
-        score += 25
-    elif any(tok in joined_markets for tok in tokens):
-        score += 15
-    elif "nigeria" in joined_markets:
-        score += 5
-    return score
-
-
-def build_stock_item(
-    *,
-    name: str,
-    category: str,
-    location: str = "",
-    popularity_score: int = 85,
-    vendor_name: str = "",
-    base_retail_price: float = 500.0,
-    stock_cartons: float = 5.0,
-    description: str = "",
-    image_url: str = "",
-    image_query: str = "",
-    video_url: str = "",
-    source_label: str = "Market Demand Index",
+async def build_enriched_product(
+    client: httpx.AsyncClient,
+    raw_name: str,
+    default_stock: float,
+    location: str,
 ) -> Dict[str, Any]:
-    clean_name = re.sub(r"\s+", " ", (name or "").strip())[:120] or "Store Item"
-    clean_cat = re.sub(r"\s+", " ", (category or "General").strip())[:60] or "General"
-    clean_loc = re.sub(r"\s+", " ", (location or "Calabar").strip())[:80] or "Calabar"
-    clean_vendor = re.sub(r"\s+", " ", (vendor_name or "").strip())[:80]
+    clean_query = raw_name.strip()
+    catalog_hit = match_nigerian_catalog(clean_query)
+    off_query = catalog_hit["off_query"] if catalog_hit else clean_query
+    off_data = await fetch_off_product_by_name(client, off_query)
 
-    safe_img = sanitize_url(image_url) or resolve_product_image_url(image_query, clean_name, clean_cat)
-    safe_vid = sanitize_url(video_url)
-
-    pkg = infer_packaging_profile(clean_cat, clean_name, base_retail_price)
-    base_desc = re.sub(r"\s+", " ", (description or "").strip())[:240]
-    if base_desc:
-        final_desc = f"{base_desc} {pkg['packaging_note']}".strip()
+    if catalog_hit:
+        final_name = catalog_hit["name"]
+        category = catalog_hit["category"]
+        vendor_name = catalog_hit["vendor_name"]
+        main_unit = catalog_hit["main_unit"]
+        sub_unit = catalog_hit["sub_unit"]
+        retail_unit = catalog_hit["retail_unit"]
+        packs_per_carton = catalog_hit["packs_per_carton"]
+        units_per_pack = catalog_hit["units_per_pack"]
+        cost_carton = catalog_hit["cost_price_carton"]
+        price_carton = catalog_hit["price_carton"]
+        price_pack = catalog_hit["price_pack"]
+        price_retail = catalog_hit["price_retail"]
+        description = catalog_hit["description"]
+        benchmark_note = f"Verified {location} wholesale/retail benchmark"
     else:
-        final_desc = f"Popular in {clean_loc}. {pkg['packaging_note']}"
+        resolved_title = off_data.get("name") or clean_query.title()
+        qty_tag = off_data.get("quantity")
+        if qty_tag and qty_tag.lower() not in resolved_title.lower():
+            resolved_title = f"{resolved_title} ({qty_tag})"
+
+        final_name = resolved_title
+        category = classify_product_category(final_name)
+        vendor_name = off_data.get("brand") or "Authorized Distributor"
+        main_unit = "Carton"
+        sub_unit = "Pack"
+        retail_unit = "Piece"
+        packs_per_carton = 2
+        units_per_pack = 12
+        cost_carton = 10800.0
+        price_carton = 12000.0
+        price_pack = 6200.0
+        price_retail = 550.0
+        desc_base = off_data.get("generic_name") or f"Quality {final_name} stocked for wholesale and retail customers."
+        description = f"{desc_base} Available in {main_unit}, {sub_unit}, or single {retail_unit}."
+        benchmark_note = f"Auto-categorized into {category} ({location} est. pricing — verify before publishing)"
 
     return {
-        "name": clean_name,
-        "category": clean_cat,
-        "location": clean_loc,
-        "popularity_score": popularity_score,
-        "vendor_name": clean_vendor,
-        "main_unit": pkg["main_unit"],
-        "sub_unit": pkg["sub_unit"],
-        "retail_unit": pkg["retail_unit"],
-        "price_carton": pkg["price_carton"],
-        "price_pack": pkg["price_pack"],
-        "price_retail": pkg["price_retail"],
-        "cost_price_carton": pkg["cost_price_carton"],
-        "packs_per_carton": pkg["packs_per_carton"],
-        "units_per_pack": pkg["units_per_pack"],
-        "stock_cartons": max(0.0, float(stock_cartons)),
-        "image_url": safe_img,
-        "video_url": safe_vid,
-        "description": final_desc,
-        "price_benchmark_note": (
-            f"Top Seller ({clean_loc}) • {source_label} • Unit: {pkg['main_unit']} "
-            f"({pkg['packs_per_carton']}x{pkg['units_per_pack']})"
-        ),
         "selected": True,
+        "name": final_name,
+        "category": category,
+        "vendor_name": vendor_name,
+        "main_unit": main_unit,
+        "sub_unit": sub_unit,
+        "retail_unit": retail_unit,
+        "packs_per_carton": packs_per_carton,
+        "units_per_pack": units_per_pack,
+        "cost_price_carton": cost_carton,
+        "price_carton": price_carton,
+        "price_pack": price_pack,
+        "price_retail": price_retail,
+        "stock_cartons": default_stock,
+        "image_url": off_data.get("image_url", ""),
+        "video_url": "",
+        "description": description,
+        "price_benchmark_note": benchmark_note,
     }
 
 
-def fetch_category_preview_items(
-    category: str,
-    count: int = 6,
-    default_stock_cartons: float = 5.0,
-    fetch_video: bool = False,
-    location: str = "Watt Market, Calabar",
-) -> Dict[str, Any]:
-    safe_count = max(1, min(15, int(count or 6)))
-    safe_stock = max(0.0, float(default_stock_cartons if default_stock_cartons is not None else 5.0))
-    clean_cat = (category or "Beverages").strip() or "Beverages"
-    clean_loc = (location or "Watt Market, Calabar").strip() or "Watt Market, Calabar"
+class NameBatchAutoStockRequest(BaseModel):
+    product_names: List[str] = Field(..., min_length=1, max_length=25)
+    default_stock_cartons: float = Field(default=5.0, ge=0)
+    location: str = Field(default="Watt Market, Calabar")
 
-    cat_key = clean_cat.lower()
-    pool = POPULAR_MARKET_CATALOG.get(cat_key)
 
-    if not pool:
-        for k, candidates in POPULAR_MARKET_CATALOG.items():
-            if cat_key in k or k in cat_key:
-                pool = candidates
-                break
+@router.post("/search-names")
+async def auto_stock_by_names(payload: NameBatchAutoStockRequest) -> Dict[str, Any]:
+    cleaned_names: List[str] = []
+    seen = set()
+    for raw in payload.product_names:
+        for part in re.split(r"[,;\r\n]+", raw):
+            item = part.strip()
+            if item and item.lower() not in seen:
+                seen.add(item.lower())
+                cleaned_names.append(item)
 
-    ranked_candidates: List[Dict[str, Any]] = []
-    if pool:
-        scored = []
-        for tpl in pool:
-            rank = _location_match_score(clean_loc, tpl.get("markets", []), tpl.get("popularity", 85))
-            scored.append((rank, tpl))
-        scored.sort(key=lambda pair: pair[0], reverse=True)
+    if not cleaned_names:
+        raise HTTPException(status_code=400, detail="Enter at least one product name.")
 
-        for rank, tpl in scored[:safe_count]:
-            ranked_candidates.append(
-                build_stock_item(
-                    name=tpl["name"],
-                    category=clean_cat,
-                    location=clean_loc,
-                    popularity_score=rank,
-                    vendor_name=tpl.get("vendor_name", ""),
-                    base_retail_price=float(tpl.get("price_retail", 600.0)),
-                    stock_cartons=safe_stock,
-                    description=tpl.get("description", ""),
-                    image_url=tpl.get("image_url", ""),
-                    image_query=tpl.get("image_query", tpl["name"]),
-                    source_label=f"Popular in {clean_loc}",
-                )
+    cleaned_names = cleaned_names[:20]
+
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        tasks = [
+            build_enriched_product(
+                client=client,
+                raw_name=name,
+                default_stock=payload.default_stock_cartons,
+                location=payload.location,
             )
-
-    if len(ranked_candidates) < safe_count:
-        needed = safe_count - len(ranked_candidates)
-        off_url = (
-            f"https://world.openfoodfacts.org/cgi/search.pl?search_terms={quote_plus(clean_cat)}"
-            "&tagtype_0=countries&tag_contains_0=contains&tag_0=nigeria"
-            f"&sort_by=unique_scans_n&search_simple=1&action=process&json=1&page_size={needed + 3}"
-        )
-        data = _http_get_json(off_url, timeout_sec=3.5, retries=1)
-        products = (data or {}).get("products") if isinstance(data, dict) else None
-        existing = {it["name"].lower() for it in ranked_candidates}
-
-        if isinstance(products, list):
-            for idx, p in enumerate(products):
-                if len(ranked_candidates) >= safe_count:
-                    break
-                if not isinstance(p, dict):
-                    continue
-                pname = (p.get("product_name") or p.get("product_name_en") or "").strip()
-                if not pname or pname.lower() in existing:
-                    continue
-                brand = (p.get("brands") or "").split(",")[0].strip()
-                img = sanitize_url(p.get("image_front_small_url") or p.get("image_front_url") or "")
-                ranked_candidates.append(
-                    build_stock_item(
-                        name=pname,
-                        category=clean_cat,
-                        location=clean_loc,
-                        popularity_score=max(70, 85 - idx),
-                        vendor_name=brand,
-                        base_retail_price=round(500.0 + (idx * 150.0), 2),
-                        stock_cartons=safe_stock,
-                        description=f"Frequently scanned {clean_cat} item ({clean_loc}).",
-                        image_url=img,
-                        image_query=f"{brand} {pname}".strip(),
-                        source_label=f"Regional Popularity ({clean_loc})",
-                    )
-                )
-                existing.add(pname.lower())
+            for name in cleaned_names
+        ]
+        items = await asyncio.gather(*tasks)
 
     return {
-        "items": ranked_candidates[:safe_count],
-        "location": clean_loc,
-        "source": f"Location Popularity Engine ({clean_loc})",
-        "video_downloaded": False,
+        "status": "ok",
+        "items": items,
+        "count": len(items),
     }
 
 
-def lookup_barcode_or_keyword(
-    query_value: str,
-    default_stock_cartons: float = 5.0,
-    location: str = "Watt Market, Calabar",
-) -> Dict[str, Any]:
-    raw = (query_value or "").strip()
-    if not raw:
-        raise ValueError("Barcode or product query is empty.")
+@router.get("/barcode/{barcode}")
+async def lookup_barcode(barcode: str) -> Dict[str, Any]:
+    clean_code = re.sub(r"[^0-9A-Za-z]", "", barcode or "")
+    if not clean_code:
+        raise HTTPException(status_code=400, detail="Invalid barcode.")
 
-    if raw.lower().startswith(("http://", "https://")):
-        parsed = urlparse(raw)
-        host = (parsed.hostname or "").lower().replace("www.", "")
-        brand = host.split(".")[0] if host else "Store"
-        slug_words = [w for w in re.split(r"[-_/]+", unquote(parsed.path)) if len(w) > 2 and not w.isdigit()]
-        title_guess = " ".join([brand.capitalize()] + [w.capitalize() for w in slug_words[-3:]])
-        item = build_stock_item(
-            name=title_guess or f"{brand.capitalize()} Product",
-            category="Electronics & Accessories" if brand in {"oraimo", "itel", "tecno", "infinix", "jbl", "anker"} else "General",
-            location=location,
-            vendor_name=brand.capitalize(),
-            base_retail_price=5500.0,
-            stock_cartons=default_stock_cartons,
-            description=f"Imported from link reference ({host}).",
-            image_query=title_guess or brand,
-            source_label="URL Keyword Extractor",
+    async with httpx.AsyncClient(timeout=12.0) as client:
+        resp = await client.get(
+            OFF_PRODUCT_URL.format(barcode=clean_code),
+            headers={"User-Agent": USER_AGENT},
         )
-        return {"item": item, "matched_via": "url_keyword"}
+        if resp.status_code != 200:
+            raise HTTPException(status_code=404, detail=f"Barcode {clean_code} not found.")
+        data = resp.json()
+        if data.get("status") != 1 or not data.get("product"):
+            raise HTTPException(status_code=404, detail=f"No product record found for barcode {clean_code}.")
 
-    digits_only = re.sub(r"\D", "", raw)
-    if len(digits_only) >= 8:
-        off_url = f"https://world.openfoodfacts.org/api/v2/product/{quote_plus(digits_only)}.json"
-        data = _http_get_json(off_url, timeout_sec=3.5, retries=1)
-        if isinstance(data, dict) and data.get("status") == 1 and isinstance(data.get("product"), dict):
-            p = data["product"]
-            pname = (p.get("product_name") or p.get("product_name_en") or f"Item {digits_only}").strip()
-            brand = (p.get("brands") or "").split(",")[0].strip()
-            img = sanitize_url(p.get("image_front_small_url") or p.get("image_front_url") or "")
-            item = build_stock_item(
-                name=pname,
-                category="General",
-                location=location,
-                vendor_name=brand,
-                base_retail_price=750.0,
-                stock_cartons=default_stock_cartons,
-                description=(p.get("quantity") or "").strip(),
-                image_url=img,
-                image_query=f"{brand} {pname}".strip(),
-                source_label=f"Barcode {digits_only}",
-            )
-            return {"item": item, "matched_via": "open_food_facts_barcode"}
+        p = data["product"]
+        raw_name = str(p.get("product_name") or p.get("generic_name") or f"Item {clean_code}").strip()
+        item = await build_enriched_product(
+            client=client,
+            raw_name=raw_name,
+            default_stock=5.0,
+            location="Watt Market, Calabar",
+        )
+        direct_img = _extract_best_off_image(p)
+        if direct_img:
+            item["image_url"] = direct_img
+        if p.get("brands"):
+            item["vendor_name"] = str(p["brands"]).split(",")[0].strip()
 
-    needle = raw.lower()
-    for cat_name, pool in POPULAR_MARKET_CATALOG.items():
-        for tpl in pool:
-            if needle in tpl["name"].lower() or needle in (tpl.get("vendor_name") or "").lower() or needle in cat_name:
-                item = build_stock_item(
-                    name=tpl["name"],
-                    category=cat_name.title(),
-                    location=location,
-                    popularity_score=tpl.get("popularity", 90),
-                    vendor_name=tpl.get("vendor_name", ""),
-                    base_retail_price=float(tpl.get("price_retail", 1000.0)),
-                    stock_cartons=default_stock_cartons,
-                    description=tpl.get("description", ""),
-                    image_query=tpl.get("image_query", tpl["name"]),
-                    source_label=f"Popular in {location}",
-                )
-                return {"item": item, "matched_via": "popular_catalog_match"}
-
-    item = build_stock_item(
-        name=raw,
-        category="General",
-        location=location,
-        base_retail_price=1000.0,
-        stock_cartons=default_stock_cartons,
-        image_query=raw,
-        source_label="Manual / Keyword Draft",
-    )
-    return {"item": item, "matched_via": "query_draft"}
+        return {"status": "ok", "item": item}

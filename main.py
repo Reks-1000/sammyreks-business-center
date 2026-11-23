@@ -6,29 +6,43 @@ import json
 import os
 import re
 import secrets
+import tempfile
 import time
 import uuid
 from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
+from urllib.request import Request as UrlRequest, urlopen
 
 import cloudinary
 import cloudinary.uploader
 import firebase_admin
 from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from firebase_admin import credentials, firestore
 
 app = FastAPI(title="Sammyreks Business Center")
 templates = Jinja2Templates(directory="templates")
 
+LOCAL_ADS_DIR = os.path.join("static", "uploads", "ads")
+os.makedirs(LOCAL_ADS_DIR, exist_ok=True)
+if os.path.isdir("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_VIDEO_BYTES = 50 * 1024 * 1024
 MAX_BATCH_ITEMS = 15
 CACHE_TTL_SECONDS = 8.0
 TOKEN_TTL_SECONDS = 60 * 60 * 24  # 24 hours
+
+PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
+PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
+AUTO_STOCK_VIDEO_TARGET = (
+    os.getenv("AUTO_STOCK_VIDEO_TARGET", "local").strip().lower()
+)  # "local" or "cloudinary"
 
 
 def init_firestore() -> firestore.Client:
@@ -498,6 +512,439 @@ def upload_to_cloudinary(
     result = cloudinary.uploader.upload(file.file, **upload_kwargs)
     return (result.get("secure_url") or result.get("url")), result.get("public_id")
 
+
+# ==============================================================================
+# AUTO-STOCK: OPEN FOOD FACTS V2, IMAGE VERIFIER, NIGERIAN TIER MAPPER & ADS
+# ==============================================================================
+
+NIGERIAN_CATEGORY_PROFILES: Dict[str, Dict[str, Any]] = {
+    "beverages": {
+        "off_tag": "beverages",
+        "main_unit": "Carton",
+        "sub_unit": "Pack",
+        "retail_unit": "Bottle / Can",
+        "packs_per_carton": 4,
+        "units_per_pack": 6,
+        "cost_carton": 14500.0,
+        "price_carton": 16800.0,
+        "price_pack": 4300.0,
+        "price_retail": 800.0,
+        "video_query": "cold drinks pouring refreshing beverage",
+    },
+    "noodles": {
+        "off_tag": "instant-noodles",
+        "main_unit": "Carton",
+        "sub_unit": "Pack",
+        "retail_unit": "Piece",
+        "packs_per_carton": 1,
+        "units_per_pack": 40,
+        "cost_carton": 9200.0,
+        "price_carton": 10600.0,
+        "price_pack": 10600.0,
+        "price_retail": 300.0,
+        "video_query": "noodles cooking bowl food",
+    },
+    "dairy": {
+        "off_tag": "dairies",
+        "main_unit": "Carton",
+        "sub_unit": "Roll",
+        "retail_unit": "Tin / Sachet",
+        "packs_per_carton": 6,
+        "units_per_pack": 24,
+        "cost_carton": 38000.0,
+        "price_carton": 43500.0,
+        "price_pack": 7400.0,
+        "price_retail": 350.0,
+        "video_query": "milk dairy pouring fresh",
+    },
+    "soaps & detergents": {
+        "off_tag": "detergents",
+        "main_unit": "Carton",
+        "sub_unit": "Pack",
+        "retail_unit": "Bar / Sachet",
+        "packs_per_carton": 10,
+        "units_per_pack": 12,
+        "cost_carton": 18500.0,
+        "price_carton": 21500.0,
+        "price_pack": 2250.0,
+        "price_retail": 250.0,
+        "video_query": "soap bubbles cleaning wash",
+    },
+    "biscuits & snacks": {
+        "off_tag": "biscuits",
+        "main_unit": "Carton",
+        "sub_unit": "Pack",
+        "retail_unit": "Piece",
+        "packs_per_carton": 12,
+        "units_per_pack": 10,
+        "cost_carton": 11000.0,
+        "price_carton": 12800.0,
+        "price_pack": 1150.0,
+        "price_retail": 150.0,
+        "video_query": "cookies biscuits snack food",
+    },
+}
+
+DEFAULT_NIGERIAN_PROFILE: Dict[str, Any] = {
+    "off_tag": "groceries",
+    "main_unit": "Carton",
+    "sub_unit": "Pack",
+    "retail_unit": "Unit",
+    "packs_per_carton": 6,
+    "units_per_pack": 12,
+    "cost_carton": 15000.0,
+    "price_carton": 17500.0,
+    "price_pack": 3050.0,
+    "price_retail": 300.0,
+    "video_query": "grocery store supermarket shelf products",
+}
+
+
+def _http_get_json(url: str, headers: Optional[Dict[str, str]] = None, timeout: int = 12) -> Dict[str, Any]:
+    req_headers = {
+        "User-Agent": "SammyreksBusinessCenter/2.0 (Calabar, Nigeria; contact@sammyreks.local)",
+        "Accept": "application/json",
+    }
+    if headers:
+        req_headers.update(headers)
+    req = UrlRequest(url, headers=req_headers, method="GET")
+    with urlopen(req, timeout=timeout) as resp:
+        if resp.status != 200:
+            raise RuntimeError(f"HTTP {resp.status} for {url}")
+        raw = resp.read().decode("utf-8", errors="replace")
+        return json.loads(raw)
+
+
+def verify_image_url(url: str, timeout: int = 8) -> str:
+    """Return url only if reachable with HTTP 200 and valid image bytes/header; otherwise ''."""
+    clean = (url or "").strip()
+    if not clean:
+        return ""
+    parsed = urlparse(clean)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return ""
+    try:
+        req = UrlRequest(
+            clean,
+            headers={
+                "User-Agent": "SammyreksBusinessCenter/2.0",
+                "Accept": "image/*,*/*;q=0.8",
+            },
+            method="GET",
+        )
+        with urlopen(req, timeout=timeout) as resp:
+            if resp.status != 200:
+                return ""
+            content_type = (resp.headers.get("Content-Type") or "").lower()
+            sample = resp.read(32)
+            if content_type.startswith("image/") or _looks_like_valid_media(sample, "image"):
+                return clean
+            return ""
+    except Exception:
+        return ""
+
+
+def _resolve_nigerian_profile(category: str, off_tags: Optional[List[str]] = None) -> Dict[str, Any]:
+    cat_low = (category or "").strip().lower()
+    if cat_low in NIGERIAN_CATEGORY_PROFILES:
+        return dict(NIGERIAN_CATEGORY_PROFILES[cat_low])
+    for key, prof in NIGERIAN_CATEGORY_PROFILES.items():
+        if key in cat_low or cat_low in key:
+            return dict(prof)
+
+    joined_tags = " ".join(t.lower() for t in (off_tags or []))
+    if any(w in joined_tags for w in ("beverage", "drink", "juice", "soda", "water")):
+        return dict(NIGERIAN_CATEGORY_PROFILES["beverages"])
+    if any(w in joined_tags for w in ("noodle", "pasta", "instant")):
+        return dict(NIGERIAN_CATEGORY_PROFILES["noodles"])
+    if any(w in joined_tags for w in ("milk", "dairy", "cheese", "yogurt")):
+        return dict(NIGERIAN_CATEGORY_PROFILES["dairy"])
+    if any(w in joined_tags for w in ("soap", "detergent", "cleaning", "laundry")):
+        return dict(NIGERIAN_CATEGORY_PROFILES["soaps & detergents"])
+    if any(w in joined_tags for w in ("biscuit", "cookie", "snack", " wafer")):
+        return dict(NIGERIAN_CATEGORY_PROFILES["biscuits & snacks"])
+
+    prof = dict(DEFAULT_NIGERIAN_PROFILE)
+    if cat_low:
+        prof["off_tag"] = re.sub(r"[^a-z0-9-]+", "-", cat_low).strip("-") or "groceries"
+        prof["video_query"] = f"{category.strip()} product commercial"
+    return prof
+
+
+def _map_to_nigerian_item(
+    raw_product: Dict[str, Any],
+    category_label: str,
+    default_stock_cartons: float = 5.0,
+    barcode_override: str = "",
+) -> Optional[Dict[str, Any]]:
+    code = str(barcode_override or raw_product.get("code") or "").strip()
+    name = str(
+        raw_product.get("product_name")
+        or raw_product.get("product_name_en")
+        or raw_product.get("generic_name")
+        or ""
+    ).strip()
+    if not name:
+        return None
+
+    brand = str(raw_product.get("brands") or "").split(",")[0].strip()
+    qty_text = str(raw_product.get("quantity") or "").strip()
+    tags = raw_product.get("categories_tags") if isinstance(raw_product.get("categories_tags"), list) else []
+
+    display_name = name if not brand or brand.lower() in name.lower() else f"{brand} - {name}"
+    if qty_text and qty_text.lower() not in display_name.lower():
+        display_name = f"{display_name} ({qty_text})"
+
+    verified_img = verify_image_url(str(raw_product.get("image_front_url") or ""))
+    if not verified_img:
+        return None
+
+    prof = _resolve_nigerian_profile(category_label, tags)
+    packs_per_carton = max(1, int(prof["packs_per_carton"]))
+    units_per_pack = max(1, int(prof["units_per_pack"]))
+    price_carton = float(prof["price_carton"])
+    price_pack = float(prof["price_pack"])
+    price_retail = float(prof["price_retail"])
+    cost_carton = float(prof["cost_carton"])
+
+    desc_parts = [p for p in [brand, qty_text, f"Category: {category_label.strip() or 'General'}"] if p]
+    description = " | ".join(desc_parts)
+
+    return {
+        "barcode": code,
+        "name": display_name[:120],
+        "category": category_label.strip() or "General",
+        "vendor_name": brand,
+        "description": description,
+        "main_unit": prof["main_unit"],
+        "sub_unit": prof["sub_unit"],
+        "retail_unit": prof["retail_unit"],
+        "packs_per_carton": packs_per_carton,
+        "units_per_pack": units_per_pack,
+        "cost_price_carton": round(cost_carton, 2),
+        "price_carton": round(price_carton, 2),
+        "price_pack": round(price_pack, 2),
+        "price_retail": round(price_retail, 2),
+        "stock_cartons": max(0.0, float(default_stock_cartons)),
+        "image_url": verified_img,
+        "video_url": "",
+        "price_benchmark_note": (
+            f"Calabar/NG est. (₦{price_carton * 0.92:,.0f}–₦{price_carton * 1.12:,.0f}/carton); confirm before publish."
+        ),
+        "selected": True,
+    }
+
+
+def _find_royalty_free_video_url(query_text: str) -> Optional[str]:
+    """Search Pexels or Pixabay Video API for a short (5-20s), landscape, commercial-free clip."""
+    clean_q = (query_text or "product commercial").strip()
+
+    if PEXELS_API_KEY:
+        try:
+            url = f"https://api.pexels.com/videos/search?query={quote(clean_q)}&per_page=8&orientation=landscape"
+            data = _http_get_json(url, headers={"Authorization": PEXELS_API_KEY}, timeout=10)
+            for vid in data.get("videos") or []:
+                duration = int(vid.get("duration") or 0)
+                if duration and not (4 <= duration <= 25):
+                    continue
+                for vf in vid.get("video_files") or []:
+                    w = int(vf.get("width") or 0)
+                    h = int(vf.get("height") or 0)
+                    link = str(vf.get("link") or "").strip()
+                    if link and ".mp4" in link.lower() and (w == 0 or h == 0 or w >= h):
+                        return link
+        except Exception as exc:
+            print(f"[WARN] Pexels video search failed: {exc}")
+
+    if PIXABAY_API_KEY:
+        try:
+            url = f"https://pixabay.com/api/videos/?key={quote(PIXABAY_API_KEY)}&q={quote(clean_q)}&per_page=8"
+            data = _http_get_json(url, timeout=10)
+            for hit in data.get("hits") or []:
+                duration = int(hit.get("duration") or 0)
+                if duration and not (4 <= duration <= 25):
+                    continue
+                videos_map = hit.get("videos") or {}
+                for quality in ("medium", "large", "small"):
+                    info = videos_map.get(quality) or {}
+                    link = str(info.get("url") or "").strip()
+                    w = int(info.get("width") or 0)
+                    h = int(info.get("height") or 0)
+                    if link and (w == 0 or h == 0 or w >= h):
+                        return link
+        except Exception as exc:
+            print(f"[WARN] Pixabay video search failed: {exc}")
+
+    return None
+
+
+def _download_video_advert(video_url: str, target_mode: Optional[str] = None) -> str:
+    """Download an MP4 clip locally to /static/uploads/ads/... or upload to Cloudinary."""
+    clean_url = (video_url or "").strip()
+    if not clean_url:
+        return ""
+    parsed = urlparse(clean_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return ""
+
+    mode = (target_mode or AUTO_STOCK_VIDEO_TARGET or "local").strip().lower()
+    tmp_path: Optional[str] = None
+    try:
+        req = UrlRequest(clean_url, headers={"User-Agent": "SammyreksBusinessCenter/2.0"}, method="GET")
+        with urlopen(req, timeout=20) as resp:
+            if resp.status != 200:
+                return ""
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
+                tmp_path = tmp.name
+                total_written = 0
+                first_chunk = True
+                while True:
+                    chunk = resp.read(65536)
+                    if not chunk:
+                        break
+                    if first_chunk:
+                        if not _looks_like_valid_media(chunk[:32], "video"):
+                            return ""
+                        first_chunk = False
+                    total_written += len(chunk)
+                    if total_written > MAX_VIDEO_BYTES:
+                        return ""
+                    tmp.write(chunk)
+
+        if total_written <= 0:
+            return ""
+
+        if mode == "cloudinary" and cloudinary_ready:
+            res = cloudinary.uploader.upload(
+                tmp_path, folder="sammyreks_videos", resource_type="video"
+            )
+            return str(res.get("secure_url") or res.get("url") or "")
+
+        filename = f"ad_{uuid.uuid4().hex[:12]}.mp4"
+        dest_path = os.path.join(LOCAL_ADS_DIR, filename)
+        os.replace(tmp_path, dest_path)
+        tmp_path = None
+        return f"/static/uploads/ads/{filename}"
+    except Exception as exc:
+        print(f"[WARN] Video advert download failed ({clean_url}): {exc}")
+        return ""
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+
+
+@app.get("/api/auto-stock/barcode/{barcode}")
+def auto_stock_by_barcode(barcode: str, request: Request):
+    require_staff(request)
+    clean_code = re.sub(r"[^0-9A-Za-z-]", "", (barcode or "").strip())
+    if not clean_code:
+        raise HTTPException(status_code=400, detail="Valid barcode is required")
+
+    url = (
+        f"https://world.openfoodfacts.org/api/v2/product/{quote(clean_code)}.json"
+        "?fields=code,product_name,product_name_en,generic_name,brands,quantity,categories_tags,image_front_url"
+    )
+    try:
+        payload = _http_get_json(url, timeout=12)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Open Food Facts lookup failed: {exc}")
+
+    if int(payload.get("status") or 0) != 1 or not isinstance(payload.get("product"), dict):
+        raise HTTPException(status_code=404, detail=f"No product found for barcode {clean_code}")
+
+    prod = payload["product"]
+    tags = prod.get("categories_tags") if isinstance(prod.get("categories_tags"), list) else []
+    inferred_cat = "General"
+    for t in tags:
+        clean_t = str(t).replace("en:", "").replace("-", " ").strip().title()
+        if clean_t:
+            inferred_cat = clean_t
+            break
+
+    mapped = _map_to_nigerian_item(
+        prod,
+        category_label=inferred_cat,
+        default_stock_cartons=5.0,
+        barcode_override=clean_code,
+    )
+    if not mapped:
+        raise HTTPException(
+            status_code=422,
+            detail="Product found on Open Food Facts, but its front image was missing or failed verification.",
+        )
+
+    return {"ok": True, "item": mapped}
+
+
+@app.post("/api/auto-stock/category")
+async def auto_stock_by_category(request: Request):
+    require_staff(request)
+    payload = await request.json()
+    category = str(payload.get("category") or "Beverages").strip() or "Beverages"
+    count = max(1, min(MAX_BATCH_ITEMS, int(payload.get("count") or 10)))
+    default_stock = max(0.0, float(payload.get("default_stock_cartons") if payload.get("default_stock_cartons") is not None else 5.0))
+    fetch_video = bool(payload.get("fetch_video", False))
+
+    prof = _resolve_nigerian_profile(category)
+    off_tag = quote(str(prof.get("off_tag") or category.lower()))
+    fetch_size = min(40, max(count * 3, 15))
+    search_url = (
+        f"https://world.openfoodfacts.org/api/v2/search?categories_tags_en={off_tag}"
+        f"&page_size={fetch_size}&fields=code,product_name,product_name_en,generic_name,brands,quantity,categories_tags,image_front_url"
+    )
+
+    try:
+        off_data = _http_get_json(search_url, timeout=15)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Open Food Facts category search failed: {exc}")
+
+    raw_products = off_data.get("products") if isinstance(off_data.get("products"), list) else []
+    items: List[Dict[str, Any]] = []
+    seen_names = set()
+
+    for raw_p in raw_products:
+        if len(items) >= count:
+            break
+        if not isinstance(raw_p, dict):
+            continue
+        mapped = _map_to_nigerian_item(
+            raw_p,
+            category_label=category,
+            default_stock_cartons=default_stock,
+        )
+        if not mapped:
+            continue
+        dedup_key = mapped["name"].strip().lower()
+        if dedup_key in seen_names:
+            continue
+        seen_names.add(dedup_key)
+        items.append(mapped)
+
+    shared_video_url = ""
+    if fetch_video and items:
+        source_video = _find_royalty_free_video_url(str(prof.get("video_query") or f"{category} product"))
+        if source_video:
+            shared_video_url = _download_video_advert(source_video)
+        if shared_video_url:
+            for it in items:
+                it["video_url"] = shared_video_url
+
+    return {
+        "ok": True,
+        "category": category,
+        "count": len(items),
+        "video_downloaded": bool(shared_video_url),
+        "video_url": shared_video_url,
+        "items": items,
+    }
+
+
+# ==============================================================================
+# EXISTING ROUTES (UNMODIFIED)
+# ==============================================================================
 
 @app.get("/", response_class=HTMLResponse)
 def index(request: Request):

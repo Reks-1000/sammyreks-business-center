@@ -26,6 +26,8 @@ templates = Jinja2Templates(directory="templates")
 
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_VIDEO_BYTES = 50 * 1024 * 1024
+MAX_BATCH_ITEMS = 15
+CACHE_TTL_SECONDS = 8.0
 TOKEN_TTL_SECONDS = 60 * 60 * 24  # 24 hours
 
 
@@ -109,6 +111,64 @@ SESSION_SECRET = (
 )
 
 _attempt_buckets: Dict[str, List[float]] = defaultdict(list)
+
+# Local short-TTL cache & fallback dictionary for slow network / transient errors
+_local_cache: Dict[str, Tuple[float, Any]] = {}
+_fallback_store: Dict[str, Any] = {
+    "products": [],
+    "settings": {"business_name": "Sammyreks Business Center", "currency": "₦"},
+}
+
+
+def _cache_get(key: str, ttl: float = CACHE_TTL_SECONDS) -> Optional[Any]:
+    entry = _local_cache.get(key)
+    if not entry:
+        return None
+    ts, val = entry
+    if (time.time() - ts) <= ttl:
+        return val
+    return None
+
+
+def _cache_set(key: str, value: Any) -> None:
+    _local_cache[key] = (time.time(), value)
+
+
+def _cache_invalidate(prefix: str = "") -> None:
+    if not prefix:
+        _local_cache.clear()
+        return
+    for k in [key for key in _local_cache if key.startswith(prefix)]:
+        _local_cache.pop(k, None)
+
+
+def validate_multi_tier_pricing(
+    price_carton: float,
+    price_pack: float,
+    price_retail: float,
+    packs_per_carton: int,
+    units_per_pack: int,
+) -> List[str]:
+    """Validate multi-tier pricing and return human-readable warnings without breaking valid edge cases."""
+    if price_carton < 0 or price_pack < 0 or price_retail < 0:
+        raise HTTPException(status_code=400, detail="Prices cannot be negative.")
+    if packs_per_carton < 1 or units_per_pack < 1:
+        raise HTTPException(status_code=400, detail="Pack and retail unit counts must be at least 1.")
+
+    warnings: List[str] = []
+    if packs_per_carton > 1 and price_carton > 0 and price_pack > price_carton:
+        warnings.append(
+            f"Pack price ({price_pack:.2f}) is higher than carton price ({price_carton:.2f}) for {packs_per_carton} packs/carton."
+        )
+    if units_per_pack > 1 and price_pack > 0 and price_retail > price_pack:
+        warnings.append(
+            f"Retail price ({price_retail:.2f}) is higher than pack price ({price_pack:.2f}) for {units_per_pack} units/pack."
+        )
+    if packs_per_carton > 1 and units_per_pack > 1 and price_carton > 0 and price_retail > price_carton:
+        warnings.append(
+            f"Retail price ({price_retail:.2f}) exceeds carton price ({price_carton:.2f})."
+        )
+    return warnings
 
 
 def _check_rate_limit(key: str, max_attempts: int = 15, window_seconds: int = 300) -> None:
@@ -476,10 +536,21 @@ async def login(request: Request):
 
 @app.get("/api/products")
 def get_products():
-    docs = db.collection("products").stream()
-    products = [normalize_product(doc.id, doc.to_dict()) for doc in docs]
-    products.sort(key=lambda x: str(x.get("name", "")).lower())
-    return {"products": products}
+    cached = _cache_get("products:list")
+    if cached is not None:
+        return {"products": cached, "cached": True}
+
+    try:
+        docs = db.collection("products").stream()
+        products = [normalize_product(doc.id, doc.to_dict()) for doc in docs]
+        products.sort(key=lambda x: str(x.get("name", "")).lower())
+        _cache_set("products:list", products)
+        _fallback_store["products"] = products
+        return {"products": products, "cached": False}
+    except Exception as exc:
+        print(f"[WARN] /api/products fallback triggered: {exc}")
+        fallback = list(_fallback_store.get("products") or [])
+        return {"products": fallback, "cached": True, "fallback": True}
 
 
 @app.post("/api/products")
@@ -511,6 +582,16 @@ async def save_product(
     clean_name = name.strip()
     if not clean_name:
         raise HTTPException(status_code=400, detail="Product name is required")
+
+    clean_packs_per_carton = max(1, int(packs_per_carton or 1))
+    clean_retail_per_pack = max(1, int(retail_per_pack or 1))
+    pricing_warnings = validate_multi_tier_pricing(
+        price_carton=float(price_carton),
+        price_pack=float(price_pack),
+        price_retail=float(price_retail),
+        packs_per_carton=clean_packs_per_carton,
+        units_per_pack=clean_retail_per_pack,
+    )
 
     target_id = existing_product_id.strip() if action_mode == "update" else ""
     existing_data: Dict[str, Any] = {}
@@ -596,10 +677,10 @@ async def save_product(
         "stock": float(stock_cartons),
         "cost": float(cost_price_carton),
         "price_pack": float(price_pack),
-        "packs_per_carton": max(1, int(packs_per_carton or 1)),
+        "packs_per_carton": clean_packs_per_carton,
         "shelf": shelf_location.strip(),
         "price_retail": float(price_retail),
-        "units_per_pack": max(1, int(retail_per_pack or 1)),
+        "units_per_pack": clean_retail_per_pack,
         "expiry": expiry_date.strip(),
         "video_url": final_video_url,
         "video_public_id": final_video_public_id,
@@ -612,8 +693,14 @@ async def save_product(
         product_doc["created_at"] = now_str()
 
     db.collection("products").document(target_id).set(product_doc, merge=True)
+    _cache_invalidate("products:")
     normalized = normalize_product(target_id, {**existing_data, **product_doc})
-    return {"ok": True, "id": target_id, "product": normalized}
+    return {
+        "ok": True,
+        "id": target_id,
+        "product": normalized,
+        "pricing_warnings": pricing_warnings,
+    }
 
 
 @app.delete("/api/products/{product_id}")
@@ -637,6 +724,7 @@ def delete_product(product_id: str, request: Request):
     )
 
     doc_ref.delete()
+    _cache_invalidate("products:")
     return {"ok": True, "id": product_id}
 
 
@@ -665,6 +753,11 @@ async def create_order(request: Request):
 
     if not phone:
         raise HTTPException(status_code=400, detail="Phone number is required")
+    if len(items) > MAX_BATCH_ITEMS or len(special_items) > MAX_BATCH_ITEMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Batch size cannot exceed {MAX_BATCH_ITEMS} items per submission.",
+        )
 
     if special_items:
         req_summary = "; ".join(str(sp.get("item") or sp.get("name") or "") for sp in special_items if sp)
@@ -1033,6 +1126,7 @@ async def record_sale(request: Request):
             transaction.set(ref, {"qty_cartons": new_stock, "stock": new_stock, "updated_at": ts}, merge=True)
 
         _deduct_stock_tx(db.transaction(), prod_ref)
+        _cache_invalidate("products:")
 
     if record_debt:
         debt_doc = {
@@ -1263,9 +1357,22 @@ def get_analytics(request: Request):
 
 @app.get("/api/settings")
 def get_settings():
-    snap = db.collection("settings").document("business").get()
-    settings = snap.to_dict() if snap.exists else {}
-    return {"settings": settings or {"business_name": "Sammyreks Business Center", "currency": "₦"}}
+    cached = _cache_get("settings:business")
+    if cached is not None:
+        return {"settings": cached, "cached": True}
+
+    default_settings = {"business_name": "Sammyreks Business Center", "currency": "₦"}
+    try:
+        snap = db.collection("settings").document("business").get()
+        settings = snap.to_dict() if snap.exists else default_settings
+        resolved = settings or default_settings
+        _cache_set("settings:business", resolved)
+        _fallback_store["settings"] = resolved
+        return {"settings": resolved, "cached": False}
+    except Exception as exc:
+        print(f"[WARN] /api/settings fallback triggered: {exc}")
+        fallback = dict(_fallback_store.get("settings") or default_settings)
+        return {"settings": fallback, "cached": True, "fallback": True}
 
 
 @app.post("/api/settings")
@@ -1338,6 +1445,8 @@ async def save_settings(
 
     ref.set(doc, merge=True)
     merged_out = {**existing, **doc}
+    _cache_invalidate("settings:")
+    _fallback_store["settings"] = merged_out
     return {"ok": True, "settings": merged_out}
 
 

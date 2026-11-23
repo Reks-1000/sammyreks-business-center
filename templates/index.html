@@ -460,12 +460,17 @@
           </div>
 
           <div class="storefront-shell">
-            <!-- Left / Mobile Side-Rail Shop Switcher -->
+            <!-- Left / Mobile Side-Rail Shop Switcher + Register Shop Button -->
             <nav id="shopSideRail" class="shop-side-rail" aria-label="Registered Shops Switcher">
               <button type="button" class="shop-rail-btn active" data-action="select-shop-rail" data-shop-id="main" title="Sammyreks Main Store">
                 <span class="shop-rail-avatar"><i class="fa-solid fa-store"></i></span>
                 <span class="shop-rail-name">Main Store</span>
                 <span class="shop-rail-sub">Sammyreks</span>
+              </button>
+              <button type="button" class="shop-rail-btn border-primary-subtle bg-primary-subtle text-primary" data-action="open-register-shop-modal" title="Register Your Shop with Sammy Reks">
+                <span class="shop-rail-avatar"><i class="fa-solid fa-plus"></i></span>
+                <span class="shop-rail-name">Reg. Shop</span>
+                <span class="shop-rail-sub">Join</span>
               </button>
             </nav>
 
@@ -708,10 +713,10 @@
             </div>
           </div>
 
-          <!-- CEO / Super-Admin: Register Business Owner & Manage Shops -->
+          <!-- CEO / Super-Admin: Pending Approvals, Register Business Owner & Manage Shops -->
           <div id="ceoShopManagementCard" class="card border-primary shadow-sm mb-3 d-none">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
-              <span class="fw-bold small"><i class="fa-solid fa-user-shield me-1"></i>CEO Oversight: Register Business Owner &amp; Registered Shops</span>
+              <span class="fw-bold small"><i class="fa-solid fa-user-shield me-1"></i>CEO Oversight: Pending Approvals, Register Shop &amp; Registered Shops</span>
               <button type="button" class="btn btn-sm btn-light py-0 px-2" data-bs-toggle="collapse" data-bs-target="#ceoShopsCollapse">
                 Toggle
               </button>
@@ -749,6 +754,8 @@
                     </button>
                   </div>
                 </form>
+
+                <div id="ceoPendingShopsSection" class="mb-3"></div>
 
                 <div class="small fw-semibold text-muted border-top pt-2 mb-2">Registered Shops (CEO Monitoring Without Owner Passwords)</div>
                 <div id="ceoRegisteredShopsList" class="small">
@@ -839,7 +846,6 @@
 
           <!-- Staff Tab 1: Add / Update Item & Inventory Table -->
           <div id="inventoryTab" class="staff-tab-pane">
-            <!-- Barcode Scanner & Name-First Auto-Stock Panel -->
             <div id="autoStockSection" class="mb-3">
               <div class="card border-primary shadow-sm mb-3">
                 <div class="card-body py-2 px-3">
@@ -895,10 +901,9 @@
                     </div>
                     <div id="autoStockStatusMsg" class="small text-muted mt-2"></div>
 
-                    <!-- Editable Preview & Publish Table -->
                     <div id="autoStockPreviewWrap" class="table-responsive mt-3 d-none">
                       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                        <span class="small fw-bold text-dark">Review Auto-Allocated Categories, Images &amp; Naira Prices Before Publishing (Upload video ads manually in Add / Update Item below)</span>
+                        <span class="small fw-bold text-dark">Review Auto-Allocated Categories, Images &amp; Naira Prices Before Publishing</span>
                         <button type="button" id="btnPublishAutoStock" class="btn btn-sm btn-dark fw-bold" data-action="publish-auto-stock">
                           <i class="fa-solid fa-upload me-1"></i>Publish Selected to Storefront
                         </button>
@@ -1311,7 +1316,6 @@
                 </div>
 
                 <form id="settingsForm" enctype="multipart/form-data">
-                  <!-- Group 1: Branding & Announcements -->
                   <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">1. Branding, Currency &amp; Announcements</h6>
                   <div class="row g-3 mb-4">
                     <div class="col-md-5">
@@ -1348,7 +1352,6 @@
                     </div>
                   </div>
 
-                  <!-- Group 2: Bottom Navigation, Analytics & Mobile Dock Controls -->
                   <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">2. Bottom Navigation Tabs, Cash Flow Analytics &amp; Alerts</h6>
                   <div class="row g-3 mb-4">
                     <div class="col-md-4 col-6">
@@ -1409,7 +1412,6 @@
                     </div>
                   </div>
 
-                  <!-- Group 3: Shop Display & Product Cards -->
                   <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">3. Shop Display &amp; Product Cards</h6>
                   <div class="row g-3 mb-4">
                     <div class="col-md-3 col-6">
@@ -1442,12 +1444,11 @@
                     </div>
                   </div>
 
-                  <!-- Group 4: Checkout, Payment Info & PIN Guidance -->
                   <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">4. Checkout, Bank Details &amp; Automatic PIN Help</h6>
                   <div class="row g-3 mb-4">
                     <div class="col-md-6">
-                      <label class="form-label">Bank Account / Transfer Details (Shown in Checkout &amp; Chat)</label>
-                      <textarea id="setPaymentInstructions" class="form-control" rows="2" placeholder="e.g. Moniepoint MFB | 1234567890 | Sammyreks Business Center — Upload receipt in Chat after transfer."></textarea>
+                      <label class="form-label">Bank Account / Transfer Details (Shown in Checkout, Chat &amp; Shop Registration)</label>
+                      <textarea id="setPaymentInstructions" class="form-control" rows="2" placeholder="e.g. Moniepoint MFB | 1234567890 | Sammyreks Business Center — Registration fee / transfer details."></textarea>
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">Customer PIN Helper Message (Shown on Chat Tab)</label>
@@ -1469,8 +1470,7 @@
                     </div>
                   </div>
 
-                  <!-- Group 5: Rotating Storefront Tips -->
-                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">5. Rotating Storefront Tips (Rotates Together With Built-In Tips)</h6>
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">5. Rotating Storefront Tips</h6>
                   <div class="row g-3 mb-4">
                     <div class="col-md-4 col-6">
                       <div class="form-check form-switch">
@@ -1483,13 +1483,12 @@
                       <input type="number" min="2" max="3600" id="setTickerIntervalSec" class="form-control form-control-sm" value="5" />
                     </div>
                     <div class="col-12">
-                      <label class="form-label small mb-1" for="setTickerMessages">Extra Rotating Tips (One per line or separate with <code>|</code> — e.g. <code>Motivational: Keep going!</code>)</label>
-                      <textarea id="setTickerMessages" class="form-control form-control-sm" rows="3" placeholder="Type extra tips here (one per line or separated by |). These rotate alongside your built-in tips!"></textarea>
+                      <label class="form-label small mb-1" for="setTickerMessages">Extra Rotating Tips (One per line or separate with <code>|</code>)</label>
+                      <textarea id="setTickerMessages" class="form-control form-control-sm" rows="3" placeholder="Type extra tips here (one per line or separated by |)."></textarea>
                     </div>
                   </div>
 
-                  <!-- Group 6: Floating Awareness Slides & Bottom Caption -->
-                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">6. Floating Awareness Photos (Slideable) &amp; Bottom Description</h6>
+                  <h6 class="fw-bold text-primary border-bottom pb-1 mb-3">6. Floating Awareness Slides &amp; Bottom Caption</h6>
                   <div class="row g-3 mb-4">
                     <div class="col-md-4 col-6">
                       <div class="form-check form-switch">
@@ -1510,13 +1509,13 @@
                     <div class="col-12">
                       <label class="form-label small mb-1" for="setAwarenessImageUrl">Image Links / Saved Slides (One per line or separate with <code>|</code>)</label>
                       <div class="input-group input-group-sm">
-                        <textarea id="setAwarenessImageUrl" class="form-control" rows="2" placeholder="https://.../photo1.jpg&#10;https://.../photo2.jpg (or uploaded images)"></textarea>
+                        <textarea id="setAwarenessImageUrl" class="form-control" rows="2" placeholder="https://.../photo1.jpg"></textarea>
                         <button type="button" class="btn btn-outline-danger" data-action="clear-awareness-image" title="Remove floating images">Clear</button>
                       </div>
                     </div>
                     <div class="col-12">
-                      <label class="form-label small mb-1" for="setAwarenessCaption">Bottom Descriptions (One per line or separate with <code>|</code> — matches each photo slide)</label>
-                      <textarea id="setAwarenessCaption" class="form-control form-control-sm" rows="2" placeholder="Slide 1 caption: New stock arrived!&#10;Slide 2 caption: Transfer before 4 PM for same-day delivery."></textarea>
+                      <label class="form-label small mb-1" for="setAwarenessCaption">Bottom Descriptions (One per line or separate with <code>|</code>)</label>
+                      <textarea id="setAwarenessCaption" class="form-control form-control-sm" rows="2" placeholder="Slide 1 caption: New stock arrived!"></textarea>
                     </div>
                   </div>
 
@@ -1529,6 +1528,65 @@
           </div>
         </section>
       </main>
+    </div>
+  </div>
+
+  <!-- Register Shop With Sammy Reks Modal -->
+  <div class="modal fade" id="registerShopModal" tabindex="-1" aria-labelledby="registerShopModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="registerShopModalLabel">
+            <i class="fa-solid fa-store text-primary me-2"></i>Register Your Shop with Sammy Reks
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div id="shopRegPaymentNotice" class="alert alert-info small py-2 mb-3">
+            Pay the shop registration fee using the store payment details, enter your payment reference / upload proof, and submit. Your storefront goes live once approved.
+          </div>
+          <form id="publicShopApplyForm" enctype="multipart/form-data" class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Shop / Business Name</label>
+              <input type="text" name="shop_name" id="applyShopName" class="form-control" placeholder="e.g. Chidi Electronics" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Neighborhood / Location</label>
+              <input type="text" name="location" id="applyShopLocation" class="form-control" placeholder="e.g. Marian Road, Calabar" required />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Phone / WhatsApp Number</label>
+              <input type="text" name="phone" id="applyShopPhone" class="form-control" placeholder="e.g. 08012345678" required />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Desired Owner Username</label>
+              <input type="text" name="username" id="applyShopUsername" class="form-control" placeholder="e.g. chidi_elec" required />
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-semibold">Set Owner Password</label>
+              <input type="password" name="password" id="applyShopPassword" class="form-control" placeholder="Set password" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Registration Fee Transfer Ref / Sender Name</label>
+              <input type="text" name="payment_ref" id="applyShopPaymentRef" class="form-control" placeholder="e.g. TRF-98412 or Sender Name" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label small fw-semibold">Upload Payment Proof Screenshot (Optional)</label>
+              <input type="file" name="proof_file" id="applyShopProofFile" class="form-control" accept="image/png,image/jpeg,image/webp,image/*" />
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-semibold">Your Shop Bank / Payment Info (Shown to Your Buyers)</label>
+              <input type="text" name="payment_info" id="applyShopPaymentInfo" class="form-control" placeholder="e.g. OPay | 8012345678 | Chidi Electronics" />
+            </div>
+            <div class="col-12 d-flex justify-content-end gap-2">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" id="btnSubmitShopApplication" class="btn btn-primary fw-bold">
+                <i class="fa-solid fa-paper-plane me-1"></i>Submit for Approval
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1681,6 +1739,7 @@
     const thermalReceiptModal = getModalOrNull("thermalReceiptModal");
     const barcodeScannerModalEl = document.getElementById("barcodeScannerModal");
     const barcodeScannerModal = getModalOrNull("barcodeScannerModal");
+    const registerShopModal = getModalOrNull("registerShopModal");
 
     if (productAdModalEl) {
       productAdModalEl.addEventListener("hidden.bs.modal", () => {
@@ -1696,11 +1755,11 @@
     }
 
     // =========================================================================
-    // MULTI-TENANT SHOP CONTEXT & ROLE HELPERS
+    // MULTI-TENANT SHOP CONTEXT, PUBLIC REGISTRATION & ROLE HELPERS
     // =========================================================================
     function isCeoUser() {
       const role = String(state.user?.role || "").toLowerCase();
-      return role === "ceo" || role === "super_admin" || role === "superadmin";
+      return role === "ceo" || role === "super_admin" || role === "superadmin" || role === "admin";
     }
 
     function getActiveShopObj() {
@@ -1742,7 +1801,7 @@
       `;
 
       const shopBtnsHtml = (state.registeredShops || [])
-        .filter((s) => String(s.status || "active").toLowerCase() !== "suspended")
+        .filter((s) => String(s.status || "active").toLowerCase() === "active")
         .map((s) => {
           const sid = String(s.id || s.slug || "");
           const name = String(s.name || s.shop_name || sid);
@@ -1762,7 +1821,15 @@
         })
         .join("");
 
-      rail.innerHTML = mainBtnHtml + shopBtnsHtml;
+      const applyBtnHtml = `
+        <button type="button" class="shop-rail-btn border-primary-subtle bg-primary-subtle text-primary" data-action="open-register-shop-modal" title="Register Your Shop with Sammy Reks">
+          <span class="shop-rail-avatar"><i class="fa-solid fa-plus"></i></span>
+          <span class="shop-rail-name">Reg. Shop</span>
+          <span class="shop-rail-sub">Join</span>
+        </button>
+      `;
+
+      rail.innerHTML = mainBtnHtml + shopBtnsHtml + applyBtnHtml;
     }
 
     function updateShopContextBannerAndPayment() {
@@ -1788,7 +1855,9 @@
       const chatPayBox = document.getElementById("chatPaymentInfoAlert");
 
       if (payText) {
-        const prefix = shopObj ? `<strong>${escapeHtml(shopObj.name || shopObj.shop_name)} Payment Details:</strong> ` : "<strong>Payment Details:</strong> ";
+        const prefix = shopObj
+          ? `<strong>${escapeHtml(shopObj.name || shopObj.shop_name)} Payment Details:</strong> `
+          : "<strong>Payment Details:</strong> ";
         checkoutPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i>${prefix}${escapeHtml(payText)}`;
         chatPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i>${prefix}${escapeHtml(payText)}`;
         checkoutPayBox.classList.remove("d-none");
@@ -1803,8 +1872,9 @@
       const card = document.getElementById("ceoShopManagementCard");
       const inspectWrap = document.getElementById("ceoInspectShopWrap");
       const inspectSel = document.getElementById("ceoInspectShopSelect");
+      const pendingSection = document.getElementById("ceoPendingShopsSection");
       const listEl = document.getElementById("ceoRegisteredShopsList");
-      if (!card || !inspectWrap || !inspectSel || !listEl) return;
+      if (!card || !inspectWrap || !inspectSel || !pendingSection || !listEl) return;
 
       const ceo = Boolean(state.isLoggedIn && isCeoUser());
       card.classList.toggle("d-none", !ceo);
@@ -1813,10 +1883,20 @@
 
       if (!ceo) return;
 
+      const activeOnly = (state.registeredShops || []).filter(
+        (s) => String(s.status || "active").toLowerCase() === "active"
+      );
+      const pendingShops = (state.registeredShops || []).filter(
+        (s) => String(s.status || "").toLowerCase() === "pending_approval"
+      );
+      const managedShops = (state.registeredShops || []).filter(
+        (s) => String(s.status || "").toLowerCase() !== "pending_approval"
+      );
+
       const options = [
         `<option value="main">Main Store (${escapeHtml(state.businessName)})</option>`,
         `<option value="all">All Registered Shops</option>`,
-        ...(state.registeredShops || []).map((s) => {
+        ...activeOnly.map((s) => {
           const sid = String(s.id || s.slug || "");
           const sName = String(s.name || s.shop_name || sid);
           return `<option value="${escapeHtml(sid)}">${escapeHtml(sName)}</option>`;
@@ -1825,12 +1905,49 @@
       inspectSel.innerHTML = options.join("");
       inspectSel.value = state.staffShopScope || "main";
 
-      if (!state.registeredShops.length) {
-        listEl.innerHTML = `<div class="text-muted">No registered shops yet. Use the form above to register a shop owner.</div>`;
+      if (pendingShops.length) {
+        pendingSection.innerHTML =
+          `<div class="small fw-bold text-warning-emphasis mb-2">Pending Registration Fee Approvals (${pendingShops.length})</div>` +
+          pendingShops
+            .map((s) => {
+              const sid = String(s.id || s.slug || "");
+              const sName = String(s.name || s.shop_name || sid);
+              const sLoc = String(s.location || "");
+              const sPhone = String(s.phone || "");
+              const sRef = String(s.payment_ref || "");
+              const sUser = String(s.owner_username || "");
+              const proofLink = isSafeImageSrc(s.proof_url)
+                ? `<a href="${escapeHtml(s.proof_url)}" target="_blank" rel="noopener" class="ms-2">View Proof</a>`
+                : "";
+              return `
+                <div class="border border-warning rounded p-2 mb-2 bg-warning-subtle d-flex flex-wrap justify-content-between align-items-center gap-2">
+                  <div>
+                    <strong>${escapeHtml(sName)}</strong> <span class="badge bg-warning text-dark">Pending Approval</span>
+                    <div class="text-muted">${sLoc ? `${escapeHtml(sLoc)} &bull; ` : ""}${sPhone ? `${escapeHtml(sPhone)} &bull; ` : ""}Login: <code>${escapeHtml(sUser)}</code></div>
+                    <div class="small">Fee Ref: <strong>${escapeHtml(sRef || "Not provided")}</strong>${proofLink}</div>
+                  </div>
+                  <div class="d-flex gap-1">
+                    <button type="button" class="btn btn-success btn-sm fw-bold" data-action="approve-shop" data-shop-id="${escapeHtml(sid)}">
+                      <i class="fa-solid fa-check me-1"></i>Approve
+                    </button>
+                    <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-shop" data-shop-id="${escapeHtml(sid)}">
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              `;
+            })
+            .join("");
+      } else {
+        pendingSection.innerHTML = "";
+      }
+
+      if (!managedShops.length) {
+        listEl.innerHTML = `<div class="text-muted">No active or suspended registered shops yet.</div>`;
         return;
       }
 
-      listEl.innerHTML = state.registeredShops
+      listEl.innerHTML = managedShops
         .map((s) => {
           const sid = String(s.id || s.slug || "");
           const sName = String(s.name || s.shop_name || sid);
@@ -1878,7 +1995,15 @@
 
     async function selectShopFromRail(shopId) {
       const targetShopId = String(shopId || "main").trim() || "main";
-      if (state.activeShopId === targetShopId) return;
+      switchSection("customerSection");
+      switchCustomerTab("shopTab");
+
+      if (state.activeShopId === targetShopId) {
+        renderShopSideRail();
+        updateShopContextBannerAndPayment();
+        await loadProducts();
+        return;
+      }
 
       state.activeShopId = targetShopId;
       state.cart = [];
@@ -1887,13 +2012,6 @@
       updateShopContextBannerAndPayment();
       lockCustomerChatView();
       await loadProducts();
-
-      const shopObj = getActiveShopObj();
-      if (shopObj) {
-        showBanner(`Switched to ${shopObj.name || shopObj.shop_name}. Cart cleared for separate shop checkout.`, "info");
-      } else {
-        showBanner("Returned to Main Storefront.", "info");
-      }
     }
 
     function normalizeTickerIntervalSec(rawVal) {
@@ -3439,9 +3557,10 @@
 
     async function loadProducts() {
       try {
-        const shopIdForQuery = !document.getElementById("staffSection").classList.contains("d-none") && state.isLoggedIn
-          ? getEffectiveStaffShopParam()
-          : (state.activeShopId || "main");
+        const shopIdForQuery =
+          !document.getElementById("staffSection").classList.contains("d-none") && state.isLoggedIn
+            ? getEffectiveStaffShopParam()
+            : state.activeShopId || "main";
         const res = await apiRequest(`/api/products?shop_id=${encodeURIComponent(shopIdForQuery)}`);
         const rawList = res.products || res.data || [];
         state.products = rawList.map(normalizeProductClient);
@@ -3621,7 +3740,10 @@
           const badgeLabel = o.order_type || (hasSpecial ? "Multi-Item Request" : "Cart Order");
           const badgeClass = hasSpecial ? "bg-info text-dark" : "bg-primary";
           const isVerified = String(o.status || "").toLowerCase() === "verified";
-          const shopBadge = state.staffShopScope === "all" && o.shop_id ? `<span class="badge bg-dark">${escapeHtml(o.shop_id)}</span>` : "";
+          const shopBadge =
+            state.staffShopScope === "all" && o.shop_id
+              ? `<span class="badge bg-dark">${escapeHtml(o.shop_id)}</span>`
+              : "";
 
           let detailsHtml = "";
           if (hasSpecial) {
@@ -3701,7 +3823,6 @@
 
     async function loadStaffChatMessages() {
       const phone = document.getElementById("staffChatPhoneFilter").value.trim();
-      const shopParam = encodeURIComponent(getEffectiveStaffShopParam());
       const box = document.getElementById("staffChatMessagesBox");
       try {
         const params = new URLSearchParams({ shop_id: getEffectiveStaffShopParam() });
@@ -3761,15 +3882,15 @@
                 return `
                   <div class="border rounded p-2 mb-1 bg-light d-flex justify-content-between align-items-center gap-2">
                     <div>
-                      <div class="fw-semibold">${escapeHtml(title)} <span class="badge bg-secondary-subtle text-secondary-emphasis">${escapeHtml(cat)}</span></div>
-                      <div class="text-danger fw-bold">${amount}</div>
+                      <div class="fw-semibold">${escapeHtml(title)}</div>
+                      <div class="text-muted">${escapeHtml(cat)} &bull; <strong class="text-danger">${amount}</strong></div>
                     </div>
                     ${id ? `<button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" data-action="delete-expense" data-id="${escapeHtml(id)}"><i class="fa-solid fa-trash"></i></button>` : ""}
                   </div>
                 `;
               })
               .join("")
-          : `<div class="text-muted">No expenses logged yet.</div>`;
+          : `<div class="text-muted">No expenses recorded yet.</div>`;
       }
 
       if (workersBox) {
@@ -3777,49 +3898,52 @@
           ? state.workersList
               .map((w) => {
                 const id = String(w.id ?? "");
-                const name = w.name || w.username || "Staff";
+                const name = w.name || w.username || "Worker";
                 const role = w.role || "Staff";
+                const username = w.username || "";
                 return `
                   <div class="border rounded p-2 mb-1 bg-light d-flex justify-content-between align-items-center gap-2">
                     <div>
-                      <div class="fw-semibold">${escapeHtml(name)}</div>
-                      <div class="text-muted">${escapeHtml(role)}</div>
+                      <div class="fw-semibold">${escapeHtml(name)} <span class="badge bg-secondary">${escapeHtml(role)}</span></div>
+                      ${username ? `<div class="text-muted">User: ${escapeHtml(username)}</div>` : ""}
                     </div>
                     ${id ? `<button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" data-action="delete-worker" data-id="${escapeHtml(id)}"><i class="fa-solid fa-trash"></i></button>` : ""}
                   </div>
                 `;
               })
               .join("")
-          : `<div class="text-muted">No staff accounts listed yet.</div>`;
+          : `<div class="text-muted">No workers recorded yet.</div>`;
       }
     }
 
     async function loadRecordsData() {
-      if (!state.isLoggedIn) return;
       const shopParam = encodeURIComponent(getEffectiveStaffShopParam());
-      const [debRes, expRes, wrkRes] = await Promise.all([
-        apiRequest(`/api/debtors?shop_id=${shopParam}`).catch(() => ({})),
-        apiRequest(`/api/expenses?shop_id=${shopParam}`).catch(() => ({})),
-        apiRequest(`/api/workers?shop_id=${shopParam}`).catch(() => ({})),
-      ]);
-      state.debtorsList = Array.isArray(debRes.debtors) ? debRes.debtors : Array.isArray(debRes.data) ? debRes.data : [];
-      state.expensesList = Array.isArray(expRes.expenses) ? expRes.expenses : Array.isArray(expRes.data) ? expRes.data : [];
-      state.workersList = Array.isArray(wrkRes.workers) ? wrkRes.workers : Array.isArray(wrkRes.data) ? wrkRes.data : [];
+      try {
+        const [debtorsRes, expensesRes, workersRes] = await Promise.all([
+          apiRequest(`/api/debtors?shop_id=${shopParam}`).catch(() => ({})),
+          apiRequest(`/api/expenses?shop_id=${shopParam}`).catch(() => ({})),
+          apiRequest(`/api/workers?shop_id=${shopParam}`).catch(() => ({})),
+        ]);
+        state.debtorsList = Array.isArray(debtorsRes.debtors)
+          ? debtorsRes.debtors
+          : Array.isArray(debtorsRes.data)
+            ? debtorsRes.data
+            : [];
+        state.expensesList = Array.isArray(expensesRes.expenses)
+          ? expensesRes.expenses
+          : Array.isArray(expensesRes.data)
+            ? expensesRes.data
+            : [];
+        state.workersList = Array.isArray(workersRes.workers)
+          ? workersRes.workers
+          : Array.isArray(workersRes.data)
+            ? workersRes.data
+            : [];
+      } catch (_) {}
       renderRecordsLists();
     }
 
-    function openStaffPortalLogin() {
-      document.getElementById("staffSidebarCol").classList.remove("d-none");
-      document.getElementById("mainContentCol").className = "col-lg-9 col-xl-10 p-3 p-md-4";
-      document.getElementById("loginUsername").focus();
-      showBanner("Enter your CEO, Shop Owner, or Staff credentials on the left to sign in.", "info");
-    }
-
     function switchSection(sectionId) {
-      if (sectionId === "staffSection" && !state.isLoggedIn) {
-        openStaffPortalLogin();
-        return;
-      }
       document.getElementById("customerSection").classList.toggle("d-none", sectionId !== "customerSection");
       document.getElementById("staffSection").classList.toggle("d-none", sectionId !== "staffSection");
       document.querySelectorAll(".nav-pill-btn").forEach((btn) => {
@@ -3827,9 +3951,19 @@
       });
       syncLayoutChrome();
       loadProducts();
+      if (sectionId === "staffSection" && state.isLoggedIn) {
+        loadStaffOrders();
+        loadStaffChatMessages();
+        loadRecordsData();
+      }
     }
 
     function switchCustomerTab(tabId) {
+      const cfg = state.extraSettings;
+      if (tabId === "requestTab" && !cfg.showTabRequest) tabId = "shopTab";
+      if (tabId === "chatTab" && !cfg.showTabChat) tabId = "shopTab";
+      if (tabId === "cartTab" && !cfg.showTabCart) tabId = "shopTab";
+
       document.querySelectorAll(".customer-tab-pane").forEach((pane) => {
         pane.classList.toggle("d-none", pane.id !== tabId);
       });
@@ -3852,497 +3986,36 @@
       document.querySelectorAll("#staffTabs .nav-link").forEach((btn) => {
         btn.classList.toggle("active", btn.dataset.tab === tabId);
       });
-      if (tabId === "staffOrdersChatTab") {
-        loadStaffOrders();
-        loadStaffChatMessages();
-      } else if (tabId === "recordsTab") {
-        loadRecordsData();
-      } else if (state.isLoggedIn && state.extraSettings.showBusinessAnalytics) {
-        loadBusinessAnalytics();
+      if (state.isLoggedIn) {
+        if (tabId === "staffOrdersChatTab") {
+          loadStaffOrders();
+          loadStaffChatMessages();
+        } else if (tabId === "recordsTab") {
+          loadRecordsData();
+        }
       }
     }
 
-    function buildOrderReceiptPayload(o) {
-      const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
-      let lines = [];
-      let totalStr = "";
-      if (hasSpecial) {
-        lines = o.special_items.map((sp) => `${sp.item || sp.name || "Requested Item"}`);
-      } else if (Array.isArray(o.items) && o.items.length > 0) {
-        lines = o.items.map(
-          (it) => `${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${formatMoney(it.total_price || 0)}`
-        );
-        const sum = o.items.reduce((acc, it) => acc + Number(it.total_price || 0), 0);
-        totalStr = formatMoney(sum);
-      } else if (o.notes) {
-        lines = [o.notes];
+    document.getElementById("loginMode")?.addEventListener("change", (e) => {
+      const mode = e.target.value;
+      const userInp = document.getElementById("loginUsername");
+      if (!userInp) return;
+      if (mode === "admin") {
+        userInp.value = "admin";
+      } else if (mode === "staff") {
+        userInp.value = "staff";
       } else {
-        lines = ["Customer Order"];
+        userInp.value = "";
       }
-      if (o.notes && hasSpecial) lines.push(`Note: ${o.notes}`);
-      if (o.notes && Array.isArray(o.items) && o.items.length > 0) lines.push(`Note: ${o.notes}`);
-      return {
-        title: hasSpecial ? "MULTI-ITEM REQUEST RECEIPT" : "CUSTOMER ORDER RECEIPT",
-        ref: o.payment_ref || "",
-        customer: o.customer || o.customer_name || "Customer",
-        phone: o.contact_phone || o.phone || "",
-        timestamp: o.timestamp || "",
-        lines,
-        total: totalStr,
-      };
-    }
-
-    document.getElementById("ceoInspectShopSelect")?.addEventListener("change", async (e) => {
-      state.staffShopScope = e.target.value || "main";
-      syncShopHiddenInputs();
-      await loadProducts();
-      await loadRecordsData();
-      if (!document.getElementById("staffOrdersChatTab").classList.contains("d-none")) {
-        await loadStaffOrders();
-        await loadStaffChatMessages();
-      }
-      if (state.extraSettings.showBusinessAnalytics) {
-        await loadBusinessAnalytics();
-      }
-      showBanner(`Inspecting shop scope: ${state.staffShopScope}`, "info");
-    });
-
-    document.getElementById("registerShopForm")?.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const btn = document.getElementById("btnRegisterShop");
-      await runGuardedAction("register-shop", 1500, btn, "Registering...", async () => {
-        const fd = new FormData(e.target);
-        const shopName = String(fd.get("shop_name") || "").trim();
-        try {
-          await apiRequest("/api/shops", { method: "POST", body: fd });
-          e.target.reset();
-          await loadShops();
-          showBanner(`Registered shop "${shopName}" and created owner login.`, "success");
-        } catch (err) {
-          showBanner(`Failed to register shop: ${err.message}`, "danger");
-        }
-      });
-    });
-
-    document.getElementById("unlockChatForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const btn = e.target.querySelector('button[type="submit"]');
-      await runGuardedAction("unlock-customer-chat", 600, btn, "Unlocking...", async () => {
-        state.customerAuth.phone = document.getElementById("chatPhoneFilter").value.trim();
-        state.customerAuth.pin = document.getElementById("chatPinFilter").value.trim();
-        await loadCustomerPrivateChat();
-      });
-    });
-
-    document.addEventListener("click", async (event) => {
-      const target = event.target.closest("[data-action]");
-      if (!target) return;
-
-      const action = target.dataset.action;
-
-      if (action === "dismiss-banner") {
-        document.getElementById("appFeedbackBanner").classList.add("d-none");
-      } else if (action === "select-shop-rail") {
-        await selectShopFromRail(target.dataset.shopId || "main");
-      } else if (action === "ceo-inspect-shop") {
-        const sid = target.dataset.shopId || "main";
-        state.staffShopScope = sid;
-        document.getElementById("ceoInspectShopSelect").value = sid;
-        syncShopHiddenInputs();
-        await loadProducts();
-        await loadStaffOrders();
-        await loadStaffChatMessages();
-        showBanner(`Switched inspection view to shop "${sid}".`, "info");
-      } else if (action === "toggle-shop-status") {
-        const sid = target.dataset.shopId;
-        const nextStatus = target.dataset.nextStatus || "active";
-        if (!sid) return;
-        await runGuardedAction(`shop-status-${sid}`, 1000, target, "Updating...", async () => {
-          try {
-            await apiRequest(`/api/shops/${encodeURIComponent(sid)}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ status: nextStatus }),
-            });
-            await loadShops();
-            showBanner(`Shop "${sid}" status set to ${nextStatus}.`, "success");
-          } catch (err) {
-            showBanner(`Could not update shop status: ${err.message}`, "danger");
-          }
-        });
-      } else if (action === "delete-shop") {
-        const sid = target.dataset.shopId;
-        if (!sid) return;
-        await runGuardedAction(`del-shop-${sid}`, 1200, target, "Removing...", async () => {
-          try {
-            await apiRequest(`/api/shops/${encodeURIComponent(sid)}`, { method: "DELETE" });
-            if (state.activeShopId === sid) state.activeShopId = "main";
-            if (state.staffShopScope === sid) state.staffShopScope = "main";
-            await loadShops();
-            await loadProducts();
-            showBanner(`Removed shop "${sid}".`, "success");
-          } catch (err) {
-            showBanner(`Could not remove shop: ${err.message}`, "danger");
-          }
-        });
-      } else if (action === "lookup-barcode") {
-        await runGuardedAction("lookup-barcode", 600, target, "Looking up...", async () => {
-          await lookupBarcodeItem(document.getElementById("barcodeLookupInput")?.value);
-        });
-      } else if (action === "open-camera-scanner") {
-        await startBarcodeCameraScanner();
-      } else if (action === "run-auto-stock") {
-        await runNameBatchAutoStock(target);
-      } else if (action === "publish-auto-stock") {
-        await publishSelectedAutoStock(target);
-      } else if (action === "dismiss-awareness-float") {
-        state.awarenessDismissed = true;
-        renderFloatingAwarenessCard();
-      } else if (action === "prev-awareness-slide") {
-        stepAwarenessSlide(-1);
-      } else if (action === "next-awareness-slide") {
-        stepAwarenessSlide(1);
-      } else if (action === "clear-awareness-image") {
-        document.getElementById("setAwarenessImageFile").value = "";
-        document.getElementById("setAwarenessImageUrl").value = "";
-        document.getElementById("setShowAwarenessFloat").checked = false;
-        _awarenessSlideIndex = 0;
-        state.extraSettings.awarenessImageUrl = "";
-        state.extraSettings.showAwarenessFloat = false;
-        renderFloatingAwarenessCard();
-        showBanner("Floating awareness image(s) cleared. Click 'Save All App Settings' to confirm.", "info");
-      } else if (action === "edit-product-vendor") {
-        startEditingProduct(target.dataset.id, false);
-      } else if (action === "refresh-analytics") {
-        await runGuardedAction("refresh-analytics", 500, target, "Refreshing...", async () => {
-          await loadBusinessAnalytics();
-          showBanner("Business analytics updated.", "info");
-        });
-      } else if (action === "refresh-records") {
-        await runGuardedAction("refresh-records", 500, target, "Refreshing...", async () => {
-          await loadRecordsData();
-          showBanner("Debtors, expenses, and staff records refreshed.", "info");
-        });
-      } else if (action === "mark-debtor-paid") {
-        const debtorId = String(target.dataset.id || "");
-        if (!debtorId) return;
-        await runGuardedAction(`pay-debtor-${debtorId}`, 800, target, "Saving...", async () => {
-          state.paidDebtorIds.add(debtorId);
-          saveIdSetToStorage(PAID_DEBTOR_IDS_KEY, state.paidDebtorIds);
-          try {
-            await apiRequest(`/api/debtors/${encodeURIComponent(debtorId)}/pay`, { method: "POST" });
-          } catch (_) {
-            try {
-              await apiRequest(`/api/debtors/${encodeURIComponent(debtorId)}`, { method: "DELETE" });
-            } catch (_) {}
-          }
-          await loadRecordsData();
-          showBanner("Debtor marked as paid.", "success");
-        });
-      } else if (action === "delete-expense") {
-        const expenseId = String(target.dataset.id || "");
-        if (!expenseId) return;
-        await runGuardedAction(`del-expense-${expenseId}`, 800, target, "Deleting...", async () => {
-          try {
-            await apiRequest(`/api/expenses/${encodeURIComponent(expenseId)}`, { method: "DELETE" });
-            await loadRecordsData();
-            if (state.isLoggedIn && state.extraSettings.showBusinessAnalytics) {
-              await loadBusinessAnalytics();
-            }
-            showBanner("Expense deleted.", "success");
-          } catch (err) {
-            showBanner(`Failed to delete expense: ${err.message}`, "danger");
-          }
-        });
-      } else if (action === "delete-worker") {
-        const workerId = String(target.dataset.id || "");
-        if (!workerId) return;
-        await runGuardedAction(`del-worker-${workerId}`, 800, target, "Deleting...", async () => {
-          try {
-            await apiRequest(`/api/workers/${encodeURIComponent(workerId)}`, { method: "DELETE" });
-            await loadRecordsData();
-            showBanner("Staff account removed.", "success");
-          } catch (err) {
-            showBanner(`Failed to delete worker: ${err.message}`, "danger");
-          }
-        });
-      } else if (action === "filter-staff-orders") {
-        state.ordersFilter = target.dataset.filter || "all";
-        document.querySelectorAll("#staffOrdersFilterGroup [data-action='filter-staff-orders']").forEach((btn) => {
-          btn.classList.toggle("active", btn === target);
-        });
-        renderStaffOrdersList();
-      } else if (action === "reset-extra-settings") {
-        state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS };
-        state.awarenessDismissed = false;
-        _awarenessSlideIndex = 0;
-        saveLocalExtraSettings(state.extraSettings);
-        applyExtraSettingsToUI();
-        renderProducts();
-        showBanner("UI toggles reset to defaults. Click 'Save All App Settings' to sync.", "info");
-      } else if (action === "lock-customer-chat") {
-        document.getElementById("chatPinFilter").value = "";
-        lockCustomerChatView();
-      } else if (action === "open-staff-portal") {
-        openStaffPortalLogin();
-      } else if (action === "switch-section") {
-        switchSection(target.dataset.section);
-      } else if (action === "switch-customer-tab") {
-        switchSection("customerSection");
-        switchCustomerTab(target.dataset.tab);
-      } else if (action === "switch-staff-tab") {
-        switchStaffTab(target.dataset.tab);
-      } else if (action === "load-staff-chat" || action === "refresh-staff-orders-chat") {
-        await runGuardedAction("refresh-orders-chat", 600, target, "Refreshing...", async () => {
-          await loadStaffOrders();
-          await loadStaffChatMessages();
-        });
-      } else if (action === "delete-chat-photo") {
-        event.stopPropagation();
-        const msgId = target.dataset.msgId;
-        await runGuardedAction(`del-photo-${msgId}`, 800, target, "Removing...", async () => {
-          await deleteSingleChatPhoto(msgId);
-        });
-      } else if (action === "delete-all-chat-photos") {
-        event.stopPropagation();
-        await runGuardedAction("del-all-photos", 1500, target, "Cleaning...", async () => {
-          await deleteAllChatPhotos();
-        });
-      } else if (action === "select-order-phone") {
-        const phone = (target.dataset.phone || "").trim();
-        if (phone) {
-          document.getElementById("staffChatPhoneFilter").value = phone;
-          document.getElementById("staffChatSendPhone").value = phone;
-          await loadStaffChatMessages();
-          showBanner(`Loaded chat for ${phone}.`, "info");
-        }
-      } else if (action === "open-order-receipt") {
-        event.stopPropagation();
-        const o = state.ordersFeed[Number(target.dataset.orderIndex)];
-        if (!o) return;
-        openThermalReceipt({ ...buildOrderReceiptPayload(o), allowWhatsAppSend: true });
-      } else if (action === "send-order-receipt-whatsapp") {
-        event.stopPropagation();
-        const o = state.ordersFeed[Number(target.dataset.orderIndex)];
-        const phone = (target.dataset.phone || o?.contact_phone || o?.phone || "").trim();
-        if (!o) return;
-        try {
-          const payload = buildOrderReceiptPayload(o);
-          const receiptMessage = buildWhatsAppReceiptMessage({ ...payload, phone });
-          sendReceiptToCustomerWhatsApp({ phone, receiptMessage });
-          showBanner(`Opened WhatsApp receipt for ${phone}.`, "success");
-        } catch (err) {
-          showBanner(err.message, "warning");
-        }
-      } else if (action === "send-modal-receipt-whatsapp") {
-        if (!state.pendingWhatsAppReceipt) return;
-        try {
-          sendReceiptToCustomerWhatsApp(state.pendingWhatsAppReceipt);
-          showBanner(`Opened WhatsApp receipt for ${state.pendingWhatsAppReceipt.phone}.`, "success");
-        } catch (err) {
-          showBanner(err.message, "warning");
-        }
-      } else if (action === "verify-send-receipt") {
-        event.stopPropagation();
-        const orderId = target.dataset.orderId;
-        const phone = (target.dataset.phone || "").trim();
-        if (!orderId) return;
-        await runGuardedAction(`verify-${orderId}`, 1500, target, "Verifying...", async () => {
-          try {
-            await apiRequest(`/api/orders/${encodeURIComponent(orderId)}/verify`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ verified_by: state.user?.username || "admin" }),
-            });
-            if (phone) {
-              document.getElementById("staffChatPhoneFilter").value = phone;
-              document.getElementById("staffChatSendPhone").value = phone;
-            }
-            await loadStaffOrders();
-            await loadStaffChatMessages();
-            showBanner("Order verified and official receipt sent to customer Live Chat!", "success");
-          } catch (err) {
-            showBanner(`Failed to verify order: ${err.message}`, "danger");
-          }
-        });
-      } else if (action === "delete-order") {
-        event.stopPropagation();
-        const orderId = target.dataset.orderId;
-        if (!orderId) return;
-        await runGuardedAction(`del-order-${orderId}`, 1000, target, "Deleting...", async () => {
-          try {
-            await apiRequest(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE" });
-            await loadStaffOrders();
-            showBanner("Order removed.", "success");
-          } catch (err) {
-            showBanner(`Failed to delete order: ${err.message}`, "danger");
-          }
-        });
-      } else if (action === "open-pos-receipt") {
-        const ref = target.dataset.ref || "";
-        const customer = target.dataset.customer || "Walk-in Customer";
-        const phone = target.dataset.phone || "N/A";
-        const item = target.dataset.item || "Item";
-        const unit = target.dataset.unit || "Unit";
-        const qty = target.dataset.qty || "1";
-        const source = target.dataset.source || "Cash";
-        const total = target.dataset.total || "";
-        openThermalReceipt({
-          title: "POS SALES RECEIPT",
-          ref,
-          customer,
-          phone,
-          timestamp: new Date().toLocaleString(),
-          lines: [`${item} (${unit}) x ${qty}`, `Payment: ${source}`],
-          total,
-          allowWhatsAppSend: true,
-        });
-      } else if (action === "send-pos-receipt-whatsapp") {
-        const ref = target.dataset.ref || "";
-        const customer = target.dataset.customer || "Walk-in Customer";
-        const phone = target.dataset.phone || "";
-        const item = target.dataset.item || "Item";
-        const unit = target.dataset.unit || "Unit";
-        const qty = target.dataset.qty || "1";
-        const source = target.dataset.source || "Cash";
-        const total = target.dataset.total || "";
-        try {
-          const receiptMessage = buildWhatsAppReceiptMessage({
-            title: "POS SALES RECEIPT",
-            ref,
-            customer,
-            phone,
-            timestamp: new Date().toLocaleString(),
-            lines: [`${item} (${unit}) x ${qty}`, `Payment: ${source}`],
-            total,
-          });
-          sendReceiptToCustomerWhatsApp({ phone, receiptMessage });
-          showBanner(`Opened WhatsApp receipt for ${phone}.`, "success");
-        } catch (err) {
-          showBanner(err.message, "warning");
-        }
-      } else if (action === "print-thermal-receipt") {
-        window.print();
-      } else if (action === "watch-ad") {
-        const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
-        if (prod && hasValidVideoUrl(prod.video_url)) {
-          openProductAd(prod);
-        } else {
-          showBanner("No video advert is attached to this product yet.", "warning");
-        }
-      } else if (action === "add-to-cart") {
-        const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
-        if (!prod) return;
-        if (Number(prod.qty_cartons ?? prod.stock ?? 0) <= 0) {
-          showBanner(`"${prod.name}" is currently out of stock.`, "warning");
-          return;
-        }
-        const card = target.closest(".card");
-        const unit = card ? card.querySelector(".card-unit-sel").value : prod.unit_retail_label || "Retail Unit";
-        const qty = card ? Math.max(1, Number(card.querySelector(".card-qty-inp").value || 1)) : 1;
-        const unitPrice = getPriceForUnit(prod, unit);
-        const existing = state.cart.find((c) => String(c.id) === String(prod.id) && c.unit === unit);
-        if (existing) {
-          existing.qty += qty;
-        } else {
-          state.cart.push({ id: prod.id, name: prod.name, unit, price: unitPrice, qty, shop_id: prod.shop_id || state.activeShopId || "main" });
-        }
-        updateCartSummary();
-        showBanner(`Added ${qty} ${unit}(s) of "${prod.name}" to cart.`, "success");
-      } else if (action === "remove-cart-item") {
-        state.cart.splice(Number(target.dataset.index), 1);
-        updateCartSummary();
-        showBanner("Removed item from cart.", "info");
-      } else if (action === "clear-cart") {
-        state.cart = [];
-        updateCartSummary();
-        showBanner("Cart cleared.", "info");
-      } else if (action === "refresh-products") {
-        await runGuardedAction("refresh-products", 500, target, "Refreshing...", async () => {
-          await loadProducts();
-        });
-      } else if (action === "delete-product") {
-        const prodId = target.dataset.id;
-        await runGuardedAction(`del-prod-${prodId}`, 1000, target, "Deleting...", async () => {
-          try {
-            await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, { method: "DELETE" });
-            await loadProducts();
-            showBanner("Product deleted.", "success");
-          } catch (err) {
-            showBanner(`Failed to delete product: ${err.message}`, "danger");
-          }
-        });
-      } else if (action === "pos-debt") {
-        const prodId = document.getElementById("posProductSelect").value;
-        const prod = state.products.find((p) => String(p.id) === String(prodId));
-        const unitType = document.getElementById("posUnitSelect").value;
-        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
-        const custName = document.getElementById("posCustomerName").value.trim();
-        const phone = document.getElementById("posPhone").value.trim();
-        const shopIdForSale = prod?.shop_id || (getEffectiveStaffShopParam() === "all" ? "main" : getEffectiveStaffShopParam());
-        if (!custName || custName === "Walk-in Customer") {
-          showBanner("Enter the customer's name to record a debt.", "warning");
-          return;
-        }
-        await runGuardedAction("pos-debt", 1200, target, "Saving...", async () => {
-          try {
-            await apiRequest("/api/sales", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                shop_id: shopIdForSale,
-                product_id: prodId,
-                item_name: prod ? prod.name : "Item",
-                unit_type: unitType,
-                qty,
-                customer_name: custName,
-                customer_phone: phone,
-                worker: state.user?.username || "admin",
-                record_debt: true,
-              }),
-            });
-            await loadProducts();
-            await loadRecordsData();
-            showBanner(`Debt logged for ${custName}!`, "warning");
-          } catch (err) {
-            showBanner(`Failed to log debt: ${err.message}`, "danger");
-          }
-        });
-      }
-    });
-
-    document.getElementById("staffChatSendForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const btn = e.target.querySelector('button[type="submit"]');
-      await runGuardedAction("staff-chat-send", 1200, btn, "Sending...", async () => {
-        const phone = document.getElementById("staffChatSendPhone").value.trim();
-        const text = document.getElementById("staffChatSendText").value.trim();
-        const scopeShop = getEffectiveStaffShopParam();
-        const fd = new FormData();
-        fd.append("phone", phone);
-        fd.append("shop_id", scopeShop === "all" ? "main" : scopeShop);
-        fd.append("sender", "Staff");
-        fd.append("text", text);
-        try {
-          await apiRequest("/api/messages", { method: "POST", body: fd });
-          document.getElementById("staffChatSendText").value = "";
-          document.getElementById("staffChatPhoneFilter").value = phone;
-          await loadStaffChatMessages();
-          showBanner("Reply sent to customer chat!", "success");
-        } catch (err) {
-          showBanner(`Failed to send reply: ${err.message}`, "danger");
-        }
-      });
     });
 
     document.getElementById("loginForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = document.getElementById("loginBtn");
-      await runGuardedAction("login-submit", 1000, btn, "Logging in...", async () => {
+      const submitBtn = document.getElementById("loginBtn");
+      await runGuardedAction("staff-login", 1200, submitBtn, "Signing in...", async () => {
         const username = document.getElementById("loginUsername").value.trim();
         const password = document.getElementById("loginPassword").value;
-        const mode = document.getElementById("loginMode").value;
-
+        const mode = document.getElementById("loginMode")?.value || "admin";
         try {
           const res = await apiRequest("/api/login", {
             method: "POST",
@@ -4350,410 +4023,503 @@
             body: JSON.stringify({ username, password, mode }),
           });
           state.isLoggedIn = true;
-          state.user = res;
           state.staffToken = res.token || "";
-          state.staffShopScope = String(res.shop_id || "main");
+          state.user = {
+            username: res.username || username,
+            role: res.role || "Staff",
+            shop_id: res.shop_id || "main",
+          };
+          state.staffShopScope = isCeoUser() ? "main" : state.user.shop_id || "main";
           document.getElementById("authBadge").className = "badge bg-success";
-          document.getElementById("authBadge").textContent = `${res.role || "Admin"}: ${res.username || username}`;
-          document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username} (${state.staffShopScope})`;
+          document.getElementById("authBadge").textContent = `${state.user.username} (${state.user.role})`;
+          document.getElementById("staffSessionLabel").textContent = `${state.user.username} (${state.user.role})`;
           document.getElementById("logoutBtn").classList.remove("d-none");
-          document.getElementById("loginPassword").value = "";
-          await loadShops();
+          syncLayoutChrome();
           switchSection("staffSection");
+          await loadShops();
           await loadProducts();
+          await loadStaffOrders();
+          await loadStaffChatMessages();
           await loadRecordsData();
-          showBanner(`Logged in as ${res.username || username}.`, "success");
+          showBanner(`Signed in as ${state.user.username} (${state.user.role}).`, "success");
         } catch (err) {
           showBanner(`Login failed: ${err.message}`, "danger");
         }
       });
     });
 
-    document.getElementById("logoutBtn").addEventListener("click", () => {
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
       state.isLoggedIn = false;
-      state.user = null;
       state.staffToken = "";
+      state.user = null;
       state.staffShopScope = "main";
       document.getElementById("authBadge").className = "badge bg-secondary";
       document.getElementById("authBadge").textContent = "Staff Mode";
       document.getElementById("logoutBtn").classList.add("d-none");
+      syncLayoutChrome();
       switchSection("customerSection");
-      showBanner("Logged out.", "info");
+      await loadShops();
+      showBanner("Signed out.", "info");
     });
 
-    document.getElementById("addProductForm").addEventListener("submit", async (e) => {
+    document.getElementById("ceoInspectShopSelect")?.addEventListener("change", async (e) => {
+      state.staffShopScope = e.target.value || "main";
+      syncShopHiddenInputs();
+      await loadProducts();
+      await loadStaffOrders();
+      await loadStaffChatMessages();
+      await loadRecordsData();
+      if (state.extraSettings.showBusinessAnalytics) {
+        await loadBusinessAnalytics();
+      }
+    });
+
+    document.getElementById("registerShopForm")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = document.getElementById("saveProductBtn");
-      await runGuardedAction("save-product", 1500, btn, "Saving...", async () => {
-        syncShopHiddenInputs();
-        const formData = new FormData(e.target);
-        const submittedName = String(formData.get("name") || "").trim();
-        const submittedVendor = String(formData.get("vendor_name") || "").trim();
-        const selectedExistingId = String(document.getElementById("existingProductSelect").value || "").trim();
-
+      const btn = document.getElementById("btnRegisterShop");
+      await runGuardedAction("register-shop", 1500, btn, "Registering...", async () => {
+        const fd = new FormData(e.target);
         try {
-          const res = await apiRequest("/api/products", { method: "POST", body: formData });
-          const savedId = String(res.product?.id ?? res.id ?? selectedExistingId ?? "");
-          saveVendorOverride(savedId, submittedName, submittedVendor);
-
+          await apiRequest("/api/shops", { method: "POST", body: fd });
           e.target.reset();
-          const imgUrlHidden = document.getElementById("prodImageUrlHidden");
-          if (imgUrlHidden) imgUrlHidden.value = "";
-          syncShopHiddenInputs();
-          document.getElementById("actionAddNew").checked = true;
-          toggleUpdateMode();
-          document.getElementById("prodCategory").value = "General";
-          document.getElementById("prodVendorName").value = "";
-          document.getElementById("prodMainUnit").value = "Carton";
-          document.getElementById("prodSubUnit").value = "Pack";
-          document.getElementById("prodRetailUnit").value = "Retail Unit";
-          document.getElementById("prodPriceCarton").value = "0.00";
-          document.getElementById("prodStockCartons").value = "0.00";
-          document.getElementById("prodCostCarton").value = "0.00";
-          document.getElementById("prodPricePack").value = "0.00";
-          document.getElementById("prodPacksPerCarton").value = "1";
-          document.getElementById("prodPriceRetail").value = "0.00";
-          document.getElementById("prodRetailPerPack").value = "1";
-          await loadProducts();
-          showBanner(`Saved "${submittedName}"${submittedVendor ? ` (Vendor/Sponsor: ${submittedVendor})` : ""}.`, "success");
+          await loadShops();
+          showBanner("Business owner shop registered and added to the side rail!", "success");
         } catch (err) {
-          showBanner(`Failed to save product: ${err.message}`, "danger");
+          showBanner(`Shop registration failed: ${err.message}`, "danger");
         }
       });
     });
 
-    function revealCustomerCredentialsAndOpenChat(phone, pin, refCode) {
-      const cleanPin = String(pin || "").trim();
-      const cleanRef = String(refCode || "").trim();
-      state.customerAuth = { unlocked: true, phone, pin: cleanPin || cleanRef };
-      document.getElementById("chatPhoneFilter").value = phone;
-      document.getElementById("chatPinFilter").value = cleanPin || cleanRef;
+    document.getElementById("publicShopApplyForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("btnSubmitShopApplication");
+      await runGuardedAction("apply-shop", 1500, btn, "Submitting...", async () => {
+        const fd = new FormData(e.target);
+        try {
+          await apiRequest("/api/shops/apply", { method: "POST", body: fd });
+          e.target.reset();
+          registerShopModal?.hide();
+          alert("Shop registration submitted! Once your registration fee is confirmed, the admin will approve and activate your shop.");
+        } catch (err) {
+          alert(`Could not submit registration: ${err.message}`);
+        }
+      });
+    });
 
-      const noticeEl = document.getElementById("customerCredentialNotice");
-      noticeEl.innerHTML = `
-        <strong><i class="fa-solid fa-key me-1"></i>Save Your Private Access Credentials:</strong>
-        Phone: <strong>${escapeHtml(phone)}</strong> &bull;
-        Chat PIN: <strong>${escapeHtml(cleanPin || "N/A")}</strong>
-        ${cleanRef ? `&bull; Order Ref: <strong>${escapeHtml(cleanRef)}</strong>` : ""}
-        <span class="d-block mt-1">Use your phone number and PIN (or Order Ref) anytime to unlock your private chat and receipts.</span>
-      `;
-      noticeEl.classList.remove("d-none");
-      switchCustomerTab("chatTab");
-    }
+    document.getElementById("addProductForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const saveBtn = document.getElementById("saveProductBtn");
+      await runGuardedAction("save-product", 1500, saveBtn, "Saving...", async () => {
+        syncShopHiddenInputs();
+        const form = e.target;
+        const fd = new FormData(form);
+        const prodName = String(fd.get("name") || "").trim();
+        const vendorVal = String(fd.get("vendor_name") || "").trim();
+        const existingId = String(fd.get("existing_product_id") || "");
+        const actionMode = String(fd.get("action_mode") || "create");
+
+        try {
+          const res = await apiRequest("/api/products", { method: "POST", body: fd });
+          const savedId = res?.product?.id || res?.id || existingId;
+          saveVendorOverride(savedId, prodName, vendorVal);
+
+          form.reset();
+          document.getElementById("prodImageUrlHidden").value = "";
+          syncShopHiddenInputs();
+          document.getElementById("actionAddNew").checked = true;
+          toggleUpdateMode();
+          await loadProducts();
+          showBanner(actionMode === "update" ? "Product updated successfully." : "New product saved to storefront.", "success");
+        } catch (err) {
+          showBanner(`Save failed: ${err.message}`, "danger");
+        }
+      });
+    });
 
     document.getElementById("customerOrderForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!state.cart.length) {
-        showBanner("Add at least one product to your cart before submitting an order.", "warning");
-        return;
-      }
-      const btn = e.target.querySelector('button[type="submit"]');
-      await runGuardedAction("submit-order", 2000, btn, "Submitting...", async () => {
-        const customerName = document.getElementById("orderCustomerName").value.trim();
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("submit-order", 2000, submitBtn, "Submitting...", async () => {
+        if (!state.cart.length) {
+          showBanner("Your cart is empty. Add items from the shop first.", "warning");
+          return;
+        }
+        const customer = document.getElementById("orderCustomerName").value.trim();
         const phone = document.getElementById("orderPhone").value.trim();
         const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("orderPin").value.trim();
-        const note = document.getElementById("orderNote").value.trim();
+        const notes = document.getElementById("orderNote").value.trim();
         const shopId = state.activeShopId || "main";
-        const mappedItems = state.cart.map((i) => ({
-          name: i.name,
-          unit: i.unit || "Unit",
-          qty: i.qty,
-          total_price: Number(i.price || 0) * Number(i.qty || 1),
+        const items = state.cart.map((item) => ({
+          product_id: item.id,
+          name: item.name,
+          unit: item.unit,
+          qty: item.qty,
+          unit_price: item.price,
+          total_price: Number(item.price || 0) * Number(item.qty || 1),
         }));
 
         try {
           const res = await apiRequest("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              shop_id: shopId,
-              customer: customerName,
-              contact_phone: phone,
-              pin,
-              notes: note,
-              items: mappedItems,
-            }),
+            body: JSON.stringify({ shop_id: shopId, customer, contact_phone: phone, pin, notes, items }),
           });
+          const assignedPin = String(res.customer_pin || pin || "").trim();
+          const assignedRef = String(res.payment_ref || "").trim();
+
           state.cart = [];
           updateCartSummary();
-          revealCustomerCredentialsAndOpenChat(phone, res.customer_pin, res.payment_ref);
+          e.target.reset();
+
+          document.getElementById("chatPhoneFilter").value = phone;
+          document.getElementById("chatPinFilter").value = assignedPin || assignedRef;
+          state.customerAuth = { unlocked: Boolean(assignedPin || assignedRef), phone, pin: assignedPin || assignedRef };
+
+          const credBox = document.getElementById("customerCredentialNotice");
+          credBox.innerHTML =
+            `<strong>Order Received!</strong> Your private Chat PIN is <code>${escapeHtml(assignedPin || "Check receipt")}</code>` +
+            (assignedRef ? ` &bull; Order Ref: <code>${escapeHtml(assignedRef)}</code>` : "") +
+            `. Save this PIN to re-open your private chat and receipts anytime.`;
+          credBox.classList.remove("d-none");
+
+          switchCustomerTab("chatTab");
+          await loadCustomerPrivateChat();
+          if (state.isLoggedIn) await loadStaffOrders();
         } catch (err) {
-          showBanner(`Failed to send order: ${err.message}`, "danger");
+          showBanner(`Order failed: ${err.message}`, "danger");
         }
       });
     });
 
     document.getElementById("multiRequestForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = e.target.querySelector('button[type="submit"]');
-      await runGuardedAction("multi-request", 2000, btn, "Sending...", async () => {
-        const customerName = document.getElementById("reqName").value.trim();
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("submit-request", 2000, submitBtn, "Sending...", async () => {
+        const customer = document.getElementById("reqName").value.trim();
         const phone = document.getElementById("reqPhone").value.trim();
         const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("reqPin").value.trim();
         const itemsText = document.getElementById("reqItemsText").value.trim();
         const shopId = state.activeShopId || "main";
+        const special_items = itemsText
+          .split(/\n+/)
+          .map((line) => line.trim())
+          .filter(Boolean)
+          .map((line) => ({ item: line }));
+
         try {
           const res = await apiRequest("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               shop_id: shopId,
-              customer: customerName,
+              customer,
               contact_phone: phone,
               pin,
-              special_items: [{ item: itemsText, qty: 1 }],
+              notes: itemsText,
+              special_items,
             }),
           });
+          const assignedPin = String(res.customer_pin || pin || "").trim();
+          const assignedRef = String(res.payment_ref || "").trim();
+
           e.target.reset();
-          revealCustomerCredentialsAndOpenChat(phone, res.customer_pin, res.payment_ref);
+          document.getElementById("chatPhoneFilter").value = phone;
+          document.getElementById("chatPinFilter").value = assignedPin || assignedRef;
+          state.customerAuth = { unlocked: Boolean(assignedPin || assignedRef), phone, pin: assignedPin || assignedRef };
+
+          const credBox = document.getElementById("customerCredentialNotice");
+          credBox.innerHTML =
+            `<strong>Request Sent!</strong> Your private Chat PIN is <code>${escapeHtml(assignedPin || "Check receipt")}</code>` +
+            (assignedRef ? ` &bull; Ref: <code>${escapeHtml(assignedRef)}</code>` : "") +
+            `. Use this PIN to view replies and upload payment proof.`;
+          credBox.classList.remove("d-none");
+
+          switchCustomerTab("chatTab");
+          await loadCustomerPrivateChat();
+          if (state.isLoggedIn) await loadStaffOrders();
         } catch (err) {
-          showBanner(`Failed to send request: ${err.message}`, "danger");
+          showBanner(`Request failed: ${err.message}`, "danger");
         }
+      });
+    });
+
+    document.getElementById("unlockChatForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("unlock-chat", 800, submitBtn, "Unlocking...", async () => {
+        const phone = document.getElementById("chatPhoneFilter").value.trim();
+        const pin = document.getElementById("chatPinFilter").value.trim();
+        state.customerAuth = { unlocked: false, phone, pin };
+        await loadCustomerPrivateChat();
       });
     });
 
     document.getElementById("chatSendForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (!state.customerAuth.unlocked) {
-        showBanner("Please unlock your private chat first.", "warning");
-        return;
-      }
-      const btn = e.target.querySelector('button[type="submit"]');
-      await runGuardedAction("customer-chat-send", 1200, btn, "Sending...", async () => {
-        const phone = state.customerAuth.phone;
-        const pin = state.customerAuth.pin || document.getElementById("chatPinFilter").value.trim();
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("customer-send-chat", 1200, submitBtn, "Sending...", async () => {
+        const phone = (state.customerAuth.phone || document.getElementById("chatPhoneFilter").value).trim();
+        const pin = (state.customerAuth.pin || document.getElementById("chatPinFilter").value).trim();
         const text = document.getElementById("chatSendText").value.trim();
-        const proofFile = document.getElementById("chatProofFile").files[0];
+        const fileInput = document.getElementById("chatProofFile");
+        const hasFile = fileInput.files && fileInput.files.length > 0;
+
+        if (!phone || !pin) {
+          showBanner("Unlock your chat with your phone number and PIN first.", "warning");
+          return;
+        }
+        if (!text && !hasFile) return;
+
         const fd = new FormData();
         fd.append("phone", phone);
         fd.append("pin", pin);
         fd.append("shop_id", state.activeShopId || "main");
         fd.append("sender", "Customer");
         fd.append("text", text);
-        if (proofFile) fd.append("proof_file", proofFile);
+        if (hasFile) fd.append("proof_file", fileInput.files[0]);
 
         try {
           await apiRequest("/api/messages", { method: "POST", body: fd });
           document.getElementById("chatSendText").value = "";
-          document.getElementById("chatProofFile").value = "";
+          fileInput.value = "";
           await loadCustomerPrivateChat();
+          if (state.isLoggedIn) await loadStaffChatMessages();
         } catch (err) {
-          showBanner(`Failed to send message: ${err.message}`, "danger");
+          showBanner(`Message failed: ${err.message}`, "danger");
         }
       });
     });
 
-    document.getElementById("posSaleForm").addEventListener("submit", async (e) => {
+    document.getElementById("staffChatSendForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = e.target.querySelector('button[type="submit"]');
-      await runGuardedAction("pos-sale", 1500, btn, "Recording...", async () => {
-        const prodId = document.getElementById("posProductSelect").value;
-        const unitType = document.getElementById("posUnitSelect").value;
-        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
-        const prod = state.products.find((p) => String(p.id) === String(prodId));
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("staff-send-chat", 1200, submitBtn, "Replying...", async () => {
+        const phone = document.getElementById("staffChatSendPhone").value.trim();
+        const text = document.getElementById("staffChatSendText").value.trim();
+        const targetShop = getEffectiveStaffShopParam() === "all" ? "main" : getEffectiveStaffShopParam();
+        if (!phone || !text) return;
+
+        const fd = new FormData();
+        fd.append("phone", phone);
+        fd.append("shop_id", targetShop);
+        fd.append("sender", state.user?.username || "Staff");
+        fd.append("text", text);
+
+        try {
+          await apiRequest("/api/messages", { method: "POST", body: fd });
+          document.getElementById("staffChatSendText").value = "";
+          document.getElementById("staffChatPhoneFilter").value = phone;
+          await loadStaffChatMessages();
+          if (state.customerAuth.unlocked && state.customerAuth.phone === phone) {
+            await loadCustomerPrivateChat();
+          }
+          showBanner("Reply sent to customer chat.", "success");
+        } catch (err) {
+          showBanner(`Reply failed: ${err.message}`, "danger");
+        }
+      });
+    });
+
+    async function submitPosTransaction({ recordDebt = false, triggerBtn = null }) {
+      await runGuardedAction("pos-sale", 1500, triggerBtn, "Processing...", async () => {
+        const prod = state.products.find((p) => String(p.id) === String(document.getElementById("posProductSelect").value));
         if (!prod) {
-          showBanner("Please select a valid product.", "warning");
+          showBanner("Select a product first.", "warning");
           return;
         }
+        const unitType = document.getElementById("posUnitSelect").value;
+        const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
         const unitPrice = getPriceForUnit(prod, unitType);
-        const totalAmount = unitPrice * qty;
-        const custName = document.getElementById("posCustomerName").value.trim() || "Walk-in Customer";
-        const custPhone = document.getElementById("posPhone").value.trim() || "N/A";
-        const paySource = document.getElementById("posPaymentMethod").value;
-        const sendWhatsAppOpt = document.getElementById("posSendReceiptToWhatsApp").checked;
-        const shopIdForSale = prod.shop_id || (getEffectiveStaffShopParam() === "all" ? "main" : getEffectiveStaffShopParam());
+        const total = unitPrice * qty;
+        const customerName = (document.getElementById("posCustomerName").value || "").trim() || "Walk-in Customer";
+        const customerPhone = (document.getElementById("posPhone").value || "").trim();
+        const paymentSource = document.getElementById("posPaymentMethod").value;
+        const sendToWhatsApp = Boolean(document.getElementById("posSendReceiptToWhatsApp")?.checked);
+        const targetShop = getEffectiveStaffShopParam() === "all" ? "main" : getEffectiveStaffShopParam();
+
+        if (sendToWhatsApp && !formatWhatsAppPhone(customerPhone)) {
+          showBanner("Enter a valid customer WhatsApp number to send the receipt to WhatsApp.", "warning");
+          return;
+        }
 
         try {
           const res = await apiRequest("/api/sales", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              shop_id: shopIdForSale,
+              shop_id: targetShop,
               product_id: prod.id,
               item_name: prod.name,
               unit_type: unitType,
               qty,
               unit_price: unitPrice,
-              total: totalAmount,
-              customer_name: custName,
-              customer_phone: custPhone,
-              payment_source: paySource,
+              total,
+              customer_name: customerName,
+              customer_phone: customerPhone,
+              payment_source: paymentSource,
               worker: state.user?.username || "admin",
-              record_debt: false,
+              record_debt: recordDebt,
             }),
           });
-          const rec = res.receipt || {};
-          const refCode = rec.payment_ref || "";
-          const formattedTotal = formatMoney(totalAmount);
 
-          let waStatusHtml = "";
-          if (sendWhatsAppOpt && custPhone && custPhone !== "N/A") {
+          const ref = res.receipt?.payment_ref || res.sale?.payment_ref || `POS-${Date.now()}`;
+          const lines = [
+            `${prod.name} (${unitType}) x ${qty} @ ${formatMoney(unitPrice)} = ${formatMoney(total)}`,
+            `Payment: ${recordDebt ? "DEBT / CREDIT" : paymentSource}`,
+          ];
+
+          document.getElementById("posReceiptBox").innerHTML = `
+            <div class="alert alert-success">
+              <div class="fw-bold">${recordDebt ? "Debt Recorded" : "Sale Completed"} \u2014 Ref: ${escapeHtml(ref)}</div>
+              <div>${escapeHtml(prod.name)} (${escapeHtml(unitType)}) &times; ${qty} = <strong>${formatMoney(total)}</strong></div>
+              <button type="button" class="btn btn-sm btn-dark mt-2" data-action="open-pos-receipt" data-ref="${escapeHtml(ref)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${total}" data-customer="${escapeHtml(customerName)}" data-phone="${escapeHtml(customerPhone)}" data-mode="${recordDebt ? "DEBT" : paymentSource}">
+                <i class="fa-solid fa-print me-1"></i>Print Thermal Receipt
+              </button>
+            </div>
+          `;
+
+          if (sendToWhatsApp) {
             try {
-              const receiptMessage = buildWhatsAppReceiptMessage({
-                title: "POS SALES RECEIPT",
-                ref: refCode,
-                customer: custName,
-                phone: custPhone,
-                timestamp: new Date().toLocaleString(),
-                lines: [`${prod.name} (${unitType}) x ${qty}`, `Payment: ${paySource}`],
-                total: formattedTotal,
+              sendReceiptToCustomerWhatsApp({
+                phone: customerPhone,
+                receiptMessage: buildWhatsAppReceiptMessage({
+                  title: recordDebt ? "DEBT RECEIPT" : "POS CASH RECEIPT",
+                  ref,
+                  customer: customerName,
+                  phone: customerPhone,
+                  lines,
+                  total: formatMoney(total),
+                }),
               });
-              sendReceiptToCustomerWhatsApp({ phone: custPhone, receiptMessage });
-              waStatusHtml = `<div class="text-success mt-1"><i class="fa-brands fa-whatsapp me-1"></i>Opened WhatsApp receipt for ${escapeHtml(custPhone)}.</div>`;
             } catch (waErr) {
-              waStatusHtml = `<div class="text-warning mt-1"><i class="fa-solid fa-triangle-exclamation me-1"></i>${escapeHtml(waErr.message)}</div>`;
+              showBanner(waErr.message, "warning");
             }
           }
 
-          document.getElementById("posReceiptBox").innerHTML = `
-            <div class="alert alert-success py-2 small d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <div>
-                <strong>Receipt Saved (${escapeHtml(refCode)}):</strong> ${escapeHtml(prod.name)} (${qty} ${escapeHtml(unitType)}) &mdash; <strong>${formattedTotal}</strong>
-                ${waStatusHtml}
-              </div>
-              <div class="d-flex gap-1">
-                <button type="button" class="btn btn-sm btn-success" data-action="send-pos-receipt-whatsapp"
-                  data-ref="${escapeHtml(refCode)}"
-                  data-customer="${escapeHtml(custName)}"
-                  data-phone="${escapeHtml(custPhone)}"
-                  data-item="${escapeHtml(prod.name)}"
-                  data-unit="${escapeHtml(unitType)}"
-                  data-qty="${qty}"
-                  data-source="${escapeHtml(paySource)}"
-                  data-total="${escapeHtml(formattedTotal)}">
-                  <i class="fa-brands fa-whatsapp me-1"></i>Send to WhatsApp
-                </button>
-                <button type="button" class="btn btn-sm btn-dark" data-action="open-pos-receipt"
-                  data-ref="${escapeHtml(refCode)}"
-                  data-customer="${escapeHtml(custName)}"
-                  data-phone="${escapeHtml(custPhone)}"
-                  data-item="${escapeHtml(prod.name)}"
-                  data-unit="${escapeHtml(unitType)}"
-                  data-qty="${qty}"
-                  data-source="${escapeHtml(paySource)}"
-                  data-total="${escapeHtml(formattedTotal)}">
-                  <i class="fa-solid fa-print me-1"></i>Print Thermal Receipt
-                </button>
-              </div>
-            </div>
-          `;
           await loadProducts();
-          showBanner(`Sale recorded (${refCode}).`, "success");
+          await loadRecordsData();
+          showBanner(recordDebt ? "Debt recorded and inventory updated." : "POS sale completed and inventory updated.", "success");
         } catch (err) {
-          showBanner(`Failed to record sale: ${err.message}`, "danger");
+          showBanner(`POS action failed: ${err.message}`, "danger");
         }
+      });
+    }
+
+    document.getElementById("posSaleForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      await submitPosTransaction({
+        recordDebt: false,
+        triggerBtn: e.target.querySelector('button[type="submit"]'),
       });
     });
 
     document.getElementById("debtorForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = e.target.querySelector('button[type="submit"]');
-      const scopeShop = getEffectiveStaffShopParam();
-      await runGuardedAction("add-debtor", 1200, btn, "Saving...", async () => {
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("add-debtor", 1200, submitBtn, "Saving...", async () => {
+        const customer = document.getElementById("debtorName").value.trim();
+        const phone = document.getElementById("debtorPhone").value.trim();
+        const amount = Number(document.getElementById("debtorAmount").value || 0);
+        const items_bought = document.getElementById("debtorNote").value.trim();
+        const targetShop = getEffectiveStaffShopParam() === "all" ? "main" : getEffectiveStaffShopParam();
         try {
           await apiRequest("/api/debtors", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              shop_id: scopeShop === "all" ? "main" : scopeShop,
-              customer: document.getElementById("debtorName").value.trim(),
-              phone: document.getElementById("debtorPhone").value.trim(),
-              amount: Number(document.getElementById("debtorAmount").value || 0),
-              items_bought: document.getElementById("debtorNote").value.trim(),
-            }),
+            body: JSON.stringify({ shop_id: targetShop, customer, phone, amount, items_bought }),
           });
           e.target.reset();
           await loadRecordsData();
-          showBanner("Debtor record saved.", "success");
+          showBanner("Debtor saved.", "success");
         } catch (err) {
-          showBanner(`Failed to save debtor: ${err.message}`, "danger");
+          showBanner(`Could not save debtor: ${err.message}`, "danger");
         }
       });
     });
 
     document.getElementById("expenseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = e.target.querySelector('button[type="submit"]');
-      const scopeShop = getEffectiveStaffShopParam();
-      await runGuardedAction("add-expense", 1200, btn, "Saving...", async () => {
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("add-expense", 1200, submitBtn, "Saving...", async () => {
+        const title = document.getElementById("expenseTitle").value.trim();
+        const amount = Number(document.getElementById("expenseAmount").value || 0);
+        const category = (document.getElementById("expenseCategory").value || "Operations").trim();
+        const noteInput = document.getElementById("expenseNote").value.trim();
+        const note = noteInput ? `${title} \u2014 ${noteInput}` : title;
+        const targetShop = getEffectiveStaffShopParam() === "all" ? "main" : getEffectiveStaffShopParam();
         try {
           await apiRequest("/api/expenses", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              shop_id: scopeShop === "all" ? "main" : scopeShop,
-              category: document.getElementById("expenseCategory").value.trim() || "Operations",
-              amount: Number(document.getElementById("expenseAmount").value || 0),
-              note: document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim(),
-            }),
+            body: JSON.stringify({ shop_id: targetShop, category, amount, note }),
           });
           e.target.reset();
           document.getElementById("expenseCategory").value = "Operations";
           await loadRecordsData();
-          if (state.isLoggedIn && state.extraSettings.showBusinessAnalytics) {
+          if (state.extraSettings.showBusinessAnalytics) {
             await loadBusinessAnalytics();
           }
           showBanner("Expense saved.", "success");
         } catch (err) {
-          showBanner(`Failed to save expense: ${err.message}`, "danger");
+          showBanner(`Could not save expense: ${err.message}`, "danger");
         }
       });
     });
 
     document.getElementById("workerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = e.target.querySelector('button[type="submit"]');
-      const scopeShop = getEffectiveStaffShopParam();
-      await runGuardedAction("add-worker", 1200, btn, "Saving...", async () => {
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("add-worker", 1200, submitBtn, "Saving...", async () => {
         const name = document.getElementById("workerName").value.trim();
-        const username = document.getElementById("workerUsername").value.trim() || name.toLowerCase().replace(/\s+/g, "");
+        const role = (document.getElementById("workerRole").value || "Staff").trim();
+        const username = document.getElementById("workerUsername").value.trim();
+        const password = document.getElementById("workerPassword").value;
+        const targetShop = getEffectiveStaffShopParam() === "all" ? "main" : getEffectiveStaffShopParam();
         try {
           await apiRequest("/api/workers", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              shop_id: scopeShop === "all" ? "main" : scopeShop,
-              name,
-              role: document.getElementById("workerRole").value.trim() || "Staff",
-              username,
-              password: document.getElementById("workerPassword").value,
-            }),
+            body: JSON.stringify({ shop_id: targetShop, name, role, username, password }),
           });
           e.target.reset();
           document.getElementById("workerRole").value = "Staff";
           await loadRecordsData();
-          showBanner("Worker account saved.", "success");
+          showBanner("Worker saved.", "success");
         } catch (err) {
-          showBanner(`Failed to save worker: ${err.message}`, "danger");
+          showBanner(`Could not save worker: ${err.message}`, "danger");
         }
       });
     });
 
     document.getElementById("settingsForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = e.target.querySelector('button[type="submit"]');
-      await runGuardedAction("save-settings", 1500, btn, "Saving...", async () => {
-        const formData = new FormData(e.target);
-        const chosenCurrency = (document.getElementById("setCurrency").value || "\u20a6").trim() || "\u20a6";
-        const uploadedFiles = document.getElementById("setAwarenessImageFile").files;
-        let finalAwarenessUrls = parseAwarenessList(document.getElementById("setAwarenessImageUrl").value);
+      const submitBtn = e.target.querySelector('button[type="submit"]');
+      await runGuardedAction("save-settings", 1500, submitBtn, "Saving...", async () => {
+        const form = e.target;
+        const fd = new FormData(form);
+        const chosenCurrency = (document.getElementById("setCurrency").value || "\u20a6").trim();
+        state.currency = chosenCurrency;
+        fd.set("currency", chosenCurrency);
 
-        if (uploadedFiles && uploadedFiles.length > 0) {
+        const existingImages = parseAwarenessList(document.getElementById("setAwarenessImageUrl").value);
+        const awarenessFiles = document.getElementById("setAwarenessImageFile").files;
+        let finalAwarenessUrls = [...existingImages];
+
+        if (awarenessFiles && awarenessFiles.length > 0) {
           try {
-            const uploadedDataUrls = await readAwarenessFilesAsDataUrls(uploadedFiles);
+            const uploadedDataUrls = await readAwarenessFilesAsDataUrls(awarenessFiles);
             if (uploadedDataUrls.length > 0) {
               finalAwarenessUrls = [...finalAwarenessUrls, ...uploadedDataUrls];
             }
           } catch (imgErr) {
             showBanner(imgErr.message, "warning");
-            return;
           }
         }
 
         const updatedExtra = {
           showBusinessAnalytics: document.getElementById("setShowBusinessAnalytics").checked,
           showInventoryAlerts: document.getElementById("setShowInventoryAlerts").checked,
-          lowStockThreshold: Math.max(0, Number(document.getElementById("setLowStockThreshold").value || 2)),
+          lowStockThreshold: Math.max(0, Number(document.getElementById("setLowStockThreshold").value ?? 2)),
           showTabShop: document.getElementById("setShowTabShop").checked,
           showTabRequest: document.getElementById("setShowTabRequest").checked,
           showTabChat: document.getElementById("setShowTabChat").checked,
@@ -4783,64 +4549,396 @@
         };
 
         state.extraSettings = updatedExtra;
-        state.currency = chosenCurrency;
         state.awarenessDismissed = false;
         _awarenessSlideIndex = 0;
         saveLocalExtraSettings(updatedExtra);
-
-        const compactExtra = {
-          ...updatedExtra,
-          awarenessImageUrl: finalAwarenessUrls.filter((u) => !u.startsWith("data:image/")).join("\n"),
-        };
-        formData.set("currency", chosenCurrency);
-        formData.set("extra_settings", JSON.stringify(compactExtra));
+        fd.append("extra_settings", JSON.stringify(updatedExtra));
 
         try {
-          await apiRequest("/api/settings", { method: "POST", body: formData });
+          await apiRequest("/api/settings", { method: "POST", body: fd });
           document.getElementById("setAwarenessImageFile").value = "";
           await loadSettings();
-          showBanner("All app settings saved and applied live!", "success");
+          showBanner("All app settings saved and applied.", "success");
         } catch (err) {
           applyExtraSettingsToUI();
           renderProducts();
-          showBanner(`Saved UI settings locally; server sync notice: ${err.message}`, "warning");
+          showBanner(`Saved locally; server sync note: ${err.message}`, "warning");
         }
       });
+    });
+
+    const awarenessImgEl = document.getElementById("customerAwarenessImg");
+    if (awarenessImgEl) {
+      awarenessImgEl.addEventListener("touchstart", (e) => {
+        if (e.changedTouches && e.changedTouches.length > 0) {
+          _awarenessTouchStartX = e.changedTouches[0].clientX;
+        }
+      }, { passive: true });
+      awarenessImgEl.addEventListener("touchend", (e) => {
+        if (e.changedTouches && e.changedTouches.length > 0) {
+          const dx = e.changedTouches[0].clientX - _awarenessTouchStartX;
+          if (Math.abs(dx) > 35) {
+            stepAwarenessSlide(dx < 0 ? 1 : -1);
+          }
+        }
+      }, { passive: true });
+    }
+
+    document.addEventListener("click", async (e) => {
+      const target = e.target.closest("[data-action]");
+      if (!target) return;
+      const action = target.dataset.action;
+
+      if (action === "dismiss-banner") {
+        document.getElementById("appFeedbackBanner").classList.add("d-none");
+      } else if (action === "open-staff-portal") {
+        state.isLoggedIn = true;
+        syncLayoutChrome();
+        switchSection("customerSection");
+      } else if (action === "select-shop-rail") {
+        const sid = target.dataset.shopId || "main";
+        await selectShopFromRail(sid);
+      } else if (action === "open-register-shop-modal") {
+        const payInfo = String(state.extraSettings?.paymentInstructions || "").trim();
+        const noticeEl = document.getElementById("shopRegPaymentNotice");
+        if (noticeEl) {
+          noticeEl.innerHTML = payInfo
+            ? `<strong>Registration Fee Payment Details:</strong> ${escapeHtml(payInfo)}<br/>Submit your details and payment reference below—your shop goes live once approved.`
+            : `Submit your shop details and registration fee payment reference below—your shop goes live once approved.`;
+        }
+        registerShopModal?.show();
+      } else if (action === "approve-shop") {
+        const sid = target.dataset.shopId;
+        if (!sid) return;
+        await runGuardedAction(`approve-shop-${sid}`, 1000, target, "Approving...", async () => {
+          try {
+            await apiRequest(`/api/shops/${encodeURIComponent(sid)}/approve`, { method: "POST" });
+            await loadShops();
+            showBanner(`Shop "${sid}" approved and is now live on the side rail!`, "success");
+          } catch (err) {
+            showBanner(`Approval failed: ${err.message}`, "danger");
+          }
+        });
+      } else if (action === "ceo-inspect-shop") {
+        const sid = target.dataset.shopId || "main";
+        state.staffShopScope = sid;
+        const sel = document.getElementById("ceoInspectShopSelect");
+        if (sel) sel.value = sid;
+        syncShopHiddenInputs();
+        await loadProducts();
+        await loadStaffOrders();
+        await loadStaffChatMessages();
+        await loadRecordsData();
+        showBanner(`Inspecting shop "${sid}".`, "info");
+      } else if (action === "toggle-shop-status") {
+        const sid = target.dataset.shopId;
+        const nextStatus = target.dataset.nextStatus || "active";
+        if (!sid) return;
+        try {
+          await apiRequest(`/api/shops/${encodeURIComponent(sid)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: nextStatus }),
+          });
+          await loadShops();
+          showBanner(`Shop "${sid}" status updated to ${nextStatus}.`, "success");
+        } catch (err) {
+          showBanner(`Could not update shop status: ${err.message}`, "danger");
+        }
+      } else if (action === "delete-shop") {
+        const sid = target.dataset.shopId;
+        if (!sid || !confirm("Remove this shop / application?")) return;
+        try {
+          await apiRequest(`/api/shops/${encodeURIComponent(sid)}`, { method: "DELETE" });
+          if (state.activeShopId === sid) state.activeShopId = "main";
+          if (state.staffShopScope === sid) state.staffShopScope = "main";
+          await loadShops();
+          showBanner("Shop entry removed.", "success");
+        } catch (err) {
+          showBanner(`Delete failed: ${err.message}`, "danger");
+        }
+      } else if (action === "switch-section") {
+        switchSection(target.dataset.section);
+      } else if (action === "switch-customer-tab") {
+        switchCustomerTab(target.dataset.tab);
+      } else if (action === "switch-staff-tab") {
+        switchStaffTab(target.dataset.tab);
+      } else if (action === "refresh-products") {
+        await loadProducts();
+        showBanner("Inventory refreshed.", "info");
+      } else if (action === "lookup-barcode") {
+        const code = document.getElementById("barcodeLookupInput")?.value || "";
+        await lookupBarcodeItem(code);
+      } else if (action === "open-camera-scanner") {
+        await startBarcodeCameraScanner();
+      } else if (action === "run-auto-stock") {
+        await runNameBatchAutoStock(target);
+      } else if (action === "publish-auto-stock") {
+        await publishSelectedAutoStock(target);
+      } else if (action === "refresh-analytics") {
+        await loadBusinessAnalytics();
+        showBanner("Business analytics refreshed.", "info");
+      } else if (action === "refresh-staff-orders-chat") {
+        await loadStaffOrders();
+        await loadStaffChatMessages();
+        showBanner("Orders and live chat refreshed.", "info");
+      } else if (action === "filter-staff-orders") {
+        state.ordersFilter = target.dataset.filter || "all";
+        document.querySelectorAll("#staffOrdersFilterGroup button").forEach((b) => {
+          b.classList.toggle("active", b === target);
+        });
+        renderStaffOrdersList();
+      } else if (action === "refresh-records") {
+        await loadRecordsData();
+        showBanner("Debtors, expenses & workers refreshed.", "info");
+      } else if (action === "lock-customer-chat") {
+        lockCustomerChatView();
+      } else if (action === "dismiss-awareness-float") {
+        state.awarenessDismissed = true;
+        renderFloatingAwarenessCard();
+      } else if (action === "prev-awareness-slide") {
+        stepAwarenessSlide(-1);
+      } else if (action === "next-awareness-slide") {
+        stepAwarenessSlide(1);
+      } else if (action === "clear-awareness-image") {
+        document.getElementById("setAwarenessImageUrl").value = "";
+        document.getElementById("setAwarenessImageFile").value = "";
+        state.extraSettings.awarenessImageUrl = "";
+        _awarenessSlideIndex = 0;
+        saveLocalExtraSettings(state.extraSettings);
+        renderFloatingAwarenessCard();
+        showBanner("Awareness images cleared.", "info");
+      } else if (action === "reset-extra-settings") {
+        state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS };
+        state.awarenessDismissed = false;
+        _awarenessSlideIndex = 0;
+        saveLocalExtraSettings(state.extraSettings);
+        applyExtraSettingsToUI();
+        renderProducts();
+        showBanner("UI settings reset to defaults.", "info");
+      } else if (action === "delete-chat-photo") {
+        const msgId = target.dataset.msgId;
+        if (msgId && confirm("Delete this photo from chat to free up storage?")) {
+          await deleteSingleChatPhoto(msgId);
+        }
+      } else if (action === "delete-all-chat-photos") {
+        if (confirm("Delete ALL stored photos across chat messages to free up storage?")) {
+          await deleteAllChatPhotos();
+        }
+      } else if (action === "add-to-cart") {
+        const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
+        if (!prod) return;
+        const card = target.closest(".card");
+        const unit = card?.querySelector(".card-unit-sel")?.value || prod.unit_retail_label || "Retail Unit";
+        const qty = Math.max(1, Number(card?.querySelector(".card-qty-inp")?.value || 1));
+        const unitPrice = getPriceForUnit(prod, unit);
+        state.cart.push({
+          id: prod.id,
+          name: prod.name,
+          unit,
+          qty,
+          price: unitPrice,
+        });
+        updateCartSummary();
+      } else if (action === "remove-cart-item") {
+        const idx = Number(target.dataset.index);
+        if (!Number.isNaN(idx)) {
+          state.cart.splice(idx, 1);
+          updateCartSummary();
+        }
+      } else if (action === "clear-cart") {
+        state.cart = [];
+        updateCartSummary();
+      } else if (action === "watch-ad") {
+        const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
+        if (prod) openProductAd(prod);
+      } else if (action === "edit-product-vendor") {
+        startEditingProduct(target.dataset.id, true);
+      } else if (action === "delete-product") {
+        const prodId = target.dataset.id;
+        if (!prodId || !confirm("Delete this product?")) return;
+        try {
+          await apiRequest(`/api/products/${encodeURIComponent(prodId)}`, { method: "DELETE" });
+          delete state.vendorOverrides[`id:${String(prodId)}`];
+          await loadProducts();
+          showBanner("Product deleted.", "success");
+        } catch (err) {
+          showBanner(`Delete failed: ${err.message}`, "danger");
+        }
+      } else if (action === "pos-debt") {
+        await submitPosTransaction({ recordDebt: true, triggerBtn: target });
+      } else if (action === "open-pos-receipt") {
+        const qty = Number(target.dataset.qty || 1);
+        const total = Number(target.dataset.total || 0);
+        const itemName = target.dataset.item || "Item";
+        const unitName = target.dataset.unit || "Unit";
+        const custName = target.dataset.customer || "Walk-in Customer";
+        const custPhone = target.dataset.phone || "";
+        const modeLabel = target.dataset.mode || "Cash";
+        openThermalReceipt({
+          title: modeLabel === "DEBT" ? "DEBT RECEIPT" : "POS CASH RECEIPT",
+          ref: target.dataset.ref || "",
+          customer: custName,
+          phone: custPhone,
+          lines: [
+            `${itemName} (${unitName}) x ${qty} = ${formatMoney(total)}`,
+            `Payment: ${modeLabel}`,
+          ],
+          total: formatMoney(total),
+          allowWhatsAppSend: true,
+        });
+      } else if (action === "select-order-phone") {
+        const phone = target.dataset.phone || "";
+        if (phone) {
+          document.getElementById("staffChatPhoneFilter").value = phone;
+          document.getElementById("staffChatSendPhone").value = phone;
+          await loadStaffChatMessages();
+        }
+      } else if (action === "open-order-receipt") {
+        e.stopPropagation();
+        const idx = Number(target.dataset.orderIndex);
+        const o = state.ordersFeed[idx];
+        if (!o) return;
+        const lines = [];
+        let total = 0;
+        if (Array.isArray(o.special_items) && o.special_items.length > 0) {
+          o.special_items.forEach((sp) => lines.push(sp.item || sp.name || ""));
+        } else if (Array.isArray(o.items) && o.items.length > 0) {
+          o.items.forEach((it) => {
+            const p = Number(it.total_price || 0);
+            total += p;
+            lines.push(`${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${formatMoney(p)}`);
+          });
+        }
+        if (o.notes && !lines.length) lines.push(o.notes);
+        openThermalReceipt({
+          title: o.order_type || "ORDER RECEIPT",
+          ref: o.payment_ref || "",
+          customer: o.customer || o.customer_name || "Customer",
+          phone: o.contact_phone || o.phone || "",
+          timestamp: o.timestamp || "",
+          lines,
+          total: total > 0 ? formatMoney(total) : "",
+          allowWhatsAppSend: true,
+        });
+      } else if (action === "send-order-receipt-whatsapp") {
+        e.stopPropagation();
+        const idx = Number(target.dataset.orderIndex);
+        const o = state.ordersFeed[idx];
+        const phone = target.dataset.phone || o?.contact_phone || o?.phone || "";
+        if (!o) return;
+        const lines = [];
+        let total = 0;
+        if (Array.isArray(o.special_items) && o.special_items.length > 0) {
+          o.special_items.forEach((sp) => lines.push(sp.item || sp.name || ""));
+        } else if (Array.isArray(o.items) && o.items.length > 0) {
+          o.items.forEach((it) => {
+            const p = Number(it.total_price || 0);
+            total += p;
+            lines.push(`${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${formatMoney(p)}`);
+          });
+        }
+        if (o.notes && !lines.length) lines.push(o.notes);
+        try {
+          sendReceiptToCustomerWhatsApp({
+            phone,
+            receiptMessage: buildWhatsAppReceiptMessage({
+              title: o.order_type || "ORDER RECEIPT",
+              ref: o.payment_ref || "",
+              customer: o.customer || o.customer_name || "Customer",
+              phone,
+              timestamp: o.timestamp || "",
+              lines,
+              total: total > 0 ? formatMoney(total) : "",
+            }),
+          });
+        } catch (waErr) {
+          showBanner(waErr.message, "warning");
+        }
+      } else if (action === "send-modal-receipt-whatsapp") {
+        if (!state.pendingWhatsAppReceipt) {
+          showBanner("No customer WhatsApp number is attached to this receipt.", "warning");
+          return;
+        }
+        try {
+          sendReceiptToCustomerWhatsApp(state.pendingWhatsAppReceipt);
+        } catch (waErr) {
+          showBanner(waErr.message, "warning");
+        }
+      } else if (action === "verify-send-receipt") {
+        e.stopPropagation();
+        const orderId = target.dataset.orderId;
+        const phone = target.dataset.phone || "";
+        if (!orderId) return;
+        await runGuardedAction(`verify-${orderId}`, 1200, target, "Verifying...", async () => {
+          try {
+            await apiRequest(`/api/orders/${encodeURIComponent(orderId)}/verify`, { method: "POST" });
+            if (phone) document.getElementById("staffChatPhoneFilter").value = phone;
+            await loadStaffOrders();
+            await loadStaffChatMessages();
+            if (state.customerAuth.unlocked) await loadCustomerPrivateChat();
+            showBanner("Order verified and receipt sent to customer private chat.", "success");
+          } catch (err) {
+            showBanner(`Verify failed: ${err.message}`, "danger");
+          }
+        });
+      } else if (action === "delete-order") {
+        e.stopPropagation();
+        const orderId = target.dataset.orderId;
+        if (!orderId || !confirm("Delete this order record?")) return;
+        try {
+          await apiRequest(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE" });
+          await loadStaffOrders();
+          showBanner("Order deleted.", "success");
+        } catch (err) {
+          showBanner(`Delete failed: ${err.message}`, "danger");
+        }
+      } else if (action === "mark-debtor-paid") {
+        const debtorId = target.dataset.id;
+        if (!debtorId) return;
+        state.paidDebtorIds.add(String(debtorId));
+        saveIdSetToStorage(PAID_DEBTOR_IDS_KEY, state.paidDebtorIds);
+        renderRecordsLists();
+        try {
+          await apiRequest(`/api/debtors/${encodeURIComponent(debtorId)}/pay`, { method: "POST" });
+          await loadRecordsData();
+        } catch (_) {}
+        showBanner("Debtor marked as paid.", "success");
+      } else if (action === "delete-expense") {
+        const expId = target.dataset.id;
+        if (!expId) return;
+        try {
+          await apiRequest(`/api/expenses/${encodeURIComponent(expId)}`, { method: "DELETE" });
+          await loadRecordsData();
+          if (state.extraSettings.showBusinessAnalytics) await loadBusinessAnalytics();
+          showBanner("Expense deleted.", "success");
+        } catch (err) {
+          showBanner(`Delete failed: ${err.message}`, "danger");
+        }
+      } else if (action === "delete-worker") {
+        const wrkId = target.dataset.id;
+        if (!wrkId) return;
+        try {
+          await apiRequest(`/api/workers/${encodeURIComponent(wrkId)}`, { method: "DELETE" });
+          await loadRecordsData();
+          showBanner("Worker removed.", "success");
+        } catch (err) {
+          showBanner(`Delete failed: ${err.message}`, "danger");
+        }
+      } else if (action === "print-thermal-receipt") {
+        window.print();
+      }
     });
 
     (async function initApp() {
       state.paidDebtorIds = readIdSetFromStorage(PAID_DEBTOR_IDS_KEY);
       state.deletedPhotoIds = readIdSetFromStorage(DELETED_CHAT_PHOTOS_KEY);
       state.vendorOverrides = readVendorOverrides();
-
-      const awarenessImgEl = document.getElementById("customerAwarenessImg");
-      if (awarenessImgEl) {
-        awarenessImgEl.addEventListener(
-          "touchstart",
-          (ev) => {
-            _awarenessTouchStartX = ev.changedTouches?.[0]?.clientX || 0;
-          },
-          { passive: true }
-        );
-        awarenessImgEl.addEventListener(
-          "touchend",
-          (ev) => {
-            const endX = ev.changedTouches?.[0]?.clientX || 0;
-            const deltaX = endX - _awarenessTouchStartX;
-            if (Math.abs(deltaX) > 36) {
-              stepAwarenessSlide(deltaX < 0 ? 1 : -1);
-            }
-          },
-          { passive: true }
-        );
-      }
-
       syncLayoutChrome();
       lockCustomerChatView();
       await loadSettings();
       await loadShops();
       await loadProducts();
-      updateCartSummary();
     })();
   </script>
 </body>

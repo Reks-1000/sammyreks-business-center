@@ -27,10 +27,12 @@ from firebase_admin import credentials, firestore
 from auto_stock import (
     fetch_category_preview_items,
     lookup_barcode_or_keyword,
+    router as auto_stock_router,
     sanitize_url,
 )
 
 app = FastAPI(title="Sammyreks Business Center")
+app.include_router(auto_stock_router)
 templates = Jinja2Templates(directory="templates")
 
 LOCAL_ADS_DIR = os.path.join("static", "uploads", "ads")

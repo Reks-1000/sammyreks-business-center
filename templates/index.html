@@ -3679,17 +3679,33 @@
                 ${waStatusHtml}
               </div>
               <div class="d-flex gap-1">
-                <button type="button" class="btn btn-success btn-sm" data-action="send-pos-receipt-whatsapp" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
+                <button type="button" class="btn btn-sm btn-success" data-action="send-pos-receipt-whatsapp"
+                  data-ref="${escapeHtml(refCode)}"
+                  data-customer="${escapeHtml(custName)}"
+                  data-phone="${escapeHtml(custPhone)}"
+                  data-item="${escapeHtml(prod.name)}"
+                  data-unit="${escapeHtml(unitType)}"
+                  data-qty="${qty}"
+                  data-source="${escapeHtml(paySource)}"
+                  data-total="${escapeHtml(formattedTotal)}">
                   <i class="fa-brands fa-whatsapp me-1"></i>Send to WhatsApp
                 </button>
-                <button type="button" class="btn btn-dark btn-sm" data-action="open-pos-receipt" data-ref="${escapeHtml(refCode)}" data-item="${escapeHtml(prod.name)}" data-unit="${escapeHtml(unitType)}" data-qty="${qty}" data-total="${formattedTotal}" data-customer="${escapeHtml(custName)}" data-phone="${escapeHtml(custPhone)}" data-source="${escapeHtml(paySource)}">
-                  <i class="fa-solid fa-print me-1"></i>Thermal Receipt
+                <button type="button" class="btn btn-sm btn-dark" data-action="open-pos-receipt"
+                  data-ref="${escapeHtml(refCode)}"
+                  data-customer="${escapeHtml(custName)}"
+                  data-phone="${escapeHtml(custPhone)}"
+                  data-item="${escapeHtml(prod.name)}"
+                  data-unit="${escapeHtml(unitType)}"
+                  data-qty="${qty}"
+                  data-source="${escapeHtml(paySource)}"
+                  data-total="${escapeHtml(formattedTotal)}">
+                  <i class="fa-solid fa-print me-1"></i>Print Thermal Receipt
                 </button>
               </div>
             </div>
           `;
           await loadProducts();
-          showBanner(`Recorded sale of ${formattedTotal} and updated stock.`, "success");
+          showBanner(`Sale recorded (${refCode}).`, "success");
         } catch (err) {
           showBanner(`Failed to record sale: ${err.message}`, "danger");
         }
@@ -3699,7 +3715,7 @@
     document.getElementById("debtorForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
-      await runGuardedAction("save-debtor", 1200, btn, "Saving...", async () => {
+      await runGuardedAction("add-debtor", 1200, btn, "Saving...", async () => {
         try {
           await apiRequest("/api/debtors", {
             method: "POST",
@@ -3707,13 +3723,13 @@
             body: JSON.stringify({
               customer: document.getElementById("debtorName").value.trim(),
               phone: document.getElementById("debtorPhone").value.trim(),
-              amount: Number(document.getElementById("debtorAmount").value),
+              amount: Number(document.getElementById("debtorAmount").value || 0),
               items_bought: document.getElementById("debtorNote").value.trim(),
             }),
           });
           e.target.reset();
           await loadRecordsData();
-          showBanner("Debtor saved.", "success");
+          showBanner("Debtor record saved.", "success");
         } catch (err) {
           showBanner(`Failed to save debtor: ${err.message}`, "danger");
         }
@@ -3723,15 +3739,15 @@
     document.getElementById("expenseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
-      await runGuardedAction("save-expense", 1200, btn, "Saving...", async () => {
+      await runGuardedAction("add-expense", 1200, btn, "Saving...", async () => {
         try {
           await apiRequest("/api/expenses", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              category: document.getElementById("expenseCategory").value.trim() || document.getElementById("expenseTitle").value.trim() || "Operations",
-              amount: Number(document.getElementById("expenseAmount").value),
-              note: document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim(),
+              category: document.getElementById("expenseCategory").value.trim() || "Operations",
+              amount: Number(document.getElementById("expenseAmount").value || 0),
+              note: (document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim()),
             }),
           });
           e.target.reset();
@@ -3750,22 +3766,24 @@
     document.getElementById("workerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
-      await runGuardedAction("save-worker", 1200, btn, "Saving...", async () => {
+      await runGuardedAction("add-worker", 1200, btn, "Saving...", async () => {
+        const name = document.getElementById("workerName").value.trim();
+        const username = document.getElementById("workerUsername").value.trim() || name.toLowerCase().replace(/\s+/g, "");
         try {
           await apiRequest("/api/workers", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              name: document.getElementById("workerName").value.trim(),
+              name,
               role: document.getElementById("workerRole").value.trim() || "Staff",
-              username: document.getElementById("workerUsername").value.trim(),
+              username,
               password: document.getElementById("workerPassword").value,
             }),
           });
           e.target.reset();
           document.getElementById("workerRole").value = "Staff";
           await loadRecordsData();
-          showBanner("Worker saved.", "success");
+          showBanner("Worker account saved.", "success");
         } catch (err) {
           showBanner(`Failed to save worker: ${err.message}`, "danger");
         }
@@ -3776,26 +3794,24 @@
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
       await runGuardedAction("save-settings", 1500, btn, "Saving...", async () => {
-        const currencyVal = document.getElementById("setCurrency").value.trim() || "\u20a6";
-        state.currency = currencyVal;
+        const formData = new FormData(e.target);
+        const chosenCurrency = (document.getElementById("setCurrency").value || "\u20a6").trim() || "\u20a6";
+        const uploadedFiles = document.getElementById("setAwarenessImageFile").files;
+        let finalAwarenessUrls = parseAwarenessList(document.getElementById("setAwarenessImageUrl").value);
 
-        const awarenessFiles = document.getElementById("setAwarenessImageFile").files;
-        let awarenessImgVal = document.getElementById("setAwarenessImageUrl").value.trim();
-        if (awarenessFiles && awarenessFiles.length > 0) {
+        if (uploadedFiles && uploadedFiles.length > 0) {
           try {
-            const uploadedList = await readAwarenessFilesAsDataUrls(awarenessFiles);
-            const existingList = parseAwarenessList(awarenessImgVal);
-            const mergedList = [...existingList, ...uploadedList];
-            awarenessImgVal = mergedList.join("\n");
-            document.getElementById("setAwarenessImageUrl").value = awarenessImgVal;
-            document.getElementById("setShowAwarenessFloat").checked = true;
-          } catch (fileErr) {
-            showBanner(fileErr.message, "warning");
+            const uploadedDataUrls = await readAwarenessFilesAsDataUrls(uploadedFiles);
+            if (uploadedDataUrls.length > 0) {
+              finalAwarenessUrls = [...finalAwarenessUrls, ...uploadedDataUrls];
+            }
+          } catch (imgErr) {
+            showBanner(imgErr.message, "warning");
             return;
           }
         }
 
-        const nextExtra = {
+        const updatedExtra = {
           showBusinessAnalytics: document.getElementById("setShowBusinessAnalytics").checked,
           showInventoryAlerts: document.getElementById("setShowInventoryAlerts").checked,
           lowStockThreshold: Math.max(0, Number(document.getElementById("setLowStockThreshold").value || 2)),
@@ -3823,58 +3839,60 @@
           tickerMessages: document.getElementById("setTickerMessages").value.trim(),
           showAwarenessFloat: document.getElementById("setShowAwarenessFloat").checked,
           awarenessAutoSlide: document.getElementById("setAwarenessAutoSlide").checked,
-          awarenessImageUrl: awarenessImgVal,
+          awarenessImageUrl: finalAwarenessUrls.join("\n"),
           awarenessCaption: document.getElementById("setAwarenessCaption").value.trim(),
         };
 
+        state.extraSettings = updatedExtra;
+        state.currency = chosenCurrency;
         state.awarenessDismissed = false;
         _awarenessSlideIndex = 0;
-        state.extraSettings = nextExtra;
-        saveLocalExtraSettings(nextExtra);
+        saveLocalExtraSettings(updatedExtra);
 
-        const fd = new FormData(e.target);
-        fd.append("currency", currencyVal);
-        fd.append("extra_settings", JSON.stringify(nextExtra));
+        const compactExtra = {
+          ...updatedExtra,
+          awarenessImageUrl: finalAwarenessUrls.filter((u) => !u.startsWith("data:image/")).join("\n"),
+        };
+        formData.set("currency", chosenCurrency);
+        formData.set("extra_settings", JSON.stringify(compactExtra));
 
         try {
-          await apiRequest("/api/settings", { method: "POST", body: fd });
-          document.getElementById("setBroadcastVideoFile").value = "";
+          await apiRequest("/api/settings", { method: "POST", body: formData });
           document.getElementById("setAwarenessImageFile").value = "";
           await loadSettings();
-          showBanner("All app settings saved and applied!", "success");
+          showBanner("All app settings saved and applied live!", "success");
         } catch (err) {
           applyExtraSettingsToUI();
           renderProducts();
-          updateCartSummary();
-          showBanner(`Failed to save settings to server: ${err.message}`, "danger");
+          showBanner(`Saved UI settings locally; server sync notice: ${err.message}`, "warning");
         }
       });
     });
 
     (async function initApp() {
-      state.deletedPhotoIds = readIdSetFromStorage(DELETED_CHAT_PHOTOS_KEY);
       state.paidDebtorIds = readIdSetFromStorage(PAID_DEBTOR_IDS_KEY);
+      state.deletedPhotoIds = readIdSetFromStorage(DELETED_CHAT_PHOTOS_KEY);
       state.vendorOverrides = readVendorOverrides();
 
-      const awarenessImg = document.getElementById("customerAwarenessImg");
-      if (awarenessImg) {
-        awarenessImg.addEventListener("touchstart", (ev) => {
+      const awarenessImgEl = document.getElementById("customerAwarenessImg");
+      if (awarenessImgEl) {
+        awarenessImgEl.addEventListener("touchstart", (ev) => {
           _awarenessTouchStartX = ev.changedTouches?.[0]?.clientX || 0;
         }, { passive: true });
-        awarenessImg.addEventListener("touchend", (ev) => {
+        awarenessImgEl.addEventListener("touchend", (ev) => {
           const endX = ev.changedTouches?.[0]?.clientX || 0;
-          const diffX = endX - _awarenessTouchStartX;
-          if (Math.abs(diffX) > 35) {
-            stepAwarenessSlide(diffX < 0 ? 1 : -1);
+          const deltaX = endX - _awarenessTouchStartX;
+          if (Math.abs(deltaX) > 36) {
+            stepAwarenessSlide(deltaX < 0 ? 1 : -1);
           }
         }, { passive: true });
       }
 
       syncLayoutChrome();
       lockCustomerChatView();
-      updateCartSummary();
       await loadSettings();
       await loadProducts();
+      updateCartSummary();
     })();
   </script>
 </body>

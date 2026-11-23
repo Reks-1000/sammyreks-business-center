@@ -158,6 +158,115 @@
       padding: 14px;
       height: 100%;
     }
+
+    /* Multi-Tenant Side-Rail Shop Switcher */
+    .storefront-shell {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .shop-side-rail {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      overflow-x: auto;
+      padding: 8px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      scrollbar-width: thin;
+    }
+    .shop-rail-btn {
+      flex: 0 0 auto;
+      width: 66px;
+      padding: 6px 4px;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      background: #f8fafc;
+      color: #1e293b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      text-align: center;
+    }
+    .shop-rail-btn:hover {
+      border-color: #0d6efd;
+      background: #eff6ff;
+    }
+    .shop-rail-btn.active {
+      border-color: #0d6efd;
+      background: #0d6efd;
+      color: #ffffff;
+      box-shadow: 0 3px 10px rgba(13, 110, 253, 0.25);
+    }
+    .shop-rail-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      background: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #0d6efd;
+      flex-shrink: 0;
+    }
+    .shop-rail-btn.active .shop-rail-avatar {
+      background: #ffffff;
+      color: #0d6efd;
+    }
+    .shop-rail-name {
+      font-size: 0.66rem;
+      font-weight: 600;
+      line-height: 1.1;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .shop-rail-sub {
+      font-size: 0.58rem;
+      opacity: 0.8;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    @media (min-width: 768px) {
+      .storefront-shell {
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 14px;
+      }
+      .shop-side-rail {
+        flex-direction: column;
+        width: 76px;
+        min-width: 76px;
+        max-width: 76px;
+        position: sticky;
+        top: 14px;
+        max-height: calc(100vh - 120px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding: 8px 5px;
+      }
+      .shop-rail-btn {
+        width: 62px;
+      }
+      .storefront-main-body {
+        flex: 1 1 auto;
+        min-width: 0;
+      }
+    }
+
     #customerSection.has-bottom-dock {
       padding-bottom: 104px;
     }
@@ -286,7 +395,8 @@
         <form id="loginForm" class="border rounded p-3 bg-light mb-3">
           <label class="form-label small fw-semibold">Portal Access</label>
           <select id="loginMode" class="form-select form-select-sm mb-2">
-            <option value="admin">Admin Login</option>
+            <option value="admin">CEO / Admin Login</option>
+            <option value="shop_owner">Shop Owner Login</option>
             <option value="staff">Staff Login</option>
           </select>
 
@@ -312,7 +422,7 @@
 
         <hr />
         <div class="small text-muted">
-          <div>v24.7 | 2026</div>
+          <div>v25.0 | Multi-Tenant</div>
         </div>
       </aside>
 
@@ -338,166 +448,190 @@
             </button>
           </div>
 
-          <!-- Always-Visible Customer Notice & Broadcast Video -->
-          <div id="customerNoticeAlert" class="alert alert-primary py-2 px-3 mb-3 d-none"></div>
-
-          <!-- Client-Side Rotating Tips Strip -->
-          <div id="customerTickerBanner" class="rotating-tip-bar px-3 py-2 mb-3 d-flex align-items-center justify-content-between gap-2">
-            <div class="d-flex align-items-center gap-2 overflow-hidden">
-              <span class="badge bg-primary flex-shrink-0" id="customerTickerBadge">Did You Know?</span>
-              <span id="customerTickerText" class="small fw-medium text-dark tip-fade"></span>
+          <!-- Active Shop Context Banner (Shown when viewing a registered shop owner) -->
+          <div id="activeShopContextBanner" class="alert alert-light border border-primary d-none d-flex flex-wrap justify-content-between align-items-center gap-2 py-2 px-3 mb-3">
+            <div class="small">
+              <i class="fa-solid fa-store text-primary me-1"></i>
+              <strong id="activeShopContextText">Shopping at: Main Store</strong>
             </div>
-            <span class="text-muted small flex-shrink-0" id="customerTickerTimerLabel"><i class="fa-solid fa-rotate me-1"></i>5s</span>
+            <button type="button" class="btn btn-outline-primary btn-sm py-0 px-2" data-action="select-shop-rail" data-shop-id="main">
+              <i class="fa-solid fa-arrow-rotate-left me-1"></i>Back to Main Store
+            </button>
           </div>
 
-          <div id="customerBroadcastCard" class="card shadow-sm mb-3 d-none">
-            <div class="card-body py-2">
-              <div class="small fw-semibold text-primary mb-2">
-                <i class="fa-solid fa-video me-1"></i>Featured Announcement
-              </div>
-              <div id="customerBroadcastPlayerWrap"></div>
-            </div>
-          </div>
+          <div class="storefront-shell">
+            <!-- Left / Mobile Side-Rail Shop Switcher -->
+            <nav id="shopSideRail" class="shop-side-rail" aria-label="Registered Shops Switcher">
+              <button type="button" class="shop-rail-btn active" data-action="select-shop-rail" data-shop-id="main" title="Sammyreks Main Store">
+                <span class="shop-rail-avatar"><i class="fa-solid fa-store"></i></span>
+                <span class="shop-rail-name">Main Store</span>
+                <span class="shop-rail-sub">Sammyreks</span>
+              </button>
+            </nav>
 
-          <!-- Tab 1: Shop & Cart -->
-          <div id="shopTab" class="customer-tab-pane">
-            <div class="row g-2 mb-3">
-              <div class="col-md-4">
-                <select id="shopCategorySelect" class="form-select">
-                  <option value="All Categories">All Categories</option>
-                </select>
-              </div>
-              <div class="col-md-8">
-                <input type="text" id="shopSearchInput" class="form-control" placeholder="Search products..." />
-              </div>
-            </div>
-            <div class="row g-3" id="productsGrid">
-              <div class="col-12 text-muted">Loading products...</div>
-            </div>
-          </div>
+            <div class="storefront-main-body">
+              <!-- Always-Visible Customer Notice & Broadcast Video -->
+              <div id="customerNoticeAlert" class="alert alert-primary py-2 px-3 mb-3 d-none"></div>
 
-          <!-- Tab 2: Multi-Item Request -->
-          <div id="requestTab" class="customer-tab-pane d-none">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Multi-Item Request</h5>
-                <form id="multiRequestForm" class="row g-3">
-                  <div class="col-md-4">
-                    <label class="form-label">Your Full Name</label>
-                    <input type="text" id="reqName" class="form-control" placeholder="Your name" required />
-                  </div>
-                  <div class="col-md-4">
-                    <label class="form-label">Your Phone Number</label>
-                    <input type="text" id="reqPhone" class="form-control" placeholder="e.g. 08012345678" required />
-                  </div>
-                  <div class="col-md-4" id="reqPinFieldWrap">
-                    <label class="form-label" id="reqPinLabel">4-Digit Chat PIN (Leave blank — auto-generated)</label>
-                    <input type="password" id="reqPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
-                  </div>
-                  <div class="col-12">
-                    <label class="form-label">Items Needed &amp; Quantities</label>
-                    <textarea id="reqItemsText" class="form-control" rows="3" placeholder="List items, sizes, or quantities you need..." required></textarea>
-                  </div>
-                  <div class="col-12">
-                    <button type="submit" class="btn btn-primary">
-                      <i class="fa-solid fa-paper-plane me-1"></i>Send Request to Private Chat
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab 3: Private Live Chat & Receipts -->
-          <div id="chatTab" class="customer-tab-pane d-none">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                  <div>
-                    <h5 class="card-title mb-0"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Private Order Portfolio, Chat &amp; Receipts</h5>
-                    <small class="text-muted" id="chatHelperSubtitle">First time here? Place an order in Checkout or Request first—your private chat unlocks automatically with your new PIN!</small>
-                  </div>
-                  <button type="button" id="lockChatBtn" class="btn btn-outline-secondary btn-sm d-none" data-action="lock-customer-chat">
-                    <i class="fa-solid fa-lock me-1"></i>Lock Session
-                  </button>
+              <!-- Client-Side Rotating Tips Strip -->
+              <div id="customerTickerBanner" class="rotating-tip-bar px-3 py-2 mb-3 d-flex align-items-center justify-content-between gap-2">
+                <div class="d-flex align-items-center gap-2 overflow-hidden">
+                  <span class="badge bg-primary flex-shrink-0" id="customerTickerBadge">Did You Know?</span>
+                  <span id="customerTickerText" class="small fw-medium text-dark tip-fade"></span>
                 </div>
+                <span class="text-muted small flex-shrink-0" id="customerTickerTimerLabel"><i class="fa-solid fa-rotate me-1"></i>5s</span>
+              </div>
 
-                <div id="chatPaymentInfoAlert" class="alert alert-warning py-2 px-3 small d-none"></div>
-                <div id="customerCredentialNotice" class="alert alert-success py-2 px-3 small d-none"></div>
-
-                <form id="unlockChatForm" class="row g-2 mb-3">
-                  <div class="col-md-5">
-                    <input type="text" id="chatPhoneFilter" class="form-control" placeholder="Your registered phone number" required />
+              <div id="customerBroadcastCard" class="card shadow-sm mb-3 d-none">
+                <div class="card-body py-2">
+                  <div class="small fw-semibold text-primary mb-2">
+                    <i class="fa-solid fa-video me-1"></i>Featured Announcement
                   </div>
+                  <div id="customerBroadcastPlayerWrap"></div>
+                </div>
+              </div>
+
+              <!-- Tab 1: Shop & Cart -->
+              <div id="shopTab" class="customer-tab-pane">
+                <div class="row g-2 mb-3">
                   <div class="col-md-4">
-                    <input type="password" id="chatPinFilter" class="form-control" placeholder="4-Digit Chat PIN or Order Ref (e.g. SRK-4247)" required />
+                    <select id="shopCategorySelect" class="form-select">
+                      <option value="All Categories">All Categories</option>
+                    </select>
                   </div>
-                  <div class="col-md-3 d-grid">
-                    <button type="submit" class="btn btn-primary">
-                      <i class="fa-solid fa-unlock-keyhole me-1"></i>Unlock My Chat
-                    </button>
-                  </div>
-                </form>
-
-                <div id="chatMessagesBox" class="border rounded p-3 mb-3 chat-box">
-                  <div class="text-muted small py-3 text-center">
-                    <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
-                    <span id="chatLockedPlaceholderText">Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.</span>
+                  <div class="col-md-8">
+                    <input type="text" id="shopSearchInput" class="form-control" placeholder="Search products..." />
                   </div>
                 </div>
-
-                <form id="chatSendForm" enctype="multipart/form-data" class="row g-2 d-none">
-                  <div class="col-md-7">
-                    <input type="text" name="text" id="chatSendText" class="form-control" placeholder="Write a message to support..." />
-                  </div>
-                  <div class="col-md-3">
-                    <input type="file" name="proof_file" id="chatProofFile" class="form-control" accept="image/*" />
-                  </div>
-                  <div class="col-md-2 d-grid">
-                    <button type="submit" class="btn btn-success">
-                      <i class="fa-solid fa-paper-plane me-1"></i>Send
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tab 4: View Cart & Checkout -->
-          <div id="cartTab" class="customer-tab-pane d-none">
-            <div class="card shadow-sm">
-              <div class="card-body">
-                <h5 class="card-title"><i class="fa-solid fa-cart-shopping me-2 text-primary"></i>Your Cart &amp; Order Checkout</h5>
-                <div id="checkoutPaymentInfoAlert" class="alert alert-info py-2 px-3 small d-none"></div>
-                <div id="cartItemsContainer" class="mb-3">
-                  <p class="text-muted">Your cart is empty.</p>
+                <div class="row g-3" id="productsGrid">
+                  <div class="col-12 text-muted">Loading products...</div>
                 </div>
-                <form id="customerOrderForm" class="row g-3">
-                  <div class="col-md-3">
-                    <label class="form-label">Customer Name</label>
-                    <input type="text" id="orderCustomerName" class="form-control" placeholder="Your full name" required />
+              </div>
+
+              <!-- Tab 2: Multi-Item Request -->
+              <div id="requestTab" class="customer-tab-pane d-none">
+                <div class="card shadow-sm">
+                  <div class="card-body">
+                    <h5 class="card-title"><i class="fa-solid fa-clipboard-list me-2 text-primary"></i>Multi-Item Request</h5>
+                    <form id="multiRequestForm" class="row g-3">
+                      <div class="col-md-4">
+                        <label class="form-label">Your Full Name</label>
+                        <input type="text" id="reqName" class="form-control" placeholder="Your name" required />
+                      </div>
+                      <div class="col-md-4">
+                        <label class="form-label">Your Phone Number</label>
+                        <input type="text" id="reqPhone" class="form-control" placeholder="e.g. 08012345678" required />
+                      </div>
+                      <div class="col-md-4" id="reqPinFieldWrap">
+                        <label class="form-label" id="reqPinLabel">4-Digit Chat PIN (Leave blank — auto-generated)</label>
+                        <input type="password" id="reqPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
+                      </div>
+                      <div class="col-12">
+                        <label class="form-label">Items Needed &amp; Quantities</label>
+                        <textarea id="reqItemsText" class="form-control" rows="3" placeholder="List items, sizes, or quantities you need..." required></textarea>
+                      </div>
+                      <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                          <i class="fa-solid fa-paper-plane me-1"></i>Send Request to Private Chat
+                        </button>
+                      </div>
+                    </form>
                   </div>
-                  <div class="col-md-3">
-                    <label class="form-label">Customer Phone Number</label>
-                    <input type="text" id="orderPhone" class="form-control" placeholder="e.g. 08012345678" required />
+                </div>
+              </div>
+
+              <!-- Tab 3: Private Live Chat & Receipts -->
+              <div id="chatTab" class="customer-tab-pane d-none">
+                <div class="card shadow-sm">
+                  <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                      <div>
+                        <h5 class="card-title mb-0"><i class="fa-solid fa-shield-halved me-2 text-success"></i>Private Order Portfolio, Chat &amp; Receipts</h5>
+                        <small class="text-muted" id="chatHelperSubtitle">First time here? Place an order in Checkout or Request first—your private chat unlocks automatically with your new PIN!</small>
+                      </div>
+                      <button type="button" id="lockChatBtn" class="btn btn-outline-secondary btn-sm d-none" data-action="lock-customer-chat">
+                        <i class="fa-solid fa-lock me-1"></i>Lock Session
+                      </button>
+                    </div>
+
+                    <div id="chatPaymentInfoAlert" class="alert alert-warning py-2 px-3 small d-none"></div>
+                    <div id="customerCredentialNotice" class="alert alert-success py-2 px-3 small d-none"></div>
+
+                    <form id="unlockChatForm" class="row g-2 mb-3">
+                      <div class="col-md-5">
+                        <input type="text" id="chatPhoneFilter" class="form-control" placeholder="Your registered phone number" required />
+                      </div>
+                      <div class="col-md-4">
+                        <input type="password" id="chatPinFilter" class="form-control" placeholder="4-Digit Chat PIN or Order Ref (e.g. SRK-4247)" required />
+                      </div>
+                      <div class="col-md-3 d-grid">
+                        <button type="submit" class="btn btn-primary">
+                          <i class="fa-solid fa-unlock-keyhole me-1"></i>Unlock My Chat
+                        </button>
+                      </div>
+                    </form>
+
+                    <div id="chatMessagesBox" class="border rounded p-3 mb-3 chat-box">
+                      <div class="text-muted small py-3 text-center">
+                        <i class="fa-solid fa-lock fa-lg mb-2 d-block text-secondary"></i>
+                        <span id="chatLockedPlaceholderText">Your chat history and purchase receipts are private. Enter your phone number and PIN (or Order Reference Code) above to unlock.</span>
+                      </div>
+                    </div>
+
+                    <form id="chatSendForm" enctype="multipart/form-data" class="row g-2 d-none">
+                      <div class="col-md-7">
+                        <input type="text" name="text" id="chatSendText" class="form-control" placeholder="Write a message to support..." />
+                      </div>
+                      <div class="col-md-3">
+                        <input type="file" name="proof_file" id="chatProofFile" class="form-control" accept="image/*" />
+                      </div>
+                      <div class="col-md-2 d-grid">
+                        <button type="submit" class="btn btn-success">
+                          <i class="fa-solid fa-paper-plane me-1"></i>Send
+                        </button>
+                      </div>
+                    </form>
                   </div>
-                  <div class="col-md-3" id="orderPinFieldWrap">
-                    <label class="form-label" id="orderPinLabel">4-Digit Chat PIN (Leave blank — auto-generated)</label>
-                    <input type="password" id="orderPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
+                </div>
+              </div>
+
+              <!-- Tab 4: View Cart & Checkout -->
+              <div id="cartTab" class="customer-tab-pane d-none">
+                <div class="card shadow-sm">
+                  <div class="card-body">
+                    <h5 class="card-title"><i class="fa-solid fa-cart-shopping me-2 text-primary"></i>Your Cart &amp; Order Checkout</h5>
+                    <div id="checkoutPaymentInfoAlert" class="alert alert-info py-2 px-3 small d-none"></div>
+                    <div id="cartItemsContainer" class="mb-3">
+                      <p class="text-muted">Your cart is empty.</p>
+                    </div>
+                    <form id="customerOrderForm" class="row g-3">
+                      <div class="col-md-3">
+                        <label class="form-label">Customer Name</label>
+                        <input type="text" id="orderCustomerName" class="form-control" placeholder="Your full name" required />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Customer Phone Number</label>
+                        <input type="text" id="orderPhone" class="form-control" placeholder="e.g. 08012345678" required />
+                      </div>
+                      <div class="col-md-3" id="orderPinFieldWrap">
+                        <label class="form-label" id="orderPinLabel">4-Digit Chat PIN (Leave blank — auto-generated)</label>
+                        <input type="password" id="orderPin" maxlength="6" inputmode="numeric" class="form-control" placeholder="Auto-generated if blank" />
+                      </div>
+                      <div class="col-md-3">
+                        <label class="form-label">Delivery / Order Note</label>
+                        <input type="text" id="orderNote" class="form-control" placeholder="Optional note..." />
+                      </div>
+                      <div class="col-12 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                          <i class="fa-solid fa-check me-1"></i>Submit Order to Private Chat
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" data-action="clear-cart">
+                          <i class="fa-solid fa-trash me-1"></i>Clear Cart
+                        </button>
+                      </div>
+                    </form>
                   </div>
-                  <div class="col-md-3">
-                    <label class="form-label">Delivery / Order Note</label>
-                    <input type="text" id="orderNote" class="form-control" placeholder="Optional note..." />
-                  </div>
-                  <div class="col-12 d-flex gap-2">
-                    <button type="submit" class="btn btn-primary">
-                      <i class="fa-solid fa-check me-1"></i>Submit Order to Private Chat
-                    </button>
-                    <button type="button" class="btn btn-outline-danger" data-action="clear-cart">
-                      <i class="fa-solid fa-trash me-1"></i>Clear Cart
-                    </button>
-                  </div>
-                </form>
+                </div>
               </div>
             </div>
           </div>
@@ -562,7 +696,66 @@
         <section id="staffSection" class="d-none">
           <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <h2 class="h4 fw-bold mb-0"><i class="fa-solid fa-toolbox me-2 text-primary"></i>Staff &amp; Admin Workspace</h2>
-            <span class="badge bg-success" id="staffSessionLabel">Logged In</span>
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <div id="ceoInspectShopWrap" class="d-none align-items-center gap-2">
+                <label class="small fw-semibold text-muted mb-0" for="ceoInspectShopSelect">Inspect Shop:</label>
+                <select id="ceoInspectShopSelect" class="form-select form-select-sm" style="width:auto;">
+                  <option value="main">Main Store (Sammyreks)</option>
+                  <option value="all">All Registered Shops</option>
+                </select>
+              </div>
+              <span class="badge bg-success" id="staffSessionLabel">Logged In</span>
+            </div>
+          </div>
+
+          <!-- CEO / Super-Admin: Register Business Owner & Manage Shops -->
+          <div id="ceoShopManagementCard" class="card border-primary shadow-sm mb-3 d-none">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+              <span class="fw-bold small"><i class="fa-solid fa-user-shield me-1"></i>CEO Oversight: Register Business Owner &amp; Registered Shops</span>
+              <button type="button" class="btn btn-sm btn-light py-0 px-2" data-bs-toggle="collapse" data-bs-target="#ceoShopsCollapse">
+                Toggle
+              </button>
+            </div>
+            <div id="ceoShopsCollapse" class="collapse show">
+              <div class="card-body p-3">
+                <form id="registerShopForm" enctype="multipart/form-data" class="row g-2 mb-3">
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1">Shop / Business Name</label>
+                    <input type="text" id="regShopName" name="shop_name" class="form-control form-control-sm" placeholder="e.g. Favour's Shop" required />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1">Neighborhood / Location</label>
+                    <input type="text" id="regShopLocation" name="location" class="form-control form-control-sm" placeholder="e.g. Marian Road, Calabar" required />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1">Profile Picture (Cloudinary)</label>
+                    <input type="file" id="regShopAvatarFile" name="avatar_file" class="form-control form-control-sm" accept="image/png,image/jpeg,image/webp,image/*" />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Owner Login Username</label>
+                    <input type="text" id="regShopUsername" name="username" class="form-control form-control-sm" placeholder="e.g. favour_shop" required />
+                  </div>
+                  <div class="col-md-3">
+                    <label class="form-label small fw-semibold mb-1">Owner Login Password</label>
+                    <input type="password" id="regShopPassword" name="password" class="form-control form-control-sm" placeholder="Set owner password" required />
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label small fw-semibold mb-1">Owner Bank / Payment Info</label>
+                    <input type="text" id="regShopPaymentInfo" name="payment_info" class="form-control form-control-sm" placeholder="e.g. Moniepoint | 1234567890 | Favour's Shop" required />
+                  </div>
+                  <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" id="btnRegisterShop" class="btn btn-primary btn-sm w-100 fw-bold">
+                      <i class="fa-solid fa-plus me-1"></i>Register Shop
+                    </button>
+                  </div>
+                </form>
+
+                <div class="small fw-semibold text-muted border-top pt-2 mb-2">Registered Shops (CEO Monitoring Without Owner Passwords)</div>
+                <div id="ceoRegisteredShopsList" class="small">
+                  <div class="text-muted">No registered shops loaded yet.</div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- Toggleable Business Analytics (Cash Flow) Card -->
@@ -741,6 +934,7 @@
 
                 <form id="addProductForm" enctype="multipart/form-data">
                   <input type="hidden" name="image_url" id="prodImageUrlHidden" value="" />
+                  <input type="hidden" name="shop_id" id="prodShopIdHidden" value="main" />
                   <div class="mb-3">
                     <label class="form-label fw-semibold d-block">Action</label>
                     <div class="form-check form-check-inline">
@@ -1437,6 +1631,9 @@
     ];
 
     const state = {
+      activeShopId: "main",
+      staffShopScope: "main",
+      registeredShops: [],
       products: [],
       autoStockItems: [],
       cart: [],
@@ -1496,6 +1693,207 @@
       barcodeScannerModalEl.addEventListener("hidden.bs.modal", () => {
         stopBarcodeCameraScanner();
       });
+    }
+
+    // =========================================================================
+    // MULTI-TENANT SHOP CONTEXT & ROLE HELPERS
+    // =========================================================================
+    function isCeoUser() {
+      const role = String(state.user?.role || "").toLowerCase();
+      return role === "ceo" || role === "super_admin" || role === "superadmin";
+    }
+
+    function getActiveShopObj() {
+      if (!state.activeShopId || state.activeShopId === "main") return null;
+      return (
+        state.registeredShops.find(
+          (s) => String(s.id || s.slug || "") === String(state.activeShopId)
+        ) || null
+      );
+    }
+
+    function getEffectiveStaffShopParam() {
+      if (!state.isLoggedIn) return "main";
+      if (isCeoUser()) {
+        return state.staffShopScope || "main";
+      }
+      return String(state.user?.shop_id || "main");
+    }
+
+    function syncShopHiddenInputs() {
+      const prodShopInp = document.getElementById("prodShopIdHidden");
+      if (prodShopInp) {
+        const scope = getEffectiveStaffShopParam();
+        prodShopInp.value = scope === "all" ? "main" : scope;
+      }
+    }
+
+    function renderShopSideRail() {
+      const rail = document.getElementById("shopSideRail");
+      if (!rail) return;
+
+      const isMainActive = !state.activeShopId || state.activeShopId === "main";
+      const mainBtnHtml = `
+        <button type="button" class="shop-rail-btn ${isMainActive ? "active" : ""}" data-action="select-shop-rail" data-shop-id="main" title="${escapeHtml(state.businessName)}">
+          <span class="shop-rail-avatar"><i class="fa-solid fa-store"></i></span>
+          <span class="shop-rail-name">Main Store</span>
+          <span class="shop-rail-sub">${escapeHtml(state.businessName.split(" ")[0] || "Store")}</span>
+        </button>
+      `;
+
+      const shopBtnsHtml = (state.registeredShops || [])
+        .filter((s) => String(s.status || "active").toLowerCase() !== "suspended")
+        .map((s) => {
+          const sid = String(s.id || s.slug || "");
+          const name = String(s.name || s.shop_name || sid);
+          const loc = String(s.location || s.neighborhood || "");
+          const avatar = String(s.avatar_url || "");
+          const active = String(state.activeShopId) === sid;
+          const avatarHtml = isSafeImageSrc(avatar)
+            ? `<img src="${escapeHtml(avatar)}" alt="${escapeHtml(name)}" class="shop-rail-avatar" />`
+            : `<span class="shop-rail-avatar">${escapeHtml(name.slice(0, 2).toUpperCase())}</span>`;
+          return `
+            <button type="button" class="shop-rail-btn ${active ? "active" : ""}" data-action="select-shop-rail" data-shop-id="${escapeHtml(sid)}" title="${escapeHtml(name)}${loc ? ` (${escapeHtml(loc)})` : ""}">
+              ${avatarHtml}
+              <span class="shop-rail-name">${escapeHtml(name)}</span>
+              ${loc ? `<span class="shop-rail-sub">${escapeHtml(loc)}</span>` : ""}
+            </button>
+          `;
+        })
+        .join("");
+
+      rail.innerHTML = mainBtnHtml + shopBtnsHtml;
+    }
+
+    function updateShopContextBannerAndPayment() {
+      const banner = document.getElementById("activeShopContextBanner");
+      const bannerText = document.getElementById("activeShopContextText");
+      const shopObj = getActiveShopObj();
+      const cfg = state.extraSettings || {};
+
+      if (shopObj) {
+        const sName = shopObj.name || shopObj.shop_name || state.activeShopId;
+        const sLoc = shopObj.location || shopObj.neighborhood || "";
+        if (bannerText) {
+          bannerText.textContent = `Shopping at: ${sName}${sLoc ? ` (${sLoc})` : ""}`;
+        }
+        banner?.classList.remove("d-none");
+      } else {
+        banner?.classList.add("d-none");
+      }
+
+      const shopPayment = shopObj ? String(shopObj.payment_info || shopObj.bank_details || "").trim() : "";
+      const payText = shopPayment || String(cfg.paymentInstructions || "").trim();
+      const checkoutPayBox = document.getElementById("checkoutPaymentInfoAlert");
+      const chatPayBox = document.getElementById("chatPaymentInfoAlert");
+
+      if (payText) {
+        const prefix = shopObj ? `<strong>${escapeHtml(shopObj.name || shopObj.shop_name)} Payment Details:</strong> ` : "<strong>Payment Details:</strong> ";
+        checkoutPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i>${prefix}${escapeHtml(payText)}`;
+        chatPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i>${prefix}${escapeHtml(payText)}`;
+        checkoutPayBox.classList.remove("d-none");
+        chatPayBox.classList.remove("d-none");
+      } else {
+        checkoutPayBox.classList.add("d-none");
+        chatPayBox.classList.add("d-none");
+      }
+    }
+
+    function renderCeoShopControls() {
+      const card = document.getElementById("ceoShopManagementCard");
+      const inspectWrap = document.getElementById("ceoInspectShopWrap");
+      const inspectSel = document.getElementById("ceoInspectShopSelect");
+      const listEl = document.getElementById("ceoRegisteredShopsList");
+      if (!card || !inspectWrap || !inspectSel || !listEl) return;
+
+      const ceo = Boolean(state.isLoggedIn && isCeoUser());
+      card.classList.toggle("d-none", !ceo);
+      inspectWrap.classList.toggle("d-none", !ceo);
+      inspectWrap.classList.toggle("d-flex", ceo);
+
+      if (!ceo) return;
+
+      const options = [
+        `<option value="main">Main Store (${escapeHtml(state.businessName)})</option>`,
+        `<option value="all">All Registered Shops</option>`,
+        ...(state.registeredShops || []).map((s) => {
+          const sid = String(s.id || s.slug || "");
+          const sName = String(s.name || s.shop_name || sid);
+          return `<option value="${escapeHtml(sid)}">${escapeHtml(sName)}</option>`;
+        }),
+      ];
+      inspectSel.innerHTML = options.join("");
+      inspectSel.value = state.staffShopScope || "main";
+
+      if (!state.registeredShops.length) {
+        listEl.innerHTML = `<div class="text-muted">No registered shops yet. Use the form above to register a shop owner.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = state.registeredShops
+        .map((s) => {
+          const sid = String(s.id || s.slug || "");
+          const sName = String(s.name || s.shop_name || sid);
+          const sLoc = String(s.location || s.neighborhood || "");
+          const sUser = String(s.owner_username || s.username || "");
+          const sStatus = String(s.status || "active");
+          const isSuspended = sStatus.toLowerCase() === "suspended";
+          return `
+            <div class="border rounded p-2 mb-2 bg-light d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <div>
+                <strong>${escapeHtml(sName)}</strong> <span class="badge bg-secondary">${escapeHtml(sid)}</span>
+                ${isSuspended ? `<span class="badge bg-danger">Suspended</span>` : `<span class="badge bg-success">Active</span>`}
+                <div class="text-muted">${sLoc ? `${escapeHtml(sLoc)} &bull; ` : ""}Owner Login: <code>${escapeHtml(sUser || "N/A")}</code></div>
+              </div>
+              <div class="d-flex gap-1">
+                <button type="button" class="btn btn-outline-primary btn-sm" data-action="ceo-inspect-shop" data-shop-id="${escapeHtml(sid)}">
+                  Inspect
+                </button>
+                <button type="button" class="btn btn-outline-warning btn-sm" data-action="toggle-shop-status" data-shop-id="${escapeHtml(sid)}" data-next-status="${isSuspended ? "active" : "suspended"}">
+                  ${isSuspended ? "Activate" : "Suspend"}
+                </button>
+                <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-shop" data-shop-id="${escapeHtml(sid)}">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+    }
+
+    async function loadShops() {
+      try {
+        const res = await apiRequest("/api/shops");
+        const rawShops = Array.isArray(res.shops) ? res.shops : Array.isArray(res.data) ? res.data : [];
+        state.registeredShops = rawShops.filter((s) => {
+          const sid = String(s.id || s.slug || "").toLowerCase();
+          return sid && sid !== "main";
+        });
+      } catch (_) {}
+      renderShopSideRail();
+      renderCeoShopControls();
+      updateShopContextBannerAndPayment();
+    }
+
+    async function selectShopFromRail(shopId) {
+      const targetShopId = String(shopId || "main").trim() || "main";
+      if (state.activeShopId === targetShopId) return;
+
+      state.activeShopId = targetShopId;
+      state.cart = [];
+      updateCartSummary();
+      renderShopSideRail();
+      updateShopContextBannerAndPayment();
+      lockCustomerChatView();
+      await loadProducts();
+
+      const shopObj = getActiveShopObj();
+      if (shopObj) {
+        showBanner(`Switched to ${shopObj.name || shopObj.shop_name}. Cart cleared for separate shop checkout.`, "info");
+      } else {
+        showBanner("Returned to Main Storefront.", "info");
+      }
     }
 
     function normalizeTickerIntervalSec(rawVal) {
@@ -1866,8 +2264,10 @@
         return;
       }
 
+      const shopParam = encodeURIComponent(getEffectiveStaffShopParam());
+
       try {
-        const analyticsRes = await apiRequest("/api/analytics");
+        const analyticsRes = await apiRequest(`/api/analytics?shop_id=${shopParam}`);
         const src = analyticsRes.analytics || analyticsRes.data || analyticsRes || {};
         if (
           src.total_revenue !== undefined ||
@@ -1891,8 +2291,8 @@
 
       try {
         const [salesRes, expensesRes] = await Promise.all([
-          apiRequest("/api/sales").catch(() => ({})),
-          apiRequest("/api/expenses").catch(() => ({})),
+          apiRequest(`/api/sales?shop_id=${shopParam}`).catch(() => ({})),
+          apiRequest(`/api/expenses?shop_id=${shopParam}`).catch(() => ({})),
         ]);
 
         const salesList = Array.isArray(salesRes.sales)
@@ -2082,18 +2482,7 @@
         document.getElementById("orderPinLabel").textContent = cfg.pinFieldLabel || DEFAULT_EXTRA_SETTINGS.pinFieldLabel;
       }
 
-      const payText = String(cfg.paymentInstructions || "").trim();
-      const checkoutPayBox = document.getElementById("checkoutPaymentInfoAlert");
-      const chatPayBox = document.getElementById("chatPaymentInfoAlert");
-      if (payText) {
-        checkoutPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
-        chatPayBox.innerHTML = `<i class="fa-solid fa-building-columns me-1"></i><strong>Payment Details:</strong> ${escapeHtml(payText)}`;
-        checkoutPayBox.classList.remove("d-none");
-        chatPayBox.classList.remove("d-none");
-      } else {
-        checkoutPayBox.classList.add("d-none");
-        chatPayBox.classList.add("d-none");
-      }
+      updateShopContextBannerAndPayment();
 
       const footerWrap = document.getElementById("footerCopyrightText");
       if (cfg.footerText && cfg.footerText.trim()) {
@@ -2130,6 +2519,8 @@
         loadBusinessAnalytics();
       }
       renderInventoryAlerts();
+      renderCeoShopControls();
+      syncShopHiddenInputs();
     }
 
     function showBanner(message, type = "info") {
@@ -2409,6 +2800,8 @@
         return;
       }
 
+      const targetShopId = getEffectiveStaffShopParam() === "all" ? "main" : getEffectiveStaffShopParam();
+
       await runGuardedAction("publish-auto-stock", 1500, triggerBtn, "Publishing...", async () => {
         let publishedCount = 0;
         for (const idx of selectedIndices) {
@@ -2427,6 +2820,7 @@
 
           const fd = new FormData();
           fd.append("action_mode", "create");
+          fd.append("shop_id", targetShopId);
           fd.append("category", catVal);
           fd.append("vendor_name", base.vendor_name || "");
           fd.append("main_unit", base.main_unit || "Carton");
@@ -2482,6 +2876,7 @@
         ...item,
         id,
         name,
+        shop_id: String(item.shop_id ?? "main"),
         category: String(item.category ?? "General"),
         vendor_name: resolveVendorName(item, id, name),
         unit_main_label: String(item.unit_main_label ?? "Carton"),
@@ -2513,6 +2908,7 @@
       return {
         ...item,
         id: String(item.id ?? ""),
+        shop_id: String(item.shop_id ?? "main"),
         customer,
         customer_name: customer,
         contact_phone: phone,
@@ -2537,6 +2933,7 @@
       return {
         ...item,
         id: msgId,
+        shop_id: String(item.shop_id ?? "main"),
         sender: String(item.sender ?? "Customer").trim(),
         customer_phone: phone,
         phone,
@@ -2784,6 +3181,7 @@
 
     function populateFormFromProduct(prod) {
       if (!prod) return;
+      document.getElementById("prodShopIdHidden").value = prod.shop_id || getEffectiveStaffShopParam() || "main";
       document.getElementById("prodName").value = prod.name || "";
       document.getElementById("prodCategory").value = prod.category || "General";
       document.getElementById("prodVendorName").value = prod.vendor_name || "";
@@ -3041,7 +3439,10 @@
 
     async function loadProducts() {
       try {
-        const res = await apiRequest("/api/products");
+        const shopIdForQuery = !document.getElementById("staffSection").classList.contains("d-none") && state.isLoggedIn
+          ? getEffectiveStaffShopParam()
+          : (state.activeShopId || "main");
+        const res = await apiRequest(`/api/products?shop_id=${encodeURIComponent(shopIdForQuery)}`);
         const rawList = res.products || res.data || [];
         state.products = rawList.map(normalizeProductClient);
         renderProducts();
@@ -3098,6 +3499,7 @@
       } catch (_) {}
 
       applyExtraSettingsToUI();
+      renderShopSideRail();
       renderProducts();
       updateCartSummary();
     }
@@ -3163,6 +3565,7 @@
     async function loadCustomerPrivateChat() {
       const phone = (state.customerAuth.phone || document.getElementById("chatPhoneFilter").value).trim();
       const pin = (state.customerAuth.pin || document.getElementById("chatPinFilter").value).trim();
+      const shopId = state.activeShopId || "main";
       const box = document.getElementById("chatMessagesBox");
 
       if (!phone || !pin) {
@@ -3171,7 +3574,7 @@
       }
 
       try {
-        const query = `?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}`;
+        const query = `?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&shop_id=${encodeURIComponent(shopId)}`;
         const res = await apiRequest(`/api/messages${query}`);
         const msgs = (res.messages || res.data || []).map(normalizeMessageClient);
 
@@ -3218,6 +3621,7 @@
           const badgeLabel = o.order_type || (hasSpecial ? "Multi-Item Request" : "Cart Order");
           const badgeClass = hasSpecial ? "bg-info text-dark" : "bg-primary";
           const isVerified = String(o.status || "").toLowerCase() === "verified";
+          const shopBadge = state.staffShopScope === "all" && o.shop_id ? `<span class="badge bg-dark">${escapeHtml(o.shop_id)}</span>` : "";
 
           let detailsHtml = "";
           if (hasSpecial) {
@@ -3245,6 +3649,7 @@
             <div class="d-flex justify-content-between align-items-center small mb-1 gap-1">
               <strong>${escapeHtml(customerVal)} (${escapeHtml(phoneVal)})</strong>
               <div class="d-flex gap-1">
+                ${shopBadge}
                 ${isVerified ? `<span class="badge bg-success">Verified</span>` : `<span class="badge bg-warning text-dark">Pending</span>`}
                 <span class="badge ${badgeClass}">${escapeHtml(badgeLabel)}</span>
               </div>
@@ -3274,13 +3679,14 @@
 
     async function loadStaffOrders() {
       const box = document.getElementById("staffOrdersBox");
+      const shopParam = encodeURIComponent(getEffectiveStaffShopParam());
       try {
-        const res = await apiRequest("/api/orders");
+        const res = await apiRequest(`/api/orders?shop_id=${shopParam}`);
         const rawOrders = (res.orders || res.data || []).map(normalizeOrderClient);
 
         const seenKeys = new Set();
         const orders = rawOrders.filter((o) => {
-          const key = `${o.payment_ref || ""}|${o.timestamp || ""}|${o.contact_phone || o.phone || ""}`;
+          const key = `${o.shop_id || "main"}|${o.payment_ref || ""}|${o.timestamp || ""}|${o.contact_phone || o.phone || ""}`;
           if (o.payment_ref && seenKeys.has(key)) return false;
           seenKeys.add(key);
           return true;
@@ -3295,10 +3701,12 @@
 
     async function loadStaffChatMessages() {
       const phone = document.getElementById("staffChatPhoneFilter").value.trim();
+      const shopParam = encodeURIComponent(getEffectiveStaffShopParam());
       const box = document.getElementById("staffChatMessagesBox");
       try {
-        const query = phone ? `?phone=${encodeURIComponent(phone)}` : "";
-        const res = await apiRequest(`/api/messages${query}`);
+        const params = new URLSearchParams({ shop_id: getEffectiveStaffShopParam() });
+        if (phone) params.set("phone", phone);
+        const res = await apiRequest(`/api/messages?${params.toString()}`);
         const msgs = (res.messages || res.data || []).map(normalizeMessageClient);
         state.staffMessagesFeed = msgs;
         renderChatList(box, msgs, "No chat messages or receipts found.", { allowPhotoDelete: true });
@@ -3388,10 +3796,11 @@
 
     async function loadRecordsData() {
       if (!state.isLoggedIn) return;
+      const shopParam = encodeURIComponent(getEffectiveStaffShopParam());
       const [debRes, expRes, wrkRes] = await Promise.all([
-        apiRequest("/api/debtors").catch(() => ({})),
-        apiRequest("/api/expenses").catch(() => ({})),
-        apiRequest("/api/workers").catch(() => ({})),
+        apiRequest(`/api/debtors?shop_id=${shopParam}`).catch(() => ({})),
+        apiRequest(`/api/expenses?shop_id=${shopParam}`).catch(() => ({})),
+        apiRequest(`/api/workers?shop_id=${shopParam}`).catch(() => ({})),
       ]);
       state.debtorsList = Array.isArray(debRes.debtors) ? debRes.debtors : Array.isArray(debRes.data) ? debRes.data : [];
       state.expensesList = Array.isArray(expRes.expenses) ? expRes.expenses : Array.isArray(expRes.data) ? expRes.data : [];
@@ -3403,7 +3812,7 @@
       document.getElementById("staffSidebarCol").classList.remove("d-none");
       document.getElementById("mainContentCol").className = "col-lg-9 col-xl-10 p-3 p-md-4";
       document.getElementById("loginUsername").focus();
-      showBanner("Enter your staff or admin credentials on the left to sign in.", "info");
+      showBanner("Enter your CEO, Shop Owner, or Staff credentials on the left to sign in.", "info");
     }
 
     function switchSection(sectionId) {
@@ -3417,6 +3826,7 @@
         btn.classList.toggle("active", btn.dataset.section === sectionId);
       });
       syncLayoutChrome();
+      loadProducts();
     }
 
     function switchCustomerTab(tabId) {
@@ -3482,6 +3892,38 @@
       };
     }
 
+    document.getElementById("ceoInspectShopSelect")?.addEventListener("change", async (e) => {
+      state.staffShopScope = e.target.value || "main";
+      syncShopHiddenInputs();
+      await loadProducts();
+      await loadRecordsData();
+      if (!document.getElementById("staffOrdersChatTab").classList.contains("d-none")) {
+        await loadStaffOrders();
+        await loadStaffChatMessages();
+      }
+      if (state.extraSettings.showBusinessAnalytics) {
+        await loadBusinessAnalytics();
+      }
+      showBanner(`Inspecting shop scope: ${state.staffShopScope}`, "info");
+    });
+
+    document.getElementById("registerShopForm")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById("btnRegisterShop");
+      await runGuardedAction("register-shop", 1500, btn, "Registering...", async () => {
+        const fd = new FormData(e.target);
+        const shopName = String(fd.get("shop_name") || "").trim();
+        try {
+          await apiRequest("/api/shops", { method: "POST", body: fd });
+          e.target.reset();
+          await loadShops();
+          showBanner(`Registered shop "${shopName}" and created owner login.`, "success");
+        } catch (err) {
+          showBanner(`Failed to register shop: ${err.message}`, "danger");
+        }
+      });
+    });
+
     document.getElementById("unlockChatForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
@@ -3500,6 +3942,49 @@
 
       if (action === "dismiss-banner") {
         document.getElementById("appFeedbackBanner").classList.add("d-none");
+      } else if (action === "select-shop-rail") {
+        await selectShopFromRail(target.dataset.shopId || "main");
+      } else if (action === "ceo-inspect-shop") {
+        const sid = target.dataset.shopId || "main";
+        state.staffShopScope = sid;
+        document.getElementById("ceoInspectShopSelect").value = sid;
+        syncShopHiddenInputs();
+        await loadProducts();
+        await loadStaffOrders();
+        await loadStaffChatMessages();
+        showBanner(`Switched inspection view to shop "${sid}".`, "info");
+      } else if (action === "toggle-shop-status") {
+        const sid = target.dataset.shopId;
+        const nextStatus = target.dataset.nextStatus || "active";
+        if (!sid) return;
+        await runGuardedAction(`shop-status-${sid}`, 1000, target, "Updating...", async () => {
+          try {
+            await apiRequest(`/api/shops/${encodeURIComponent(sid)}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ status: nextStatus }),
+            });
+            await loadShops();
+            showBanner(`Shop "${sid}" status set to ${nextStatus}.`, "success");
+          } catch (err) {
+            showBanner(`Could not update shop status: ${err.message}`, "danger");
+          }
+        });
+      } else if (action === "delete-shop") {
+        const sid = target.dataset.shopId;
+        if (!sid) return;
+        await runGuardedAction(`del-shop-${sid}`, 1200, target, "Removing...", async () => {
+          try {
+            await apiRequest(`/api/shops/${encodeURIComponent(sid)}`, { method: "DELETE" });
+            if (state.activeShopId === sid) state.activeShopId = "main";
+            if (state.staffShopScope === sid) state.staffShopScope = "main";
+            await loadShops();
+            await loadProducts();
+            showBanner(`Removed shop "${sid}".`, "success");
+          } catch (err) {
+            showBanner(`Could not remove shop: ${err.message}`, "danger");
+          }
+        });
       } else if (action === "lookup-barcode") {
         await runGuardedAction("lookup-barcode", 600, target, "Looking up...", async () => {
           await lookupBarcodeItem(document.getElementById("barcodeLookupInput")?.value);
@@ -3760,7 +4245,7 @@
         if (existing) {
           existing.qty += qty;
         } else {
-          state.cart.push({ id: prod.id, name: prod.name, unit, price: unitPrice, qty });
+          state.cart.push({ id: prod.id, name: prod.name, unit, price: unitPrice, qty, shop_id: prod.shop_id || state.activeShopId || "main" });
         }
         updateCartSummary();
         showBanner(`Added ${qty} ${unit}(s) of "${prod.name}" to cart.`, "success");
@@ -3794,6 +4279,7 @@
         const qty = Math.max(1, Number(document.getElementById("posQty").value || 1));
         const custName = document.getElementById("posCustomerName").value.trim();
         const phone = document.getElementById("posPhone").value.trim();
+        const shopIdForSale = prod?.shop_id || (getEffectiveStaffShopParam() === "all" ? "main" : getEffectiveStaffShopParam());
         if (!custName || custName === "Walk-in Customer") {
           showBanner("Enter the customer's name to record a debt.", "warning");
           return;
@@ -3804,6 +4290,7 @@
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                shop_id: shopIdForSale,
                 product_id: prodId,
                 item_name: prod ? prod.name : "Item",
                 unit_type: unitType,
@@ -3830,8 +4317,10 @@
       await runGuardedAction("staff-chat-send", 1200, btn, "Sending...", async () => {
         const phone = document.getElementById("staffChatSendPhone").value.trim();
         const text = document.getElementById("staffChatSendText").value.trim();
+        const scopeShop = getEffectiveStaffShopParam();
         const fd = new FormData();
         fd.append("phone", phone);
+        fd.append("shop_id", scopeShop === "all" ? "main" : scopeShop);
         fd.append("sender", "Staff");
         fd.append("text", text);
         try {
@@ -3863,11 +4352,13 @@
           state.isLoggedIn = true;
           state.user = res;
           state.staffToken = res.token || "";
+          state.staffShopScope = String(res.shop_id || "main");
           document.getElementById("authBadge").className = "badge bg-success";
           document.getElementById("authBadge").textContent = `${res.role || "Admin"}: ${res.username || username}`;
-          document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username}`;
+          document.getElementById("staffSessionLabel").textContent = `Signed in as ${res.username || username} (${state.staffShopScope})`;
           document.getElementById("logoutBtn").classList.remove("d-none");
           document.getElementById("loginPassword").value = "";
+          await loadShops();
           switchSection("staffSection");
           await loadProducts();
           await loadRecordsData();
@@ -3882,6 +4373,7 @@
       state.isLoggedIn = false;
       state.user = null;
       state.staffToken = "";
+      state.staffShopScope = "main";
       document.getElementById("authBadge").className = "badge bg-secondary";
       document.getElementById("authBadge").textContent = "Staff Mode";
       document.getElementById("logoutBtn").classList.add("d-none");
@@ -3893,6 +4385,7 @@
       e.preventDefault();
       const btn = document.getElementById("saveProductBtn");
       await runGuardedAction("save-product", 1500, btn, "Saving...", async () => {
+        syncShopHiddenInputs();
         const formData = new FormData(e.target);
         const submittedName = String(formData.get("name") || "").trim();
         const submittedVendor = String(formData.get("vendor_name") || "").trim();
@@ -3906,6 +4399,7 @@
           e.target.reset();
           const imgUrlHidden = document.getElementById("prodImageUrlHidden");
           if (imgUrlHidden) imgUrlHidden.value = "";
+          syncShopHiddenInputs();
           document.getElementById("actionAddNew").checked = true;
           toggleUpdateMode();
           document.getElementById("prodCategory").value = "General";
@@ -3959,6 +4453,7 @@
         const phone = document.getElementById("orderPhone").value.trim();
         const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("orderPin").value.trim();
         const note = document.getElementById("orderNote").value.trim();
+        const shopId = state.activeShopId || "main";
         const mappedItems = state.cart.map((i) => ({
           name: i.name,
           unit: i.unit || "Unit",
@@ -3971,6 +4466,7 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              shop_id: shopId,
               customer: customerName,
               contact_phone: phone,
               pin,
@@ -3995,11 +4491,13 @@
         const phone = document.getElementById("reqPhone").value.trim();
         const pin = state.extraSettings.autoPinMode ? "" : document.getElementById("reqPin").value.trim();
         const itemsText = document.getElementById("reqItemsText").value.trim();
+        const shopId = state.activeShopId || "main";
         try {
           const res = await apiRequest("/api/orders", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              shop_id: shopId,
               customer: customerName,
               contact_phone: phone,
               pin,
@@ -4029,6 +4527,7 @@
         const fd = new FormData();
         fd.append("phone", phone);
         fd.append("pin", pin);
+        fd.append("shop_id", state.activeShopId || "main");
         fd.append("sender", "Customer");
         fd.append("text", text);
         if (proofFile) fd.append("proof_file", proofFile);
@@ -4062,12 +4561,14 @@
         const custPhone = document.getElementById("posPhone").value.trim() || "N/A";
         const paySource = document.getElementById("posPaymentMethod").value;
         const sendWhatsAppOpt = document.getElementById("posSendReceiptToWhatsApp").checked;
+        const shopIdForSale = prod.shop_id || (getEffectiveStaffShopParam() === "all" ? "main" : getEffectiveStaffShopParam());
 
         try {
           const res = await apiRequest("/api/sales", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              shop_id: shopIdForSale,
               product_id: prod.id,
               item_name: prod.name,
               unit_type: unitType,
@@ -4147,12 +4648,14 @@
     document.getElementById("debtorForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
+      const scopeShop = getEffectiveStaffShopParam();
       await runGuardedAction("add-debtor", 1200, btn, "Saving...", async () => {
         try {
           await apiRequest("/api/debtors", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              shop_id: scopeShop === "all" ? "main" : scopeShop,
               customer: document.getElementById("debtorName").value.trim(),
               phone: document.getElementById("debtorPhone").value.trim(),
               amount: Number(document.getElementById("debtorAmount").value || 0),
@@ -4171,12 +4674,14 @@
     document.getElementById("expenseForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
+      const scopeShop = getEffectiveStaffShopParam();
       await runGuardedAction("add-expense", 1200, btn, "Saving...", async () => {
         try {
           await apiRequest("/api/expenses", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              shop_id: scopeShop === "all" ? "main" : scopeShop,
               category: document.getElementById("expenseCategory").value.trim() || "Operations",
               amount: Number(document.getElementById("expenseAmount").value || 0),
               note: document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim(),
@@ -4198,6 +4703,7 @@
     document.getElementById("workerForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const btn = e.target.querySelector('button[type="submit"]');
+      const scopeShop = getEffectiveStaffShopParam();
       await runGuardedAction("add-worker", 1200, btn, "Saving...", async () => {
         const name = document.getElementById("workerName").value.trim();
         const username = document.getElementById("workerUsername").value.trim() || name.toLowerCase().replace(/\s+/g, "");
@@ -4206,6 +4712,7 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              shop_id: scopeShop === "all" ? "main" : scopeShop,
               name,
               role: document.getElementById("workerRole").value.trim() || "Staff",
               username,
@@ -4331,6 +4838,7 @@
       syncLayoutChrome();
       lockCustomerChatView();
       await loadSettings();
+      await loadShops();
       await loadProducts();
       updateCartSummary();
     })();

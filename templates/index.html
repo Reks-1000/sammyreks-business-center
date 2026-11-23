@@ -312,7 +312,7 @@
 
         <hr />
         <div class="small text-muted">
-          <div>v24.5 | 2026</div>
+          <div>v24.7 | 2026</div>
         </div>
       </aside>
 
@@ -646,7 +646,7 @@
 
           <!-- Staff Tab 1: Add / Update Item & Inventory Table -->
           <div id="inventoryTab" class="staff-tab-pane">
-            <!-- Barcode Scanner & Auto-Stock by Category Panel -->
+            <!-- Barcode Scanner & Name-First Auto-Stock Panel -->
             <div id="autoStockSection" class="mb-3">
               <div class="card border-primary shadow-sm mb-3">
                 <div class="card-body py-2 px-3">
@@ -676,7 +676,7 @@
 
               <div class="card border-success shadow-sm">
                 <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2">
-                  <span class="fw-bold small"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Auto-Stock by Category (Open Food Facts + &#8358; Benchmark)</span>
+                  <span class="fw-bold small"><i class="fa-solid fa-wand-magic-sparkles me-1"></i>Smart Name-First Auto-Stock (Auto-Categorizes + Product Images)</span>
                   <button type="button" class="btn btn-sm btn-light py-0 px-2" data-bs-toggle="collapse" data-bs-target="#autoStockCollapse">
                     Toggle Panel
                   </button>
@@ -684,34 +684,19 @@
                 <div id="autoStockCollapse" class="collapse show">
                   <div class="card-body p-3">
                     <div class="row g-2 align-items-end">
-                      <div class="col-md-4">
-                        <label class="form-label small fw-bold mb-1" for="autoStockCategory">Category</label>
-                        <input type="text" id="autoStockCategory" list="autoStockCategoryList" class="form-control form-control-sm" value="Beverages" placeholder="Beverages, Noodles, Dairy, Soaps & Detergents" />
-                        <datalist id="autoStockCategoryList">
-                          <option value="Beverages"></option>
-                          <option value="Noodles"></option>
-                          <option value="Dairy"></option>
-                          <option value="Soaps & Detergents"></option>
-                          <option value="Biscuits & Snacks"></option>
-                        </datalist>
+                      <div class="col-md-7">
+                        <label class="form-label small fw-bold mb-1" for="autoStockNamesInput">
+                          Product Names (Comma or New-Line Separated — Auto-Allocates Category)
+                        </label>
+                        <textarea id="autoStockNamesInput" class="form-control form-control-sm" rows="2" placeholder="e.g. Maltina 330ml, Indomie Chicken, Peak Milk 160g, Hypo Bleach, Sprite 50cl"></textarea>
                       </div>
                       <div class="col-6 col-md-2">
-                        <label class="form-label small fw-bold mb-1" for="autoStockCount">Item Count</label>
-                        <input type="number" id="autoStockCount" class="form-control form-control-sm" min="1" max="15" value="10" />
-                      </div>
-                      <div class="col-6 col-md-2">
-                        <label class="form-label small fw-bold mb-1" for="autoStockCartons">Default Carton Stock</label>
+                        <label class="form-label small fw-bold mb-1" for="autoStockCartons">Default Stock</label>
                         <input type="number" id="autoStockCartons" class="form-control form-control-sm" min="0" step="0.5" value="5" />
                       </div>
-                      <div class="col-md-2">
-                        <div class="form-check form-switch mb-1">
-                          <input class="form-check-input" type="checkbox" id="autoStockFetchVideo" />
-                          <label class="form-check-label small fw-bold" for="autoStockFetchVideo">Auto-Fetch Video Ad</label>
-                        </div>
-                      </div>
-                      <div class="col-md-2 d-grid">
+                      <div class="col-6 col-md-3 d-grid">
                         <button type="button" id="btnRunAutoStock" class="btn btn-sm btn-success fw-bold" data-action="run-auto-stock">
-                          <i class="fa-solid fa-cloud-arrow-down me-1"></i>Fetch Preview
+                          <i class="fa-solid fa-magnifying-glass-plus me-1"></i>Search &amp; Classify
                         </button>
                       </div>
                     </div>
@@ -720,7 +705,7 @@
                     <!-- Editable Preview & Publish Table -->
                     <div id="autoStockPreviewWrap" class="table-responsive mt-3 d-none">
                       <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                        <span class="small fw-bold text-dark">Review &amp; Edit Naira Prices Before Publishing</span>
+                        <span class="small fw-bold text-dark">Review Auto-Allocated Categories, Images &amp; Naira Prices Before Publishing (Upload video ads manually in Add / Update Item below)</span>
                         <button type="button" id="btnPublishAutoStock" class="btn btn-sm btn-dark fw-bold" data-action="publish-auto-stock">
                           <i class="fa-solid fa-upload me-1"></i>Publish Selected to Storefront
                         </button>
@@ -731,12 +716,12 @@
                             <th style="width:36px;"><input type="checkbox" id="autoStockSelectAll" checked /></th>
                             <th>Image</th>
                             <th>Product &amp; Description</th>
+                            <th>Auto Category</th>
                             <th>Carton &#8358;</th>
                             <th>Pack &#8358;</th>
                             <th>Retail &#8358;</th>
                             <th>Ratios (P/C &amp; U/P)</th>
                             <th>Stock</th>
-                            <th>Video Ad</th>
                           </tr>
                         </thead>
                         <tbody id="autoStockPreviewBody"></tbody>
@@ -2229,7 +2214,7 @@
     }
 
     // =========================================================================
-    // AUTO-STOCK & BARCODE SCANNER LOGIC
+    // NAME-FIRST AUTO-STOCK & BARCODE SCANNER LOGIC
     // =========================================================================
     function setAutoStockStatus(elId, msg, isError = false) {
       const el = document.getElementById(elId);
@@ -2276,31 +2261,30 @@
       tbody.innerHTML = items
         .map((it, idx) => {
           const imgCell = isSafeImageSrc(it.image_url)
-            ? `<img src="${escapeHtml(it.image_url)}" alt="" style="width:44px;height:44px;object-fit:cover;border-radius:4px;" />`
-            : `<span class="text-muted">-</span>`;
-          const videoCell = hasValidVideoUrl(it.video_url)
-            ? `<a href="${escapeHtml(it.video_url)}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm py-0 px-1" style="font-size:0.72rem;">Preview Ad</a>`
-            : `<span class="text-muted">-</span>`;
+            ? `<img src="${escapeHtml(it.image_url)}" alt="" style="width:48px;height:48px;object-fit:contain;border-radius:4px;background:#fff;border:1px solid #e5e7eb;" />`
+            : `<span class="text-muted small">No image</span>`;
           return `
             <tr>
               <td><input type="checkbox" class="auto-stock-row-select" data-idx="${idx}" ${it.selected !== false ? "checked" : ""} /></td>
               <td>${imgCell}</td>
               <td>
-                <input type="text" class="form-control form-control-sm mb-1 auto-stock-row-name" data-idx="${idx}" value="${escapeHtml(it.name || "")}" />
+                <input type="text" class="form-control form-control-sm mb-1 fw-semibold auto-stock-row-name" data-idx="${idx}" value="${escapeHtml(it.name || "")}" />
                 <input type="text" class="form-control form-control-sm auto-stock-row-desc" data-idx="${idx}" value="${escapeHtml(it.description || "")}" />
                 <div class="text-muted" style="font-size:0.72rem;">${escapeHtml(it.price_benchmark_note || "")}</div>
               </td>
-              <td><input type="number" step="0.01" class="form-control form-control-sm auto-stock-row-p-carton" style="width:92px;" data-idx="${idx}" value="${Number(it.price_carton || 0)}" /></td>
-              <td><input type="number" step="0.01" class="form-control form-control-sm auto-stock-row-p-pack" style="width:86px;" data-idx="${idx}" value="${Number(it.price_pack || 0)}" /></td>
-              <td><input type="number" step="0.01" class="form-control form-control-sm auto-stock-row-p-retail" style="width:82px;" data-idx="${idx}" value="${Number(it.price_retail || 0)}" /></td>
+              <td>
+                <input type="text" class="form-control form-control-sm auto-stock-row-cat" style="width:135px;" data-idx="${idx}" value="${escapeHtml(it.category || "General")}" />
+              </td>
+              <td><input type="number" step="0.01" class="form-control form-control-sm auto-stock-row-p-carton" style="width:94px;" data-idx="${idx}" value="${Number(it.price_carton || 0)}" /></td>
+              <td><input type="number" step="0.01" class="form-control form-control-sm auto-stock-row-p-pack" style="width:88px;" data-idx="${idx}" value="${Number(it.price_pack || 0)}" /></td>
+              <td><input type="number" step="0.01" class="form-control form-control-sm auto-stock-row-p-retail" style="width:84px;" data-idx="${idx}" value="${Number(it.price_retail || 0)}" /></td>
               <td>
                 <div class="d-flex gap-1">
                   <input type="number" min="1" class="form-control form-control-sm auto-stock-row-ppc" style="width:55px;" data-idx="${idx}" value="${Math.max(1, Number(it.packs_per_carton || 1))}" title="Packs per Carton" />
                   <input type="number" min="1" class="form-control form-control-sm auto-stock-row-upp" style="width:55px;" data-idx="${idx}" value="${Math.max(1, Number(it.units_per_pack || 1))}" title="Units per Pack" />
                 </div>
               </td>
-              <td><input type="number" min="0" step="0.5" class="form-control form-control-sm auto-stock-row-stock" style="width:72px;" data-idx="${idx}" value="${Number(it.stock_cartons || 0)}" /></td>
-              <td>${videoCell}</td>
+              <td><input type="number" min="0" step="0.5" class="form-control form-control-sm auto-stock-row-stock" style="width:74px;" data-idx="${idx}" value="${Number(it.stock_cartons || 0)}" /></td>
             </tr>
           `;
         })
@@ -2326,9 +2310,9 @@
         renderAutoStockPreviewTable(state.autoStockItems);
         setAutoStockStatus(
           "barcodeStatusMsg",
-          `Loaded "${item.name}" into editor & preview table. ${item.price_benchmark_note || ""}`
+          `Loaded "${item.name}" (Category: ${item.category}) into editor & preview table.`
         );
-        showBanner(`Barcode matched: ${item.name}`, "success");
+        showBanner(`Barcode matched: ${item.name} -> ${item.category}`, "success");
       } catch (err) {
         setAutoStockStatus("barcodeStatusMsg", err.message, true);
       }
@@ -2375,23 +2359,29 @@
       }
     }
 
-    async function runCategoryAutoStock(triggerBtn) {
-      const category = document.getElementById("autoStockCategory")?.value.trim() || "Beverages";
-      const count = Math.max(1, Math.min(15, parseInt(document.getElementById("autoStockCount")?.value || "10", 10) || 10));
-      const defaultStock = Math.max(0, parseFloat(document.getElementById("autoStockCartons")?.value || "5") || 0);
-      const fetchVideo = Boolean(document.getElementById("autoStockFetchVideo")?.checked);
+    async function runNameBatchAutoStock(triggerBtn) {
+      const rawNamesText = document.getElementById("autoStockNamesInput")?.value || "";
+      const namesList = rawNamesText
+        .split(/[,;\r\n]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
 
-      await runGuardedAction("run-auto-stock", 1200, triggerBtn, "Fetching...", async () => {
-        setAutoStockStatus("autoStockStatusMsg", `Fetching verified "${category}" products from Open Food Facts...`);
+      if (!namesList.length) {
+        setAutoStockStatus("autoStockStatusMsg", "Enter one or more product names (separated by commas or new lines).", true);
+        return;
+      }
+
+      const defaultStock = Math.max(0, parseFloat(document.getElementById("autoStockCartons")?.value || "5") || 0);
+
+      await runGuardedAction("run-auto-stock", 1200, triggerBtn, "Searching...", async () => {
+        setAutoStockStatus("autoStockStatusMsg", `Searching ${namesList.length} item(s) by name, auto-allocating categories & images...`);
         try {
-          const res = await apiRequest("/api/auto-stock/category", {
+          const res = await apiRequest("/api/auto-stock/search-names", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              category,
-              count,
+              product_names: namesList,
               default_stock_cartons: defaultStock,
-              fetch_video: fetchVideo,
               location: "Watt Market, Calabar",
             }),
           });
@@ -2399,7 +2389,7 @@
           renderAutoStockPreviewTable(state.autoStockItems);
           setAutoStockStatus(
             "autoStockStatusMsg",
-            `Loaded ${state.autoStockItems.length} verified item(s)${res.video_downloaded ? " with royalty-free video advert" : ""}. Review prices and click Publish Selected.`
+            `Matched & categorized ${state.autoStockItems.length} item(s). Review below and click Publish Selected.`
           );
         } catch (err) {
           setAutoStockStatus("autoStockStatusMsg", err.message, true);
@@ -2427,6 +2417,7 @@
 
           const nameVal = document.querySelector(`.auto-stock-row-name[data-idx="${idx}"]`)?.value.trim() || base.name;
           const descVal = document.querySelector(`.auto-stock-row-desc[data-idx="${idx}"]`)?.value.trim() || base.description;
+          const catVal = document.querySelector(`.auto-stock-row-cat[data-idx="${idx}"]`)?.value.trim() || base.category || "General";
           const pCarton = Number(document.querySelector(`.auto-stock-row-p-carton[data-idx="${idx}"]`)?.value ?? base.price_carton);
           const pPack = Number(document.querySelector(`.auto-stock-row-p-pack[data-idx="${idx}"]`)?.value ?? base.price_pack);
           const pRetail = Number(document.querySelector(`.auto-stock-row-p-retail[data-idx="${idx}"]`)?.value ?? base.price_retail);
@@ -2436,7 +2427,7 @@
 
           const fd = new FormData();
           fd.append("action_mode", "create");
-          fd.append("category", base.category || "General");
+          fd.append("category", catVal);
           fd.append("vendor_name", base.vendor_name || "");
           fd.append("main_unit", base.main_unit || "Carton");
           fd.append("sub_unit", base.sub_unit || "Pack");
@@ -2449,11 +2440,11 @@
           fd.append("packs_per_carton", String(ppc));
           fd.append("price_retail", String(pRetail));
           fd.append("retail_per_pack", String(upp));
-          fd.append("video_link", base.video_url || "");
+          fd.append("video_link", "");
           fd.append("description", descVal);
           fd.append("image_url", base.image_url || "");
 
-          setAutoStockStatus("autoStockStatusMsg", `Publishing (${publishedCount + 1}/${selectedIndices.length}): ${nameVal}...`);
+          setAutoStockStatus("autoStockStatusMsg", `Publishing (${publishedCount + 1}/${selectedIndices.length}): ${nameVal} -> ${catVal}...`);
           try {
             await apiRequest("/api/products", { method: "POST", body: fd });
             publishedCount += 1;
@@ -2464,7 +2455,7 @@
 
         await loadProducts();
         setAutoStockStatus("autoStockStatusMsg", `Published ${publishedCount} of ${selectedIndices.length} item(s) to storefront.`);
-        showBanner(`Published ${publishedCount} auto-stocked item(s) to storefront!`, "success");
+        showBanner(`Published ${publishedCount} item(s) into their categories!`, "success");
       });
     }
 
@@ -2844,7 +2835,7 @@
           vendorInp.select();
         }, 250);
       }
-      showBanner(`Loaded "${prod.name}" into editor — update Vendor / Sponsor and click Save Product Data.`, "info");
+      showBanner(`Loaded "${prod.name}" into editor — update details or upload video ad and click Save Product Data.`, "info");
     }
 
     function syncPosUnitOptions() {
@@ -3011,7 +3002,7 @@
             <td>${escapeHtml(p.shelf || "-")}</td>
             <td>${escapeHtml(p.expiry || "-")}${expFlag}</td>
             <td class="text-nowrap">
-              <button type="button" class="btn btn-outline-primary btn-sm me-1" data-action="edit-product-vendor" data-id="${escapeHtml(p.id)}" title="Edit product & vendor/sponsor">
+              <button type="button" class="btn btn-outline-primary btn-sm me-1" data-action="edit-product-vendor" data-id="${escapeHtml(p.id)}" title="Edit product, video ad & vendor/sponsor">
                 <i class="fa-solid fa-pen"></i>
               </button>
               <button type="button" class="btn btn-outline-danger btn-sm" data-action="delete-product" data-id="${escapeHtml(p.id)}">
@@ -3516,7 +3507,7 @@
       } else if (action === "open-camera-scanner") {
         await startBarcodeCameraScanner();
       } else if (action === "run-auto-stock") {
-        await runCategoryAutoStock(target);
+        await runNameBatchAutoStock(target);
       } else if (action === "publish-auto-stock") {
         await publishSelectedAutoStock(target);
       } else if (action === "dismiss-awareness-float") {
@@ -3536,7 +3527,7 @@
         renderFloatingAwarenessCard();
         showBanner("Floating awareness image(s) cleared. Click 'Save All App Settings' to confirm.", "info");
       } else if (action === "edit-product-vendor") {
-        startEditingProduct(target.dataset.id, true);
+        startEditingProduct(target.dataset.id, false);
       } else if (action === "refresh-analytics") {
         await runGuardedAction("refresh-analytics", 500, target, "Refreshing...", async () => {
           await loadBusinessAnalytics();

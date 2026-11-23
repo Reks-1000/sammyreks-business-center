@@ -323,11 +323,10 @@ def parse_staff_token(request: Request) -> Optional[Dict[str, str]]:
 
 
 def is_super_admin(staff: Dict[str, str]) -> bool:
-    return staff.get("role", "").strip().upper() == "CEO"
+    return staff.get("role", "").strip().upper() in {"CEO", "ADMIN", "SUPER_ADMIN", "SUPERADMIN"}
 
 
 def resolve_effective_shop_id(staff: Dict[str, str], requested_shop_id: Optional[str] = None) -> str:
-    """CEO can inspect any shop (or 'all'); all other roles are strictly locked to their token's shop_id."""
     if is_super_admin(staff):
         clean_req = (requested_shop_id or "").strip().lower()
         return clean_req if clean_req else MAIN_SHOP_ID
@@ -351,7 +350,7 @@ def require_super_admin(request: Request) -> Dict[str, str]:
 def require_admin_or_ceo(request: Request) -> Dict[str, str]:
     staff = require_staff(request)
     role_upper = staff.get("role", "").strip().upper()
-    if role_upper not in {"CEO", "ADMIN", "SHOPOWNER"}:
+    if role_upper not in {"CEO", "ADMIN", "SUPER_ADMIN", "SUPERADMIN", "SHOPOWNER"}:
         raise HTTPException(status_code=403, detail="Admin, CEO, or Shop Owner permission required")
     return staff
 
@@ -359,6 +358,10 @@ def require_admin_or_ceo(request: Request) -> Dict[str, str]:
 def normalize_shop(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
     data = dict(raw or {})
     slug = normalize_shop_id(str(data.get("slug") or doc_id))
+    active_flag = bool(data.get("active", True))
+    raw_status = str(data.get("status") or "").strip().lower()
+    if not raw_status:
+        raw_status = "active" if active_flag else "pending_approval"
     return {
         "id": doc_id,
         "slug": slug,
@@ -367,10 +370,14 @@ def normalize_shop(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]
         "owner_username": str(data.get("owner_username") or "").strip(),
         "location": str(data.get("location") or "Calabar").strip(),
         "phone": str(data.get("phone") or "").strip(),
-        "bank_details": str(data.get("bank_details") or "").strip(),
+        "bank_details": str(data.get("bank_details") or data.get("payment_info") or "").strip(),
+        "payment_info": str(data.get("payment_info") or data.get("bank_details") or "").strip(),
+        "payment_ref": str(data.get("payment_ref") or "").strip(),
+        "proof_url": str(data.get("proof_url") or "").strip(),
         "tagline": str(data.get("tagline") or "").strip(),
         "avatar_url": str(data.get("avatar_url") or "").strip(),
-        "active": bool(data.get("active", True)),
+        "active": active_flag and raw_status == "active",
+        "status": raw_status,
         "created_at": str(data.get("created_at") or "").strip(),
     }
 
@@ -581,14 +588,139 @@ def upload_to_cloudinary(
 @app.get("/api/shops")
 def list_shops(request: Request):
     staff = parse_staff_token(request)
+    ceo_view = bool(staff and is_super_admin(staff))
     docs = db.collection("shops").stream()
     shops: List[Dict[str, Any]] = []
     for doc in docs:
         shop = normalize_shop(doc.id, doc.to_dict())
-        if shop["active"] or (staff and is_super_admin(staff)):
+        if shop["active"] or ceo_view:
             shops.append(shop)
     shops.sort(key=lambda x: str(x.get("name", "")).lower())
     return {"shops": shops}
+
+
+@app.post("/api/shops/apply")
+async def apply_for_shop(
+    request: Request,
+    shop_name: str = Form(...),
+    location: str = Form("Calabar"),
+    phone: str = Form(""),
+    username: str = Form(...),
+    password: str = Form(...),
+    payment_ref: str = Form(""),
+    payment_info: str = Form(""),
+    proof_file: Optional[UploadFile] = File(None),
+):
+    _check_rate_limit(f"shop-apply:{_client_ip(request)}", max_attempts=10, window_seconds=600)
+    clean_name = shop_name.strip()
+    clean_user = username.strip()
+    if not clean_name or not clean_user or not password:
+        raise HTTPException(
+            status_code=400,
+            detail="Shop name, desired owner username, and password are required.",
+        )
+
+    if hmac.compare_digest(clean_user, ADMIN_USERNAME):
+        raise HTTPException(status_code=400, detail="Username cannot match the admin username.")
+
+    for existing_w in db.collection("workers").where("username", "==", clean_user).stream():
+        if existing_w.exists:
+            raise HTTPException(status_code=400, detail=f"Username '{clean_user}' is already taken.")
+
+    base_slug = make_slug(clean_name)
+    slug = base_slug
+    if db.collection("shops").document(slug).get().exists:
+        slug = f"{base_slug}-{uuid.uuid4().hex[:4]}"
+
+    proof_url, proof_public_id = upload_to_cloudinary(
+        proof_file, folder="sammyreks_shop_proofs", resource_type="image", max_dim=1000
+    )
+
+    ts = now_str()
+    shop_doc: Dict[str, Any] = {
+        "slug": slug,
+        "name": clean_name,
+        "owner_name": clean_name,
+        "owner_username": clean_user,
+        "location": location.strip() or "Calabar",
+        "phone": phone.strip(),
+        "bank_details": payment_info.strip(),
+        "payment_info": payment_info.strip(),
+        "payment_ref": payment_ref.strip(),
+        "proof_url": proof_url or "",
+        "proof_public_id": proof_public_id or "",
+        "tagline": "",
+        "avatar_url": "",
+        "avatar_public_id": "",
+        "active": False,
+        "status": "pending_approval",
+        "created_at": ts,
+    }
+    db.collection("shops").document(slug).set(shop_doc)
+
+    worker_doc: Dict[str, Any] = {
+        "name": clean_name,
+        "role": "ShopOwner",
+        "shop_id": slug,
+        "username": clean_user,
+        "password": hash_password(password),
+        "active": False,
+        "timestamp": ts,
+    }
+    db.collection("workers").document(uuid.uuid4().hex).set(worker_doc)
+
+    return {"ok": True, "shop": normalize_shop(slug, shop_doc)}
+
+
+@app.post("/api/shops/{shop_id}/approve")
+def approve_shop(shop_id: str, request: Request):
+    staff = require_super_admin(request)
+    clean_id = normalize_shop_id(shop_id)
+    shop_ref = db.collection("shops").document(clean_id)
+    snap = shop_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Shop application not found")
+
+    sdata = snap.to_dict() or {}
+    ts = now_str()
+    shop_ref.set(
+        {
+            "active": True,
+            "status": "active",
+            "approved_by": staff.get("username") or "admin",
+            "approved_at": ts,
+        },
+        merge=True,
+    )
+
+    for wdoc in db.collection("workers").where("shop_id", "==", clean_id).stream():
+        wdoc.reference.set({"active": True, "approved_at": ts}, merge=True)
+
+    updated = {**sdata, "active": True, "status": "active"}
+    return {"ok": True, "shop": normalize_shop(clean_id, updated)}
+
+
+@app.patch("/api/shops/{shop_id}")
+async def update_shop_status(shop_id: str, request: Request):
+    require_super_admin(request)
+    clean_id = normalize_shop_id(shop_id)
+    if clean_id == MAIN_SHOP_ID:
+        raise HTTPException(status_code=400, detail="Cannot modify main store status")
+
+    shop_ref = db.collection("shops").document(clean_id)
+    snap = shop_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Shop not found")
+
+    payload = await request.json()
+    next_status = str(payload.get("status") or "active").strip().lower()
+    if next_status not in {"active", "suspended", "pending_approval"}:
+        raise HTTPException(status_code=400, detail="Invalid shop status")
+
+    is_active = next_status == "active"
+    shop_ref.set({"status": next_status, "active": is_active, "updated_at": now_str()}, merge=True)
+    merged = {**(snap.to_dict() or {}), "status": next_status, "active": is_active}
+    return {"ok": True, "shop": normalize_shop(clean_id, merged)}
 
 
 @app.post("/api/shops")
@@ -636,10 +768,12 @@ async def register_shop(
         "location": location.strip() or "Calabar",
         "phone": phone.strip(),
         "bank_details": bank_details.strip(),
+        "payment_info": bank_details.strip(),
         "tagline": tagline.strip(),
         "avatar_url": avatar_url or "",
         "avatar_public_id": avatar_public_id or "",
         "active": True,
+        "status": "active",
         "created_at": ts,
     }
     db.collection("shops").document(slug).set(shop_doc)
@@ -650,6 +784,7 @@ async def register_shop(
         "shop_id": slug,
         "username": clean_user,
         "password": hash_password(owner_password),
+        "active": True,
         "timestamp": ts,
     }
     db.collection("workers").document(uuid.uuid4().hex).set(worker_doc)
@@ -675,6 +810,11 @@ def delete_shop(shop_id: str, request: Request):
         url=sdata.get("avatar_url"),
         resource_type="image",
     )
+    delete_from_cloudinary(
+        public_id=sdata.get("proof_public_id"),
+        url=sdata.get("proof_url"),
+        resource_type="image",
+    )
     shop_ref.delete()
 
     for wdoc in db.collection("workers").where("shop_id", "==", clean_id).stream():
@@ -684,7 +824,7 @@ def delete_shop(shop_id: str, request: Request):
 
 
 # ==============================================================================
-# AUTO-STOCK LEGACY COMPATIBILITY ROUTES
+# AUTO-STOCK LEGACY COMPATIBILITY & BATCH NAME SEARCH ROUTES
 # ==============================================================================
 
 def _http_get_json(url: str, headers: Optional[Dict[str, str]] = None, timeout: int = 12) -> Dict[str, Any]:
@@ -825,6 +965,62 @@ def auto_stock_by_barcode(
         raise HTTPException(status_code=502, detail=f"Barcode/keyword lookup failed: {exc}")
 
 
+@app.post("/api/auto-stock/search-names")
+async def auto_stock_search_names(request: Request):
+    require_staff(request)
+    payload = await request.json()
+    raw_names = payload.get("product_names") or []
+    if isinstance(raw_names, str):
+        names_list = [s.strip() for s in re.split(r"[,;\r\n]+", raw_names) if s.strip()]
+    elif isinstance(raw_names, list):
+        names_list = [str(s or "").strip() for s in raw_names if str(s or "").strip()]
+    else:
+        names_list = []
+
+    if not names_list:
+        raise HTTPException(status_code=400, detail="Provide at least one product name.")
+
+    names_list = names_list[:MAX_BATCH_ITEMS]
+    default_stock = max(0.0, float(payload.get("default_stock_cartons") if payload.get("default_stock_cartons") is not None else 5.0))
+    location = str(payload.get("location") or "Watt Market, Calabar").strip() or "Watt Market, Calabar"
+
+    items: List[Dict[str, Any]] = []
+    for prod_name in names_list:
+        try:
+            res = lookup_barcode_or_keyword(
+                prod_name,
+                default_stock_cartons=default_stock,
+                location=location,
+            )
+            matched = dict(res.get("item") or {})
+            matched.setdefault("name", prod_name)
+            matched.setdefault("stock_cartons", default_stock)
+            matched.setdefault("selected", True)
+            items.append(matched)
+        except Exception:
+            items.append(
+                {
+                    "name": prod_name,
+                    "category": "General",
+                    "description": f"{prod_name} — stocked at {location}.",
+                    "main_unit": "Carton",
+                    "sub_unit": "Pack",
+                    "retail_unit": "Retail Unit",
+                    "price_carton": 0.0,
+                    "cost_price_carton": 0.0,
+                    "price_pack": 0.0,
+                    "packs_per_carton": 1,
+                    "price_retail": 0.0,
+                    "units_per_pack": 1,
+                    "stock_cartons": default_stock,
+                    "image_url": "",
+                    "selected": True,
+                }
+            )
+
+    return {"ok": True, "count": len(items), "items": items}
+
+
 @app.post("/api/auto-stock/category")
 async def auto_stock_by_category(request: Request):
     require_staff(request)
@@ -905,6 +1101,8 @@ async def login(request: Request):
     worker_docs = db.collection("workers").where("username", "==", username).stream()
     for doc in worker_docs:
         w = doc.to_dict() or {}
+        if w.get("active") is False:
+            raise HTTPException(status_code=403, detail="Account pending CEO approval.")
         if verify_password(password, str(w.get("password", ""))):
             resolved_user = w.get("username") or w.get("name") or username
             resolved_role = w.get("role") or "Staff"
@@ -923,7 +1121,8 @@ async def login(request: Request):
 
 @app.get("/api/products")
 def get_products(shop_id: str = Query(default=MAIN_SHOP_ID)):
-    target_shop = normalize_shop_id(shop_id)
+    raw_shop = (shop_id or "").strip().lower()
+    target_shop = raw_shop if raw_shop else MAIN_SHOP_ID
     cache_key = f"products:list:{target_shop}"
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -1070,12 +1269,9 @@ async def save_product(
             else (extract_cloudinary_public_id(clean_video_link) or "")
         )
     else:
-        if existing_data and old_video_url:
-            delete_from_cloudinary(
-                public_id=old_video_public_id, url=old_video_url, resource_type="video"
-            )
-        final_video_url = ""
-        final_video_public_id = ""
+        # Preserve existing video on update when no new link/file is provided
+        final_video_url = old_video_url
+        final_video_public_id = old_video_public_id
 
     product_doc: Dict[str, Any] = {
         "shop_id": effective_shop,
@@ -1498,6 +1694,7 @@ async def post_message(
 
 
 @app.delete("/api/messages/{message_id}/photo")
+@app.post("/api/messages/{message_id}/delete-photo")
 def delete_message_photo(message_id: str, request: Request):
     staff = require_staff(request)
     doc_ref = db.collection("messages").document(message_id)
@@ -1784,6 +1981,7 @@ async def add_worker(request: Request):
         "shop_id": target_shop,
         "username": username,
         "password": hash_password(raw_pw),
+        "active": True,
         "timestamp": now_str(),
     }
     doc_id = uuid.uuid4().hex

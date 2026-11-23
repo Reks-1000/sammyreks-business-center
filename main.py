@@ -7,11 +7,11 @@ import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
-from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -226,6 +226,7 @@ def resolve_effective_shop_id(staff: Optional[Dict[str, Any]], requested_shop_id
         return "main" if req == "all" else req
     if is_ceo_role(staff.get("role", "")):
         return req
+    # ShopOwner or Regular Staff is strictly locked to their token shop_id
     return str(staff.get("shop_id") or "main")
 
 
@@ -326,7 +327,7 @@ async def login(payload: LoginRequest):
 
 
 # =============================================================================
-# MULTI-TENANT SHOPS ENDPOINTS (APPLY + PENDING APPROVAL + CEO MANAGEMENT)
+# MULTI-TENANT SHOPS ENDPOINTS (PUBLIC READ + CEO MANAGEMENT)
 # =============================================================================
 @app.get("/api/shops")
 async def list_shops(staff: Optional[Dict[str, Any]] = Depends(get_optional_staff)):
@@ -334,132 +335,26 @@ async def list_shops(staff: Optional[Dict[str, Any]] = Depends(get_optional_staf
     shops = db.get("shops", [])
     ceo = bool(staff and is_ceo_role(staff.get("role", "")))
 
-    result_shops = []
+    public_shops = []
     for s in shops:
         status = str(s.get("status", "active")).lower()
-        if not ceo and status != "active":
+        if not ceo and status == "suspended":
             continue
         item = {
             "id": s.get("id"),
             "slug": s.get("slug", s.get("id")),
             "name": s.get("name"),
             "location": s.get("location", ""),
-            "phone": s.get("phone", ""),
             "avatar_url": s.get("avatar_url", ""),
             "payment_info": s.get("payment_info", ""),
-            "payment_ref": s.get("payment_ref", ""),
-            "proof_url": s.get("proof_url", ""),
             "status": s.get("status", "active"),
         }
         if ceo:
             item["owner_username"] = s.get("owner_username", "")
             item["created_at"] = s.get("created_at", "")
-        result_shops.append(item)
+        public_shops.append(item)
 
-    return {"shops": result_shops}
-
-
-@app.post("/api/shops/apply")
-async def apply_to_register_shop(
-    shop_name: str = Form(...),
-    location: str = Form(default=""),
-    phone: str = Form(default=""),
-    username: str = Form(...),
-    password: str = Form(...),
-    payment_info: str = Form(default=""),
-    payment_ref: str = Form(default=""),
-    proof_file: Optional[UploadFile] = File(default=None),
-):
-    clean_name = (shop_name or "").strip()
-    clean_user = (username or "").strip()
-    clean_pass = password or ""
-    if not clean_name or not clean_user or not clean_pass:
-        raise HTTPException(status_code=400, detail="Shop name, desired username, and password are required.")
-
-    db = load_db()
-    shops = db.setdefault("shops", [])
-    workers = db.setdefault("workers", [])
-
-    if (
-        any(str(w.get("username", "")).strip().lower() == clean_user.lower() for w in workers)
-        or clean_user.lower() == ADMIN_USERNAME.lower()
-    ):
-        raise HTTPException(status_code=400, detail="That username is already in use. Choose another username.")
-
-    if any(
-        str(s.get("owner_username", "")).strip().lower() == clean_user.lower()
-        and str(s.get("status", "")).lower() == "pending_approval"
-        for s in shops
-    ):
-        raise HTTPException(status_code=400, detail="An application with that username is already pending approval.")
-
-    base_id = _slugify_shop_id(clean_name)
-    shop_id = base_id
-    existing_ids = {str(s.get("id")) for s in shops}
-    counter = 2
-    while shop_id in existing_ids:
-        shop_id = f"{base_id}-{counter}"
-        counter += 1
-
-    proof_url = await save_uploaded_media(proof_file, folder="sammyreks/shop_registrations")
-
-    pending_shop = {
-        "id": shop_id,
-        "slug": shop_id,
-        "name": clean_name,
-        "location": (location or "").strip(),
-        "phone": (phone or "").strip(),
-        "avatar_url": "",
-        "payment_info": (payment_info or "").strip(),
-        "payment_ref": (payment_ref or "").strip(),
-        "proof_url": proof_url,
-        "owner_username": clean_user,
-        "owner_password_hash": _hash_password(clean_pass),
-        "status": "pending_approval",
-        "created_at": _now_str(),
-    }
-    shops.append(pending_shop)
-    save_db(db)
-
-    return {
-        "ok": True,
-        "status": "pending_approval",
-        "shop": {k: v for k, v in pending_shop.items() if k != "owner_password_hash"},
-    }
-
-
-@app.post("/api/shops/{shop_id}/approve")
-async def approve_shop_application(
-    shop_id: str,
-    staff: Dict[str, Any] = Depends(require_ceo),
-):
-    db = load_db()
-    shops = db.setdefault("shops", [])
-    workers = db.setdefault("workers", [])
-
-    target = next((s for s in shops if str(s.get("id")) == str(shop_id)), None)
-    if not target:
-        raise HTTPException(status_code=404, detail="Shop application not found.")
-
-    target["status"] = "active"
-    target["approved_at"] = _now_str()
-
-    owner_user = str(target.get("owner_username") or "").strip()
-    owner_hash = str(target.get("owner_password_hash") or "").strip()
-    if owner_user and not any(str(w.get("username", "")).strip().lower() == owner_user.lower() for w in workers):
-        workers.append(
-            {
-                "id": f"wrk-{uuid.uuid4().hex[:8]}",
-                "name": f"{target.get('name', 'Shop')} Owner",
-                "role": "ShopOwner",
-                "username": owner_user,
-                "password_hash": owner_hash or _hash_password("1234"),
-                "shop_id": target["id"],
-            }
-        )
-
-    save_db(db)
-    return {"ok": True, "shop": {k: v for k, v in target.items() if k != "owner_password_hash"}}
+    return {"shops": public_shops}
 
 
 @app.post("/api/shops")
@@ -482,10 +377,7 @@ async def register_shop(
     shops = db.setdefault("shops", [])
     workers = db.setdefault("workers", [])
 
-    if (
-        any(str(w.get("username", "")).strip().lower() == clean_user.lower() for w in workers)
-        or clean_user.lower() == ADMIN_USERNAME.lower()
-    ):
+    if any(str(w.get("username", "")).strip().lower() == clean_user.lower() for w in workers) or clean_user.lower() == ADMIN_USERNAME.lower():
         raise HTTPException(status_code=400, detail="That owner login username is already in use.")
 
     base_id = _slugify_shop_id(clean_name)
@@ -566,8 +458,7 @@ async def delete_shop(
     before = len(db.get("shops", []))
     db["shops"] = [s for s in db.get("shops", []) if str(s.get("id")) != str(shop_id)]
     db["workers"] = [
-        w
-        for w in db.get("workers", [])
+        w for w in db.get("workers", [])
         if not (str(w.get("shop_id")) == str(shop_id) and str(w.get("role")) == "ShopOwner")
     ]
     if len(db["shops"]) == before:
@@ -587,7 +478,8 @@ async def get_products(
     db = load_db()
     eff_shop = resolve_effective_shop_id(staff, shop_id)
     filtered = [
-        p for p in db.get("products", []) if matches_shop_filter(p.get("shop_id", "main"), eff_shop)
+        p for p in db.get("products", [])
+        if matches_shop_filter(p.get("shop_id", "main"), eff_shop)
     ]
     return {"products": filtered, "shop_id": eff_shop}
 
@@ -635,9 +527,7 @@ async def save_product(
     if action_mode == "update" and existing_product_id:
         for p in products:
             if str(p.get("id")) == str(existing_product_id):
-                if not is_ceo_role(staff.get("role", "")) and str(p.get("shop_id", "main")) != str(
-                    staff.get("shop_id", "main")
-                ):
+                if not is_ceo_role(staff.get("role", "")) and str(p.get("shop_id", "main")) != str(staff.get("shop_id", "main")):
                     raise HTTPException(status_code=403, detail="Cannot edit another shop's product.")
                 p["name"] = name.strip()
                 p["category"] = (category or "General").strip()
@@ -703,9 +593,7 @@ async def delete_product(
     target = next((p for p in products if str(p.get("id")) == str(product_id)), None)
     if not target:
         raise HTTPException(status_code=404, detail="Product not found.")
-    if not is_ceo_role(staff.get("role", "")) and str(target.get("shop_id", "main")) != str(
-        staff.get("shop_id", "main")
-    ):
+    if not is_ceo_role(staff.get("role", "")) and str(target.get("shop_id", "main")) != str(staff.get("shop_id", "main")):
         raise HTTPException(status_code=403, detail="Cannot delete another shop's product.")
     db["products"] = [p for p in products if str(p.get("id")) != str(product_id)]
     save_db(db)
@@ -721,8 +609,8 @@ class CreateOrderRequest(BaseModel):
     contact_phone: str
     pin: Optional[str] = ""
     notes: Optional[str] = ""
-    items: Optional[list] = None
-    special_items: Optional[list] = None
+    items: Optional[List[Dict[str, Any]]] = None
+    special_items: Optional[List[Dict[str, Any]]] = None
 
 
 def _normalize_phone(phone: str) -> str:
@@ -782,9 +670,7 @@ async def create_order(payload: CreateOrderRequest):
         for it in payload.items or []:
             line_tot = float(it.get("total_price", 0) or 0)
             total_amt += line_tot
-            summary_lines.append(
-                f"- {it.get('name', 'Item')} ({it.get('unit', 'Unit')}) x {it.get('qty', 1)} = \u20a6{line_tot:.2f}"
-            )
+            summary_lines.append(f"- {it.get('name', 'Item')} ({it.get('unit', 'Unit')}) x {it.get('qty', 1)} = \u20a6{line_tot:.2f}")
         if total_amt > 0:
             summary_lines.append(f"Total: \u20a6{total_amt:.2f}")
 
@@ -826,7 +712,10 @@ async def list_orders(
 ):
     db = load_db()
     eff_shop = resolve_effective_shop_id(staff, shop_id)
-    orders = [o for o in db.get("orders", []) if matches_shop_filter(o.get("shop_id", "main"), eff_shop)]
+    orders = [
+        o for o in db.get("orders", [])
+        if matches_shop_filter(o.get("shop_id", "main"), eff_shop)
+    ]
     return {"orders": orders, "shop_id": eff_shop}
 
 
@@ -839,9 +728,7 @@ async def verify_order(
     target = next((o for o in db.get("orders", []) if str(o.get("id")) == str(order_id)), None)
     if not target:
         raise HTTPException(status_code=404, detail="Order not found.")
-    if not is_ceo_role(staff.get("role", "")) and str(target.get("shop_id", "main")) != str(
-        staff.get("shop_id", "main")
-    ):
+    if not is_ceo_role(staff.get("role", "")) and str(target.get("shop_id", "main")) != str(staff.get("shop_id", "main")):
         raise HTTPException(status_code=403, detail="Cannot verify another shop's order.")
 
     target["status"] = "Verified"
@@ -891,9 +778,7 @@ async def delete_order(
     target = next((o for o in db.get("orders", []) if str(o.get("id")) == str(order_id)), None)
     if not target:
         raise HTTPException(status_code=404, detail="Order not found.")
-    if not is_ceo_role(staff.get("role", "")) and str(target.get("shop_id", "main")) != str(
-        staff.get("shop_id", "main")
-    ):
+    if not is_ceo_role(staff.get("role", "")) and str(target.get("shop_id", "main")) != str(staff.get("shop_id", "main")):
         raise HTTPException(status_code=403, detail="Cannot delete another shop's order.")
     db["orders"] = [o for o in db.get("orders", []) if str(o.get("id")) != str(order_id)]
     save_db(db)
@@ -918,6 +803,7 @@ async def get_messages(
             msgs = [m for m in msgs if _normalize_phone(m.get("customer_phone") or m.get("phone") or "") == norm_p]
         return {"messages": msgs, "shop_id": eff_shop}
 
+    # Customer private access requires phone + matching PIN or Order Ref in that shop
     norm_p = _normalize_phone(phone or "")
     clean_pin = (pin or "").strip()
     if not norm_p or not clean_pin:
@@ -927,10 +813,7 @@ async def get_messages(
     for o in db.get("orders", []):
         if _normalize_phone(o.get("contact_phone") or o.get("phone") or "") == norm_p:
             if str(o.get("shop_id", "main")) == str(shop_id or "main"):
-                if (
-                    str(o.get("customer_pin", "")).strip() == clean_pin
-                    or str(o.get("payment_ref", "")).strip().upper() == clean_pin.upper()
-                ):
+                if str(o.get("customer_pin", "")).strip() == clean_pin or str(o.get("payment_ref", "")).strip().upper() == clean_pin.upper():
                     authorized = True
                     break
 
@@ -938,8 +821,7 @@ async def get_messages(
         raise HTTPException(status_code=403, detail="Invalid phone number, PIN, or Order Reference for this shop.")
 
     msgs = [
-        m
-        for m in all_msgs
+        m for m in all_msgs
         if str(m.get("shop_id", "main")) == str(shop_id or "main")
         and _normalize_phone(m.get("customer_phone") or m.get("phone") or "") == norm_p
     ]
@@ -972,10 +854,7 @@ async def post_message(
         ok_cust = any(
             _normalize_phone(o.get("contact_phone") or o.get("phone") or "") == norm_p
             and str(o.get("shop_id", "main")) == eff_shop
-            and (
-                str(o.get("customer_pin", "")).strip() == clean_pin
-                or str(o.get("payment_ref", "")).strip().upper() == clean_pin.upper()
-            )
+            and (str(o.get("customer_pin", "")).strip() == clean_pin or str(o.get("payment_ref", "")).strip().upper() == clean_pin.upper())
             for o in db.get("orders", [])
         )
         if not ok_cust:
@@ -1016,9 +895,7 @@ async def delete_message_photo(message_id: str, staff: Dict[str, Any] = Depends(
 @app.delete("/api/messages/photos")
 async def delete_all_messages_photos(staff: Dict[str, Any] = Depends(require_staff)):
     db = load_db()
-    eff_shop = resolve_effective_shop_id(
-        staff, "all" if is_ceo_role(staff.get("role", "")) else staff.get("shop_id")
-    )
+    eff_shop = resolve_effective_shop_id(staff, "all" if is_ceo_role(staff.get("role", "")) else staff.get("shop_id"))
     for m in db.get("messages", []):
         if matches_shop_filter(m.get("shop_id", "main"), eff_shop):
             m["proof_url"] = ""

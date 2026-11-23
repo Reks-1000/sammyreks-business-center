@@ -318,7 +318,7 @@
       <!-- Main Content Area (Full Width for Customers) -->
       <main id="mainContentCol" class="col-12 p-3 p-md-4">
         <!-- Live Feedback Banner -->
-        <div id="appFeedbackBanner" class="alert alert-info d-none d-flex align-items-center justify-content-between py-2 px-3 mb-3" role="alert">
+        <div id="appFeedbackBanner" class="alert alert-info d-none align-items-center justify-content-between py-2 px-3 mb-3" role="alert">
           <span id="appFeedbackText"></span>
           <button type="button" class="btn-close btn-sm" data-action="dismiss-banner" aria-label="Close"></button>
         </div>
@@ -340,7 +340,7 @@
           <!-- Always-Visible Customer Notice & Broadcast Video -->
           <div id="customerNoticeAlert" class="alert alert-primary py-2 px-3 mb-3 d-none"></div>
 
-          <!-- Client-Side Rotating Tips Strip (Zero Extra DB/API Cost) -->
+          <!-- Client-Side Rotating Tips Strip -->
           <div id="customerTickerBanner" class="rotating-tip-bar px-3 py-2 mb-3 d-flex align-items-center justify-content-between gap-2">
             <div class="d-flex align-items-center gap-2 overflow-hidden">
               <span class="badge bg-primary flex-shrink-0" id="customerTickerBadge">Did You Know?</span>
@@ -505,7 +505,7 @@
           <div id="customerAwarenessFloat" class="floating-awareness-card d-none" role="region" aria-label="Store Update">
             <button type="button" class="floating-awareness-close" data-action="dismiss-awareness-float" aria-label="Close image notice">&times;</button>
             <img id="customerAwarenessImg" src="" alt="Store Awareness" />
-            <div id="customerAwarenessNavBar" class="d-none d-flex align-items-center justify-content-between px-2 py-1 bg-light border-top small">
+            <div id="customerAwarenessNavBar" class="d-none align-items-center justify-content-between px-2 py-1 bg-light border-top small">
               <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" data-action="prev-awareness-slide" aria-label="Previous slide">&lsaquo; Prev</button>
               <span id="customerAwarenessCounter" class="text-muted fw-semibold">1 / 1</span>
               <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2" data-action="next-awareness-slide" aria-label="Next slide">Next &rsaquo;</button>
@@ -1046,7 +1046,7 @@
                     </div>
                     <div class="col-12">
                       <label class="form-label">Top Storefront Notice Banner</label>
-                      <input type="text" name="active_notice" id="setNotice" class="form-control" placeholder="e.g. Free delivery within Calabar on orders above ₦20,000!" />
+                      <input type="text" name="active_notice" id="setNotice" class="form-control" placeholder="e.g. Free delivery within Calabar on orders above &#8358;20,000!" />
                     </div>
                     <div class="col-md-6">
                       <label class="form-label">Upload Broadcast Video File</label>
@@ -1367,6 +1367,23 @@
     let _awarenessAutoTimerId = null;
     let _awarenessTouchStartX = 0;
 
+    function getModalOrNull(elId) {
+      const el = document.getElementById(elId);
+      if (!el || typeof bootstrap === "undefined" || !bootstrap.Modal) return null;
+      return bootstrap.Modal.getOrCreateInstance(el);
+    }
+
+    const productAdModalEl = document.getElementById("productAdModal");
+    const productAdModal = getModalOrNull("productAdModal");
+    const thermalReceiptModal = getModalOrNull("thermalReceiptModal");
+
+    if (productAdModalEl) {
+      productAdModalEl.addEventListener("hidden.bs.modal", () => {
+        const body = document.getElementById("productAdModalBody");
+        if (body) body.innerHTML = "";
+      });
+    }
+
     function normalizeTickerIntervalSec(rawVal) {
       const parsed = parseInt(rawVal ?? 5, 10);
       if (!Number.isFinite(parsed)) return 5;
@@ -1452,10 +1469,7 @@
       if (clean.startsWith("https://") || clean.startsWith("http://") || clean.startsWith("/")) {
         return true;
       }
-      if (/^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(clean)) {
-        return true;
-      }
-      return false;
+      return /^data:image\/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+$/i.test(clean);
     }
 
     function parseAwarenessList(rawVal) {
@@ -1522,9 +1536,11 @@
       if (navBar && counterEl) {
         if (slides.length > 1) {
           navBar.classList.remove("d-none");
+          navBar.classList.add("d-flex");
           counterEl.textContent = `${_awarenessSlideIndex + 1} / ${slides.length}`;
         } else {
           navBar.classList.add("d-none");
+          navBar.classList.remove("d-flex");
         }
       }
 
@@ -1550,8 +1566,7 @@
           const img = new Image();
           img.onload = () => {
             const maxDim = 720;
-            let w = img.width;
-            let h = img.height;
+            let { width: w, height: h } = img;
             if (w > maxDim || h > maxDim) {
               if (w > h) {
                 h = Math.round((h * maxDim) / w);
@@ -1585,14 +1600,6 @@
       }
       return results;
     }
-
-    const productAdModalEl = document.getElementById("productAdModal");
-    const productAdModal = new bootstrap.Modal(productAdModalEl);
-    const thermalReceiptModal = new bootstrap.Modal(document.getElementById("thermalReceiptModal"));
-
-    productAdModalEl.addEventListener("hidden.bs.modal", () => {
-      document.getElementById("productAdModalBody").innerHTML = "";
-    });
 
     function formatMoney(amount) {
       const num = Number(amount || 0);
@@ -1658,7 +1665,7 @@
       let daysLeft = null;
       const expStr = String(p.expiry || "").trim();
       if (expStr && !["none", "nan", "null", "-"].includes(expStr.toLowerCase())) {
-        const expDate = new Date(expStr + "T23:59:59");
+        const expDate = new Date(`${expStr}T23:59:59`);
         if (!Number.isNaN(expDate.getTime())) {
           const diffMs = expDate.getTime() - Date.now();
           daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
@@ -1715,13 +1722,15 @@
       }
 
       badge.textContent = `${alerts.length} Alert${alerts.length === 1 ? "" : "s"}`;
-      listEl.innerHTML = alerts
-        .slice(0, 8)
-        .map(
-          (a) =>
-            `<div class="d-flex align-items-center gap-2 mb-1"><span class="badge ${a.badgeClass}">${escapeHtml(a.type)}</span><span>${escapeHtml(a.text)}</span></div>`
-        )
-        .join("") + (alerts.length > 8 ? `<div class="text-muted mt-1">+ ${alerts.length - 8} more item alert(s) in Saved Inventory below.</div>` : "");
+      listEl.innerHTML =
+        alerts
+          .slice(0, 8)
+          .map(
+            (a) =>
+              `<div class="d-flex align-items-center gap-2 mb-1"><span class="badge ${a.badgeClass}">${escapeHtml(a.type)}</span><span>${escapeHtml(a.text)}</span></div>`
+          )
+          .join("") +
+        (alerts.length > 8 ? `<div class="text-muted mt-1">+ ${alerts.length - 8} more item alert(s) in Saved Inventory below.</div>` : "");
       card.classList.remove("d-none");
     }
 
@@ -1820,7 +1829,7 @@
             continue;
           }
           const qty = Math.max(0, Number(s.qty ?? s.quantity ?? 1));
-          const rowTotal = Number(s.total ?? s.amount ?? (Number(s.unit_price ?? s.price ?? 0) * qty));
+          const rowTotal = Number(s.total ?? s.amount ?? Number(s.unit_price ?? s.price ?? 0) * qty);
           totalRevenue += Number.isFinite(rowTotal) ? rowTotal : 0;
 
           if (s.profit !== undefined && s.profit !== null && s.profit !== "") {
@@ -1918,10 +1927,10 @@
       document.getElementById("setAwarenessAutoSlide").checked = Boolean(cfg.awarenessAutoSlide);
       document.getElementById("setAwarenessImageUrl").value = Array.isArray(cfg.awarenessImageUrl)
         ? cfg.awarenessImageUrl.join("\n")
-        : (cfg.awarenessImageUrl || "");
+        : cfg.awarenessImageUrl || "";
       document.getElementById("setAwarenessCaption").value = Array.isArray(cfg.awarenessCaption)
         ? cfg.awarenessCaption.join("\n")
-        : (cfg.awarenessCaption || "");
+        : cfg.awarenessCaption || "";
 
       const analyticsCard = document.getElementById("businessAnalyticsCard");
       const showAnalytics = Boolean(state.isLoggedIn && cfg.showBusinessAnalytics);
@@ -2015,6 +2024,7 @@
       }
       const banner = document.getElementById("appFeedbackBanner");
       const textEl = document.getElementById("appFeedbackText");
+      if (!banner || !textEl) return;
       banner.className = `alert alert-${type} d-flex align-items-center justify-content-between py-2 px-3 mb-3`;
       banner.classList.remove("d-none");
       textEl.innerHTML = `<i class="fa-solid ${type === "danger" ? "fa-triangle-exclamation" : type === "success" ? "fa-circle-check" : "fa-circle-info"} me-2"></i>${escapeHtml(message)}`;
@@ -2172,7 +2182,7 @@
         return digits;
       }
       if (digits.startsWith("0") && digits.length === 11) {
-        return "234" + digits.slice(1);
+        return `234${digits.slice(1)}`;
       }
       return digits;
     }
@@ -2220,7 +2230,7 @@
         : null;
 
       const waBtn = document.getElementById("modalSendReceiptWhatsAppBtn");
-      waBtn.classList.toggle("d-none", !canSendWhatsApp);
+      if (waBtn) waBtn.classList.toggle("d-none", !canSendWhatsApp);
 
       document.getElementById("thermalReceiptBody").innerHTML = `
         <div class="thermal-paper">
@@ -2238,7 +2248,7 @@
           <div class="text-center small mt-2">${escapeHtml(receiptFooterText)}</div>
         </div>
       `;
-      thermalReceiptModal.show();
+      thermalReceiptModal?.show();
     }
 
     async function deleteSingleChatPhoto(msgId) {
@@ -2324,7 +2334,7 @@
             Your browser does not support video playback.
           </video>
         `;
-      productAdModal.show();
+      productAdModal?.show();
     }
 
     function renderBroadcastVideo(videoUrl) {
@@ -2379,7 +2389,9 @@
 
       container.innerHTML = `
         <ul class="list-group">
-          ${state.cart.map((item, idx) => `
+          ${state.cart
+            .map(
+              (item, idx) => `
             <li class="list-group-item d-flex justify-content-between align-items-center">
               <div>
                 <strong>${escapeHtml(item.name)}</strong> <span class="badge bg-light text-dark border">${escapeHtml(item.unit || "Unit")}</span>
@@ -2389,7 +2401,9 @@
                 <i class="fa-solid fa-xmark"></i>
               </button>
             </li>
-          `).join("")}
+          `
+            )
+            .join("")}
         </ul>
         <div class="mt-2 fw-bold">Total: ${formatMoney(total)}</div>
       `;
@@ -2501,26 +2515,28 @@
       if (!filtered.length) {
         grid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No products match your selection right now.</div></div>`;
       } else {
-        grid.innerHTML = filtered.map((p) => {
-          const imgSrc = p.image_url || "";
-          const mLbl = p.unit_main_label || "Carton";
-          const pLbl = p.unit_pack_label || "Pack";
-          const rLbl = p.unit_retail_label || "Retail Unit";
-          const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
-          const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
-          const hasAd = cfg.showWatchAd && hasValidVideoUrl(p.video_url);
-          const vendorBadgeHtml = cfg.showVendorBadges && p.vendor_name
-            ? `<div class="mb-1"><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="fa-solid fa-store me-1"></i>${escapeHtml(p.vendor_name)}</span></div>`
-            : "";
-          const imgHtml = imgSrc
-            ? `<div class="product-img-wrap"><img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(p.name)}" loading="lazy" /></div>`
-            : `<div class="product-img-wrap text-muted"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
+        grid.innerHTML = filtered
+          .map((p) => {
+            const imgSrc = isSafeImageSrc(p.image_url) ? p.image_url : "";
+            const mLbl = p.unit_main_label || "Carton";
+            const pLbl = p.unit_pack_label || "Pack";
+            const rLbl = p.unit_retail_label || "Retail Unit";
+            const displayPrice = Number(p.price_retail ?? p.price ?? p.price_carton ?? 0);
+            const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+            const hasAd = cfg.showWatchAd && hasValidVideoUrl(p.video_url);
+            const vendorBadgeHtml =
+              cfg.showVendorBadges && p.vendor_name
+                ? `<div class="mb-1"><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle"><i class="fa-solid fa-store me-1"></i>${escapeHtml(p.vendor_name)}</span></div>`
+                : "";
+            const imgHtml = imgSrc
+              ? `<div class="product-img-wrap"><img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(p.name)}" loading="lazy" /></div>`
+              : `<div class="product-img-wrap text-muted"><i class="fa-solid fa-box-open fa-2x"></i></div>`;
 
-          const metaLine = cfg.showStockOnCards
-            ? `Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}`
-            : `${escapeHtml(p.category || "General")}`;
+            const metaLine = cfg.showStockOnCards
+              ? `Stock: ${stockVal.toFixed(2)} ${escapeHtml(mLbl)} &bull; ${escapeHtml(p.category || "General")}`
+              : `${escapeHtml(p.category || "General")}`;
 
-          return `
+            return `
             <div class="col-6 col-md-4 col-lg-3">
               <div class="card h-100 shadow-sm product-card">
                 ${imgHtml}
@@ -2530,11 +2546,15 @@
                   <div class="text-primary fw-semibold mb-1">${formatMoney(displayPrice)} <span class="small text-muted">/ ${escapeHtml(rLbl)}</span></div>
                   <div class="small text-muted mb-2">${metaLine}</div>
                   <p class="small text-secondary flex-grow-1">${escapeHtml(p.description || "")}</p>
-                  ${hasAd ? `
+                  ${
+                    hasAd
+                      ? `
                     <button type="button" class="btn btn-outline-primary btn-sm w-100 mb-2" data-action="watch-ad" data-id="${escapeHtml(p.id)}">
                       <i class="fa-solid fa-play me-1"></i>Watch Ad
                     </button>
-                  ` : ""}
+                  `
+                      : ""
+                  }
                   <div class="row g-1 mb-2">
                     <div class="col-7">
                       <select class="form-select form-select-sm card-unit-sel">
@@ -2554,7 +2574,8 @@
               </div>
             </div>
           `;
-        }).join("");
+          })
+          .join("");
       }
 
       if (!state.products.length) {
@@ -2566,26 +2587,27 @@
         return;
       }
 
-      tbody.innerHTML = state.products.map((p) => {
-        const pCarton = Number(p.price_carton ?? p.price ?? 0);
-        const stockCartons = Number(p.qty_cartons ?? p.stock ?? 0);
-        const cCarton = Number(p.cost ?? 0);
-        const pPack = Number(p.price_pack ?? 0);
-        const pRetail = Number(p.price_retail ?? 0);
-        const packsCount = Number(p.packs_per_carton ?? 1);
-        const retailCount = Number(p.units_per_pack ?? 1);
-        const alertInfo = getProductAlertInfo(p);
+      tbody.innerHTML = state.products
+        .map((p) => {
+          const pCarton = Number(p.price_carton ?? p.price ?? 0);
+          const stockCartons = Number(p.qty_cartons ?? p.stock ?? 0);
+          const cCarton = Number(p.cost ?? 0);
+          const pPack = Number(p.price_pack ?? 0);
+          const pRetail = Number(p.price_retail ?? 0);
+          const packsCount = Number(p.packs_per_carton ?? 1);
+          const retailCount = Number(p.units_per_pack ?? 1);
+          const alertInfo = getProductAlertInfo(p);
 
-        const stockFlag = alertInfo.isLowStock
-          ? ` <span class="badge ${stockCartons <= 0 ? "bg-danger" : "bg-warning text-dark"}">Low</span>`
-          : "";
-        const expFlag = alertInfo.isExpired
-          ? ` <span class="badge bg-danger">Expired</span>`
-          : alertInfo.isExpiringSoon
-            ? ` <span class="badge bg-warning text-dark">${alertInfo.daysLeft}d</span>`
+          const stockFlag = alertInfo.isLowStock
+            ? ` <span class="badge ${stockCartons <= 0 ? "bg-danger" : "bg-warning text-dark"}">Low</span>`
             : "";
+          const expFlag = alertInfo.isExpired
+            ? ` <span class="badge bg-danger">Expired</span>`
+            : alertInfo.isExpiringSoon
+              ? ` <span class="badge bg-warning text-dark">${alertInfo.daysLeft}d</span>`
+              : "";
 
-        return `
+          return `
           <tr>
             <td class="fw-semibold">${escapeHtml(p.name)}</td>
             <td>${escapeHtml(p.category || "General")}</td>
@@ -2609,20 +2631,25 @@
             </td>
           </tr>
         `;
-      }).join("");
+        })
+        .join("");
 
       const prevPos = posSelect.value;
-      posSelect.innerHTML = state.products.map((p) => {
-        const priceVal = Number(p.price_carton ?? p.price ?? 0);
-        const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
-        return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${formatMoney(priceVal)} &bull; Stock: ${stockVal.toFixed(2)})</option>`;
-      }).join("");
+      posSelect.innerHTML = state.products
+        .map((p) => {
+          const priceVal = Number(p.price_carton ?? p.price ?? 0);
+          const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+          return `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${formatMoney(priceVal)} &bull; Stock: ${stockVal.toFixed(2)})</option>`;
+        })
+        .join("");
       if (prevPos) posSelect.value = prevPos;
 
       const prevExisting = existingSelect.value;
-      existingSelect.innerHTML = `<option value="">-- Choose saved product --</option>` + state.products.map((p) =>
-        `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${escapeHtml(p.category || "General")})</option>`
-      ).join("");
+      existingSelect.innerHTML =
+        `<option value="">-- Choose saved product --</option>` +
+        state.products
+          .map((p) => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${escapeHtml(p.category || "General")})</option>`)
+          .join("");
       if (prevExisting) existingSelect.value = prevExisting;
 
       syncPosUnitOptions();
@@ -2668,9 +2695,7 @@
         document.getElementById("setBroadcastVideo").value = s.broadcast_video_url || "";
 
         if (s.extra_settings) {
-          const parsedExtra = typeof s.extra_settings === "string"
-            ? JSON.parse(s.extra_settings || "{}")
-            : s.extra_settings;
+          const parsedExtra = typeof s.extra_settings === "string" ? JSON.parse(s.extra_settings || "{}") : s.extra_settings;
           if (parsedExtra && typeof parsedExtra === "object") {
             state.extraSettings = { ...DEFAULT_EXTRA_SETTINGS, ...localExtra, ...parsedExtra };
             saveLocalExtraSettings(state.extraSettings);
@@ -2703,27 +2728,29 @@
         return;
       }
 
-      container.innerHTML = msgs.map((rawMsg) => {
-        const m = normalizeMessageClient(rawMsg);
-        const hasPhoto = Boolean(m.proof_url && String(m.proof_url).startsWith("http"));
-        const proofImg = hasPhoto
-          ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
-          : (m.photo_cleared && rawMsg.proof_url
+      container.innerHTML = msgs
+        .map((rawMsg) => {
+          const m = normalizeMessageClient(rawMsg);
+          const hasPhoto = Boolean(m.proof_url && String(m.proof_url).startsWith("http"));
+          const proofImg = hasPhoto
+            ? `<div class="mt-1"><img src="${escapeHtml(m.proof_url)}" style="max-width:220px;" class="img-thumbnail" alt="Proof" /></div>`
+            : m.photo_cleared && rawMsg.proof_url
               ? `<div class="mt-1 small fst-italic text-muted"><i class="fa-solid fa-image-slash me-1"></i>Photo removed to free storage</div>`
-              : "");
-        const deletePhotoBtn = allowPhotoDelete && hasPhoto && m.id
-          ? `<button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 ms-1" data-action="delete-chat-photo" data-msg-id="${escapeHtml(m.id)}" title="Delete this photo"><i class="fa-solid fa-trash-can me-1"></i>Delete Photo</button>`
-          : "";
+              : "";
+          const deletePhotoBtn =
+            allowPhotoDelete && hasPhoto && m.id
+              ? `<button type="button" class="btn btn-outline-danger btn-sm py-0 px-2 ms-1" data-action="delete-chat-photo" data-msg-id="${escapeHtml(m.id)}" title="Delete this photo"><i class="fa-solid fa-trash-can me-1"></i>Delete Photo</button>`
+              : "";
 
-        const rawText = m.message || m.text || "";
-        const decodedText = decodeHtmlEntities(rawText).trim();
-        const isTrustedSystemReceipt =
-          m.sender === "System" &&
-          decodedText.includes("OFFICIAL PURCHASE RECEIPT") &&
-          decodedText.startsWith("<div ");
-        const bodyHtml = isTrustedSystemReceipt ? decodedText : escapeHtml(rawText);
+          const rawText = m.message || m.text || "";
+          const decodedText = decodeHtmlEntities(rawText).trim();
+          const isTrustedSystemReceipt =
+            m.sender === "System" &&
+            decodedText.includes("OFFICIAL PURCHASE RECEIPT") &&
+            decodedText.startsWith("<div ");
+          const bodyHtml = isTrustedSystemReceipt ? decodedText : escapeHtml(rawText);
 
-        return `
+          return `
           <div class="border-bottom pb-2 mb-2">
             <div class="d-flex justify-content-between align-items-center small gap-2">
               <strong>${escapeHtml(m.sender || "Customer")}</strong>
@@ -2736,7 +2763,8 @@
             ${proofImg}
           </div>
         `;
-      }).join("");
+        })
+        .join("");
     }
 
     function lockCustomerChatView() {
@@ -2801,33 +2829,38 @@
         return;
       }
 
-      box.innerHTML = filteredOrders.map((o) => {
-        const originalIdx = state.ordersFeed.indexOf(o);
-        const phoneVal = o.contact_phone || o.phone || "";
-        const customerVal = o.customer || o.customer_name || "Customer";
-        const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
-        const badgeLabel = o.order_type || (hasSpecial ? "Multi-Item Request" : "Cart Order");
-        const badgeClass = hasSpecial ? "bg-info text-dark" : "bg-primary";
-        const isVerified = String(o.status || "").toLowerCase() === "verified";
+      box.innerHTML = filteredOrders
+        .map((o) => {
+          const originalIdx = state.ordersFeed.indexOf(o);
+          const phoneVal = o.contact_phone || o.phone || "";
+          const customerVal = o.customer || o.customer_name || "Customer";
+          const hasSpecial = Array.isArray(o.special_items) && o.special_items.length > 0;
+          const badgeLabel = o.order_type || (hasSpecial ? "Multi-Item Request" : "Cart Order");
+          const badgeClass = hasSpecial ? "bg-info text-dark" : "bg-primary";
+          const isVerified = String(o.status || "").toLowerCase() === "verified";
 
-        let detailsHtml = "";
-        if (hasSpecial) {
-          detailsHtml = o.special_items
-            .map((sp) => `<div class="small">${escapeHtml(sp.item || sp.name || "")}</div>`)
-            .join("");
-        } else if (Array.isArray(o.items) && o.items.length > 0) {
-          const totalVal = o.items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
-          detailsHtml = o.items
-            .map((it) => `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) &times; ${escapeHtml(it.qty || 1)} &mdash; ${formatMoney(it.total_price || 0)}</div>`)
-            .join("") + `<div class="small fw-bold mt-1">Total: ${formatMoney(totalVal)}</div>`;
-        }
+          let detailsHtml = "";
+          if (hasSpecial) {
+            detailsHtml = o.special_items
+              .map((sp) => `<div class="small">${escapeHtml(sp.item || sp.name || "")}</div>`)
+              .join("");
+          } else if (Array.isArray(o.items) && o.items.length > 0) {
+            const totalVal = o.items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
+            detailsHtml =
+              o.items
+                .map(
+                  (it) =>
+                    `<div class="small">${escapeHtml(it.name || "Item")} (${escapeHtml(it.unit || "Unit")}) &times; ${escapeHtml(it.qty || 1)} &mdash; ${formatMoney(it.total_price || 0)}</div>`
+                )
+                .join("") + `<div class="small fw-bold mt-1">Total: ${formatMoney(totalVal)}</div>`;
+          }
 
-        const hasStructuredItems = hasSpecial || (Array.isArray(o.items) && o.items.length > 0);
-        const noteHtml = o.notes
-          ? `<div class="${hasStructuredItems ? "small text-secondary mt-1" : "small"}">${hasStructuredItems ? "Note: " : ""}${escapeHtml(o.notes)}</div>`
-          : "";
+          const hasStructuredItems = hasSpecial || (Array.isArray(o.items) && o.items.length > 0);
+          const noteHtml = o.notes
+            ? `<div class="${hasStructuredItems ? "small text-secondary mt-1" : "small"}">${hasStructuredItems ? "Note: " : ""}${escapeHtml(o.notes)}</div>`
+            : "";
 
-        return `
+          return `
           <div class="border rounded p-2 mb-2 bg-light order-entry" data-action="select-order-phone" data-phone="${escapeHtml(phoneVal)}">
             <div class="d-flex justify-content-between align-items-center small mb-1 gap-1">
               <strong>${escapeHtml(customerVal)} (${escapeHtml(phoneVal)})</strong>
@@ -2855,7 +2888,8 @@
             </div>
           </div>
         `;
-      }).join("");
+        })
+        .join("");
     }
 
     async function loadStaffOrders() {
@@ -3045,7 +3079,9 @@
       if (hasSpecial) {
         lines = o.special_items.map((sp) => `${sp.item || sp.name || "Requested Item"}`);
       } else if (Array.isArray(o.items) && o.items.length > 0) {
-        lines = o.items.map((it) => `${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${formatMoney(it.total_price || 0)}`);
+        lines = o.items.map(
+          (it) => `${it.name || "Item"} (${it.unit || "Unit"}) x ${it.qty || 1} = ${formatMoney(it.total_price || 0)}`
+        );
         const sum = o.items.reduce((acc, it) => acc + Number(it.total_price || 0), 0);
         totalStr = formatMoney(sum);
       } else if (o.notes) {
@@ -3323,7 +3359,7 @@
         const prod = state.products.find((p) => String(p.id) === String(target.dataset.id));
         if (!prod) return;
         const card = target.closest(".card");
-        const unit = card ? card.querySelector(".card-unit-sel").value : (prod.unit_retail_label || "Retail Unit");
+        const unit = card ? card.querySelector(".card-unit-sel").value : prod.unit_retail_label || "Retail Unit";
         const qty = card ? Math.max(1, Number(card.querySelector(".card-qty-inp").value || 1)) : 1;
         const unitPrice = getPriceForUnit(prod, unit);
         const existing = state.cart.find((c) => String(c.id) === String(prod.id) && c.unit === unit);
@@ -3747,7 +3783,7 @@
             body: JSON.stringify({
               category: document.getElementById("expenseCategory").value.trim() || "Operations",
               amount: Number(document.getElementById("expenseAmount").value || 0),
-              note: (document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim()),
+              note: document.getElementById("expenseNote").value.trim() || document.getElementById("expenseTitle").value.trim(),
             }),
           });
           e.target.reset();
@@ -3876,16 +3912,24 @@
 
       const awarenessImgEl = document.getElementById("customerAwarenessImg");
       if (awarenessImgEl) {
-        awarenessImgEl.addEventListener("touchstart", (ev) => {
-          _awarenessTouchStartX = ev.changedTouches?.[0]?.clientX || 0;
-        }, { passive: true });
-        awarenessImgEl.addEventListener("touchend", (ev) => {
-          const endX = ev.changedTouches?.[0]?.clientX || 0;
-          const deltaX = endX - _awarenessTouchStartX;
-          if (Math.abs(deltaX) > 36) {
-            stepAwarenessSlide(deltaX < 0 ? 1 : -1);
-          }
-        }, { passive: true });
+        awarenessImgEl.addEventListener(
+          "touchstart",
+          (ev) => {
+            _awarenessTouchStartX = ev.changedTouches?.[0]?.clientX || 0;
+          },
+          { passive: true }
+        );
+        awarenessImgEl.addEventListener(
+          "touchend",
+          (ev) => {
+            const endX = ev.changedTouches?.[0]?.clientX || 0;
+            const deltaX = endX - _awarenessTouchStartX;
+            if (Math.abs(deltaX) > 36) {
+              stepAwarenessSlide(deltaX < 0 ? 1 : -1);
+            }
+          },
+          { passive: true }
+        );
       }
 
       syncLayoutChrome();

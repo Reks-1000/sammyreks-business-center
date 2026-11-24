@@ -1318,7 +1318,7 @@
 
                 <div class="wa-chat-board flex-grow-1">
                   <div class="wa-chat-topbar">
-                    <span id="staffChatStatusBadge" class="badge text-bg-success">Live Desk</span>
+                    <span id="staffChatStatusBadge" class="badge text-bg-success">Live Desk • Instant Sync</span>
                     <div class="d-flex flex-wrap gap-1">
                       <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size:0.72rem;" onclick="applyStaffQuickReply('Payment received and verified. Thank you!')">
                         Payment Verified
@@ -1967,7 +1967,7 @@
         <div class="modal-header">
           <div>
             <h5 id="customerChatModalTitle" class="modal-title fw-bold text-warning mb-0">Order Chat &amp; Official Receipt</h5>
-            <div id="customerChatSubHeader" class="small text-secondary">Everything stays inside this chat window</div>
+            <div id="customerChatSubHeader" class="small text-secondary">Messages update with immediate effect</div>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
@@ -2251,6 +2251,11 @@
       return `${curr}${num.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
+    function formatNowTime() {
+      const d = new Date();
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+
     function isStaffLoggedIn() {
       return Boolean(state.staff && state.staff.token);
     }
@@ -2320,7 +2325,7 @@
 
       let attachmentHtml = "";
       if (msg.proof_url) {
-        const removeBtnHtml = canDeletePhoto && msg.id
+        const removeBtnHtml = canDeletePhoto && msg.id && !String(msg.id).startsWith("opt_")
           ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:0.68rem;" onclick="event.stopPropagation();deleteSingleChatPhoto('${escapeHtml(msg.id)}')">Remove Photo</button>`
           : "";
 
@@ -2402,6 +2407,25 @@
       }
     }
 
+    // Live chat polling while chat modal or staff chat tab is visible
+    let liveChatPollTimer = null;
+    function startLiveChatPolling() {
+      if (liveChatPollTimer) return;
+      liveChatPollTimer = setInterval(async () => {
+        const custModalEl = document.getElementById("customerChatModal");
+        const custModalOpen = Boolean(custModalEl && custModalEl.classList.contains("show"));
+        if (custModalOpen && state.customerChat.unlocked && state.customerChat.phone && state.customerChat.pin) {
+          await fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin, true);
+        }
+
+        const staffTabEl = document.getElementById("staffOrdersChatTab");
+        const staffTabActive = Boolean(staffTabEl && staffTabEl.classList.contains("show") && isStaffLoggedIn());
+        if (staffTabActive) {
+          await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
+        }
+      }, 3000);
+    }
+
     // ========================================================================
     // ADMIN-CONTROLLED 10-SECOND AUTO COLOR CYCLER
     // ========================================================================
@@ -2459,6 +2483,19 @@
       addSpecialRequestRow();
       updateTipDisplay();
       restartTipRotation(10);
+      startLiveChatPolling();
+
+      document.getElementById("customerChatModal")?.addEventListener("shown.bs.modal", () => {
+        renderCustomerChatMessages();
+      });
+
+      document.getElementById("tab-orders-chat")?.addEventListener("shown.bs.tab", async () => {
+        renderStaffChatThreads();
+        renderStaffChatMessages();
+        if (isStaffLoggedIn()) {
+          await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
+        }
+      });
 
       await loadSettings();
       await loadShops();
@@ -3493,7 +3530,7 @@
     }
 
     // ========================================================================
-    // CUSTOM REQUEST & WHATSAPP-STYLE CUSTOMER CHAT
+    // CUSTOM REQUEST & WHATSAPP-STYLE CUSTOMER CHAT (IMMEDIATE RENDERING)
     // ========================================================================
     function openSpecialRequestModal() {
       const box = document.getElementById("specialRequestResultBox");
@@ -3556,8 +3593,8 @@
       const pinEl = document.getElementById("custChatPin");
       if (pEl && state.customerChat.phone) pEl.value = state.customerChat.phone;
       if (pinEl && state.customerChat.pin) pinEl.value = state.customerChat.pin;
-      renderCustomerChatMessages();
       getModal("customerChatModal")?.show();
+      requestAnimationFrame(() => renderCustomerChatMessages());
       if (state.customerChat.phone && state.customerChat.pin) {
         fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin);
       }
@@ -3570,7 +3607,7 @@
       await fetchCustomerChatMessages(phone, pin);
     }
 
-    async function fetchCustomerChatMessages(phone, pin) {
+    async function fetchCustomerChatMessages(phone, pin, silent = false) {
       const stEl = document.getElementById("custChatAuthStatus");
       const badge = document.getElementById("customerChatSessionBadge");
       try {
@@ -3578,35 +3615,43 @@
         const res = await fetch(url);
         const data = await safeJson(res);
         if (!res.ok) {
-          state.customerChat.unlocked = false;
-          if (badge) {
-            badge.className = "badge text-bg-danger";
-            badge.textContent = "Locked";
+          if (!silent) {
+            state.customerChat.unlocked = false;
+            if (badge) {
+              badge.className = "badge text-bg-danger";
+              badge.textContent = "Locked";
+            }
+            if (stEl) {
+              stEl.className = "small text-danger mb-2";
+              stEl.textContent = data.detail || "Invalid phone number or PIN/Ref.";
+            }
+            renderCustomerChatMessages();
           }
-          if (stEl) {
-            stEl.className = "small text-danger mb-2";
-            stEl.textContent = data.detail || "Invalid phone number or PIN/Ref.";
-          }
-          renderCustomerChatMessages();
           return;
         }
+        const serverMsgs = Array.isArray(data.messages) ? data.messages : [];
+        const pendingOpts = state.customerChat.messages.filter(m => String(m.id || "").startsWith("opt_"));
+        const merged = serverMsgs.length >= state.customerChat.messages.length - pendingOpts.length
+          ? serverMsgs
+          : [...serverMsgs, ...pendingOpts];
+
         state.customerChat = {
           phone,
           pin,
           unlocked: true,
-          messages: Array.isArray(data.messages) ? data.messages : []
+          messages: merged
         };
         if (badge) {
           badge.className = "badge text-bg-success";
           badge.textContent = `Connected • ${phone}`;
         }
-        if (stEl) {
+        if (stEl && !silent) {
           stEl.className = "small text-success mb-2";
           stEl.textContent = `Unlocked chat for ${phone}`;
         }
         renderCustomerChatMessages();
       } catch (err) {
-        if (stEl) {
+        if (!silent && stEl) {
           stEl.className = "small text-danger mb-2";
           stEl.textContent = err.message;
         }
@@ -3628,7 +3673,9 @@
       box.innerHTML = state.customerChat.messages
         .map(m => renderWhatsAppBubble(m, "customer", false))
         .join("");
-      box.scrollTop = box.scrollHeight;
+      requestAnimationFrame(() => {
+        box.scrollTop = box.scrollHeight;
+      });
     }
 
     async function sendCustomerChatMessage(event) {
@@ -3639,6 +3686,21 @@
       const text = (txtEl?.value || "").trim();
       const file = fileEl?.files?.[0] || null;
       if (!text && !file) return;
+
+      // Render immediately in UI before network completes
+      const tempPreviewUrl = file ? URL.createObjectURL(file) : "";
+      const optimisticMsg = {
+        id: `opt_${Date.now()}`,
+        sender: "Customer",
+        customer_phone: state.customerChat.phone,
+        message: text,
+        proof_url: tempPreviewUrl,
+        timestamp: formatNowTime()
+      };
+      state.customerChat.messages.push(optimisticMsg);
+      if (txtEl) txtEl.value = "";
+      clearCustomerAttachment();
+      renderCustomerChatMessages();
 
       const fd = new FormData();
       fd.append("phone", state.customerChat.phone);
@@ -3652,9 +3714,7 @@
         const res = await fetch("/api/messages", { method: "POST", body: fd });
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Send failed");
-        if (txtEl) txtEl.value = "";
-        clearCustomerAttachment();
-        await fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin);
+        await fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin, true);
       } catch (err) {
         alert(err.message);
       }
@@ -4436,13 +4496,20 @@
       if (res.ok) await loadStaffOrders(encodeURIComponent(state.staffShopId || "main"));
     }
 
-    async function loadStaffMessages(qShop) {
+    async function loadStaffMessages(qShop, silent = false) {
       try {
         const res = await fetch(`/api/messages?shop_id=${qShop}`, { headers: getStaffHeaders() });
         const data = await safeJson(res);
-        state.staffMessages = res.ok && Array.isArray(data.messages) ? data.messages : [];
+        if (res.ok && Array.isArray(data.messages)) {
+          const pendingOpts = state.staffMessages.filter(m => String(m.id || "").startsWith("opt_"));
+          state.staffMessages = data.messages.length >= state.staffMessages.length - pendingOpts.length
+            ? data.messages
+            : [...data.messages, ...pendingOpts];
+        } else if (!silent) {
+          state.staffMessages = [];
+        }
       } catch {
-        state.staffMessages = [];
+        if (!silent) state.staffMessages = [];
       }
       renderStaffChatThreads();
       renderStaffChatMessages();
@@ -4457,7 +4524,9 @@
       box.innerHTML = rows.length
         ? rows.map(m => renderWhatsAppBubble(m, "staff", true)).join("")
         : `<div class="text-secondary small text-center py-5">No messages in this conversation.</div>`;
-      box.scrollTop = box.scrollHeight;
+      requestAnimationFrame(() => {
+        box.scrollTop = box.scrollHeight;
+      });
     }
 
     async function sendStaffChatReply(event) {
@@ -4466,6 +4535,22 @@
       const text = (document.getElementById("staffReplyText")?.value || "").trim();
       const file = document.getElementById("staffReplyProofFile")?.files?.[0] || null;
       if (!phone || (!text && !file)) return;
+
+      // Render immediately in UI before network completes
+      const tempPreviewUrl = file ? URL.createObjectURL(file) : "";
+      const optimisticMsg = {
+        id: `opt_${Date.now()}`,
+        sender: "Staff",
+        customer_phone: phone,
+        message: text,
+        proof_url: tempPreviewUrl,
+        timestamp: formatNowTime()
+      };
+      state.staffMessages.push(optimisticMsg);
+      document.getElementById("staffReplyText").value = "";
+      clearStaffAttachment();
+      renderStaffChatThreads();
+      renderStaffChatMessages();
 
       const fd = new FormData();
       fd.append("phone", phone);
@@ -4476,9 +4561,7 @@
 
       const res = await fetch("/api/messages", { method: "POST", headers: getStaffHeaders(), body: fd });
       if (res.ok) {
-        document.getElementById("staffReplyText").value = "";
-        clearStaffAttachment();
-        await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"));
+        await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
       }
     }
 

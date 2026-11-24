@@ -2256,6 +2256,20 @@
       return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
+    function normalizePhoneDigits(val) {
+      return String(val || "").replace(/\D+/g, "");
+    }
+
+    function appendImmediateBubble(boxId, msg, perspective, canDeletePhoto = false) {
+      const box = document.getElementById(boxId);
+      if (!box) return;
+      const placeholder = box.querySelector("[data-empty-chat='1']");
+      if (placeholder) placeholder.remove();
+
+      box.insertAdjacentHTML("beforeend", renderWhatsAppBubble(msg, perspective, canDeletePhoto));
+      box.scrollTop = box.scrollHeight;
+    }
+
     function isStaffLoggedIn() {
       return Boolean(state.staff && state.staff.token);
     }
@@ -3663,31 +3677,31 @@
       if (!box) return;
       if (!state.customerChat.unlocked) {
         const helper = String(getExtraSettings().pinHelperMsg || "").trim();
-        box.innerHTML = `<div class="text-secondary small text-center py-5">${escapeHtml(helper || "Enter your phone number and PIN or Reference Code above to open your chat thread.")}</div>`;
+        box.innerHTML = `<div data-empty-chat="1" class="text-secondary small text-center py-5">${escapeHtml(helper || "Enter your phone number and PIN or Reference Code above to open your chat thread.")}</div>`;
         return;
       }
       if (!state.customerChat.messages.length) {
-        box.innerHTML = `<div class="text-secondary small text-center py-5">No messages yet. Send a message or add an image below.</div>`;
+        box.innerHTML = `<div data-empty-chat="1" class="text-secondary small text-center py-5">No messages yet. Send a message or add an image below.</div>`;
         return;
       }
       box.innerHTML = state.customerChat.messages
         .map(m => renderWhatsAppBubble(m, "customer", false))
         .join("");
-      requestAnimationFrame(() => {
-        box.scrollTop = box.scrollHeight;
-      });
+      box.scrollTop = box.scrollHeight;
     }
 
     async function sendCustomerChatMessage(event) {
       event.preventDefault();
-      if (!state.customerChat.unlocked) return;
+      if (!state.customerChat.unlocked) {
+        alert("Please unlock the chat with your phone number and PIN/Ref first.");
+        return;
+      }
       const txtEl = document.getElementById("custMsgText");
       const fileEl = document.getElementById("custMsgProofFile");
       const text = (txtEl?.value || "").trim();
       const file = fileEl?.files?.[0] || null;
       if (!text && !file) return;
 
-      // Render immediately in UI before network completes
       const tempPreviewUrl = file ? URL.createObjectURL(file) : "";
       const optimisticMsg = {
         id: `opt_${Date.now()}`,
@@ -3700,7 +3714,7 @@
       state.customerChat.messages.push(optimisticMsg);
       if (txtEl) txtEl.value = "";
       clearCustomerAttachment();
-      renderCustomerChatMessages();
+      appendImmediateBubble("customerChatBox", optimisticMsg, "customer", false);
 
       const fd = new FormData();
       fd.append("phone", state.customerChat.phone);
@@ -4424,15 +4438,17 @@
     function renderStaffChatThreads() {
       const list = document.getElementById("staffChatThreadsList");
       if (!list) return;
-      const activePhone = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+      const activeDigits = normalizePhoneDigits(document.getElementById("staffChatPhoneFilter")?.value || "");
 
       const threadMap = new Map();
       for (const o of state.orders) {
         const ph = String(o.contact_phone || "").trim();
-        if (!ph) continue;
-        if (!threadMap.has(ph)) {
-          threadMap.set(ph, {
+        const digits = normalizePhoneDigits(ph);
+        if (!digits) continue;
+        if (!threadMap.has(digits)) {
+          threadMap.set(digits, {
             phone: ph,
+            digits,
             name: o.customer || "Customer",
             preview: `Order ${o.payment_ref || ""}`,
             time: o.timestamp || ""
@@ -4442,13 +4458,15 @@
 
       for (const m of state.staffMessages) {
         const ph = String(m.customer_phone || m.phone || "").trim();
-        if (!ph) continue;
+        const digits = normalizePhoneDigits(ph);
+        if (!digits) continue;
         const txt = m.proof_url
           ? "🖼 Sent an image / receipt"
           : String(m.message || m.text || "").replace(/<[^>]*>/g, "").trim() || "Message";
-        const existing = threadMap.get(ph);
-        threadMap.set(ph, {
-          phone: ph,
+        const existing = threadMap.get(digits);
+        threadMap.set(digits, {
+          phone: ph || existing?.phone || digits,
+          digits,
           name: existing?.name || "Customer",
           preview: txt,
           time: m.timestamp || existing?.time || ""
@@ -4462,7 +4480,7 @@
       }
 
       list.innerHTML = threads.map(t => {
-        const isSelected = activePhone && t.phone === activePhone;
+        const isSelected = activeDigits && (t.digits === activeDigits || t.digits.includes(activeDigits) || activeDigits.includes(t.digits));
         return `
           <button type="button" class="wa-thread-item ${isSelected ? "active" : ""}" onclick="focusStaffChatPhone('${escapeHtml(t.phone)}')">
             <div class="d-flex justify-content-between align-items-center gap-2">
@@ -4518,15 +4536,19 @@
     function renderStaffChatMessages() {
       const box = document.getElementById("staffChatMessagesBox");
       if (!box) return;
-      const phoneFilter = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
-      const rows = state.staffMessages.filter(m => !phoneFilter || String(m.customer_phone || m.phone || "").includes(phoneFilter));
+      const rawFilter = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+      const normFilter = normalizePhoneDigits(rawFilter);
+
+      const rows = state.staffMessages.filter(m => {
+        if (!normFilter) return true;
+        const msgPhone = normalizePhoneDigits(m.customer_phone || m.phone || "");
+        return msgPhone.includes(normFilter) || normFilter.includes(msgPhone);
+      });
 
       box.innerHTML = rows.length
         ? rows.map(m => renderWhatsAppBubble(m, "staff", true)).join("")
-        : `<div class="text-secondary small text-center py-5">No messages in this conversation.</div>`;
-      requestAnimationFrame(() => {
-        box.scrollTop = box.scrollHeight;
-      });
+        : `<div data-empty-chat="1" class="text-secondary small text-center py-5">No messages in this conversation.</div>`;
+      box.scrollTop = box.scrollHeight;
     }
 
     async function sendStaffChatReply(event) {
@@ -4536,7 +4558,6 @@
       const file = document.getElementById("staffReplyProofFile")?.files?.[0] || null;
       if (!phone || (!text && !file)) return;
 
-      // Render immediately in UI before network completes
       const tempPreviewUrl = file ? URL.createObjectURL(file) : "";
       const optimisticMsg = {
         id: `opt_${Date.now()}`,
@@ -4550,7 +4571,12 @@
       document.getElementById("staffReplyText").value = "";
       clearStaffAttachment();
       renderStaffChatThreads();
-      renderStaffChatMessages();
+
+      const filterDigits = normalizePhoneDigits(document.getElementById("staffChatPhoneFilter")?.value || "");
+      const phoneDigits = normalizePhoneDigits(phone);
+      if (!filterDigits || phoneDigits.includes(filterDigits) || filterDigits.includes(phoneDigits)) {
+        appendImmediateBubble("staffChatMessagesBox", optimisticMsg, "staff", true);
+      }
 
       const fd = new FormData();
       fd.append("phone", phone);

@@ -121,12 +121,6 @@
       background: rgba(239, 68, 68, 0.16);
     }
 
-    .hdr-btn-cycle-active {
-      background: var(--gold) !important;
-      color: #111827 !important;
-      border-color: var(--gold) !important;
-    }
-
     .staff-pill-badge {
       background: #14532d;
       border: 1px solid #22c55e;
@@ -145,6 +139,25 @@
       font-size: 0.9rem;
       text-align: center;
       padding: 8px 14px;
+    }
+
+    /* Dedicated Partner Store Banner (Separate Interface Mode) */
+    .partner-store-hero {
+      background: linear-gradient(135deg, #0b192c 0%, #152a45 100%);
+      border: 1px solid var(--cyan);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .partner-store-avatar {
+      width: 54px;
+      height: 54px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 1px solid var(--cyan);
+      background: #0b1220;
+      flex-shrink: 0;
     }
 
     /* Dark Cards & Inputs */
@@ -182,35 +195,31 @@
       box-shadow: 0 0 0 0.18rem rgba(245, 183, 0, 0.2) !important;
     }
 
-    /* Shop Selector Pills */
-    .shop-pill {
-      border-radius: 999px;
-      padding: 7px 16px;
-      font-weight: 700;
-      font-size: 0.86rem;
-      border: 1px solid var(--border-subtle);
-      background: var(--bg-surface);
+    /* Sidebar Offcanvas for Registered Businesses */
+    .offcanvas-dark-custom {
+      background-color: var(--bg-header);
       color: var(--text-primary);
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
+      border-right: 1px solid var(--border-subtle);
     }
 
-    .shop-pill.active {
-      background: var(--gold);
-      color: #111827;
+    .sidebar-shop-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px;
+      transition: border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .sidebar-shop-card:hover {
       border-color: var(--gold);
     }
 
-    .shop-pill-avatar {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      object-fit: cover;
+    .sidebar-shop-card.active-shop {
+      border-color: var(--cyan);
+      background: rgba(14, 165, 233, 0.08);
     }
 
-    /* Product Cards (Uncropped Media + Advert Action) */
+    /* Product Cards */
     .product-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
@@ -453,30 +462,43 @@
   <!-- TOP NAVIGATION HEADER -->
   <header class="app-header">
     <div class="container-fluid">
-      <div class="d-flex align-items-center gap-2 mb-2">
-        <span id="brandStoreIcon" class="brand-icon-badge" aria-hidden="true" title="Sammyreks Business Center Store">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 9l1.5-5h15L21 9"></path>
-            <path d="M3 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 3-2.45"></path>
-            <path d="M5 11.5V20h14v-8.5"></path>
-            <path d="M10 20v-5h4v5"></path>
-          </svg>
-        </span>
-        <img id="headerLogoImg" src="" alt="Logo" class="rounded-circle d-none" style="width:36px;height:36px;object-fit:cover;border:1px solid var(--gold);" />
-        <div>
-          <h1 id="brandNameDisplay" class="brand-heading">Sammyreks Business Center</h1>
-          <div id="brandTaglineDisplay" class="brand-tagline d-none"></div>
+      <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
+        <div class="d-flex align-items-center gap-2">
+          <!-- Sidebar Toggle Button for Registered Businesses -->
+          <button type="button" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1 fw-bold" data-bs-toggle="offcanvas" data-bs-target="#registeredShopsSidebar" aria-controls="registeredShopsSidebar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+            <span>Stores</span>
+            <span id="sidebarShopCountBadge" class="badge rounded-pill text-bg-warning text-dark">0</span>
+          </button>
+
+          <span id="brandStoreIcon" class="brand-icon-badge" aria-hidden="true" title="Sammyreks Business Center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 9l1.5-5h15L21 9"></path>
+              <path d="M3 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 3-2.45"></path>
+              <path d="M5 11.5V20h14v-8.5"></path>
+              <path d="M10 20v-5h4v5"></path>
+            </svg>
+          </span>
+
+          <div>
+            <h1 id="brandNameDisplay" class="brand-heading">Sammyreks Business Center</h1>
+            <div id="brandTaglineDisplay" class="brand-tagline d-none"></div>
+          </div>
         </div>
       </div>
 
       <!-- Action Pills Bar -->
       <div class="d-flex flex-wrap align-items-center gap-2">
-        <button id="navStorefrontBtn" type="button" class="hdr-pill-btn hdr-btn-white active" onclick="showStorefrontView()">
-          Storefront
+        <button id="navStorefrontBtn" type="button" class="hdr-pill-btn hdr-btn-white active" onclick="enterMainStorefront()">
+          Main App
         </button>
 
         <button id="navRegisterShopBtn" type="button" class="hdr-pill-btn hdr-btn-gold" onclick="openRegisterShopModal()">
-          + Register Your Shop
+          + Register Your Business
         </button>
 
         <button id="navCartBtn" type="button" class="hdr-pill-btn hdr-btn-cyan" onclick="openCartModal()">
@@ -485,10 +507,6 @@
 
         <button id="navChatBtn" type="button" class="hdr-pill-btn hdr-btn-green" onclick="openCustomerChatModal()">
           Order Chat / Receipt
-        </button>
-
-        <button id="colorCycleBtn" type="button" class="hdr-pill-btn hdr-btn-gold" onclick="toggleColorCycle()" title="Cycle app colors every 10 seconds">
-          Auto Color: OFF
         </button>
 
         <span id="staffSessionBadge" class="staff-pill-badge d-none"></span>
@@ -508,6 +526,44 @@
     </div>
   </header>
 
+  <!-- SIDEBAR DRAWER: REGISTERED BUSINESSES (SEPARATED FROM APP FRONT) -->
+  <div class="offcanvas offcanvas-start offcanvas-dark-custom" tabindex="-1" id="registeredShopsSidebar" aria-labelledby="registeredShopsSidebarLabel">
+    <div class="offcanvas-header border-bottom border-secondary-subtle">
+      <div>
+        <h5 class="offcanvas-title fw-bold text-warning mb-0" id="registeredShopsSidebarLabel">Registered Stores</h5>
+        <div class="small text-secondary">Select a store near your location to shop directly</div>
+      </div>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body d-flex flex-column gap-3">
+      <!-- Main App Store Card -->
+      <div id="sidebarMainStoreCard" class="sidebar-shop-card active-shop">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+          <div class="fw-bold text-warning">Shop with Sammyreks Business Center</div>
+          <span class="badge text-bg-warning text-dark">Main App</span>
+        </div>
+        <div class="small text-secondary mb-2">
+          Location: <strong class="text-light">Calabar</strong>
+        </div>
+        <button type="button" class="btn btn-sm btn-warning fw-bold w-100" data-bs-dismiss="offcanvas" onclick="enterMainStorefront()">
+          Open Main Storefront
+        </button>
+      </div>
+
+      <div class="border-top border-secondary-subtle pt-2">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="small fw-bold text-uppercase text-secondary">Partner Businesses</span>
+          <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" data-bs-dismiss="offcanvas" onclick="openRegisterShopModal()">
+            + Register
+          </button>
+        </div>
+        <div id="sidebarPartnerShopsList" class="d-flex flex-column gap-2">
+          <div class="small text-secondary py-2">No registered partner businesses yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- GOLD ANNOUNCEMENT BANNER -->
   <div id="activeNoticeBanner" class="gold-notice-bar d-none"></div>
 
@@ -515,11 +571,41 @@
   <div class="container-fluid py-3 px-3 px-md-4">
 
     <!-- ===================================================================== -->
-    <!-- 1. STOREFRONT VIEW                                                    -->
+    <!-- 1. STOREFRONT VIEW (MAIN APP OR DEDICATED PARTNER STORE INTERFACE)    -->
     <!-- ===================================================================== -->
     <div id="storefrontSection">
 
-      <!-- Featured Promo Broadcast Card -->
+      <!-- DEDICATED PARTNER BUSINESS HEADER (ONLY SHOWN WHEN CUSTOMER ENTERS A REGISTERED STORE) -->
+      <div id="partnerStoreFrontHeader" class="partner-store-hero d-none">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+          <div class="d-flex align-items-center gap-3">
+            <img id="partnerHeroAvatar" src="" alt="Store Logo" class="partner-store-avatar d-none" />
+            <div id="partnerHeroFallbackIcon" class="brand-icon-badge" style="width:52px;height:52px;border-color:var(--cyan);color:#38bdf8;background:rgba(14,165,233,0.14);">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 9l1.5-5h15L21 9"></path>
+                <path d="M5 11.5V20h14v-8.5"></path>
+                <rect x="9" y="13" width="6" height="4" rx="1"></rect>
+              </svg>
+            </div>
+            <div>
+              <span class="badge text-bg-info text-dark mb-1">Independent Partner Storefront</span>
+              <h4 id="partnerHeroTitle" class="fw-bold mb-0 text-light">Shop with Business</h4>
+              <div id="partnerHeroMeta" class="small text-info mt-1">Location: Calabar</div>
+            </div>
+          </div>
+
+          <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="offcanvas" data-bs-target="#registeredShopsSidebar">
+              Switch Store
+            </button>
+            <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="enterMainStorefront()">
+              ← Back to Main App
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAIN APP PROMO BROADCAST (ONLY ON MAIN APP FRONT) -->
       <div id="broadcastVideoContainer" class="dark-panel mb-3 d-none">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h5 class="mb-0 fw-bold" style="color:var(--gold);">Featured Promo Broadcast</h5>
@@ -532,7 +618,7 @@
         </div>
       </div>
 
-      <!-- Rotating Tips Bar -->
+      <!-- MAIN APP ROTATING TIPS BAR (ONLY ON MAIN APP FRONT) -->
       <div id="rotatingTipStrip" class="tip-banner mb-3 d-flex justify-content-between align-items-center gap-2">
         <div class="d-flex align-items-center gap-2">
           <span class="badge text-bg-warning text-dark">Tip</span>
@@ -545,13 +631,6 @@
             Updates
           </button>
         </div>
-      </div>
-
-      <!-- Shop Selector Pills (Main Store + Registered Partner Shops) -->
-      <div id="partnerShopsRail" class="d-flex flex-wrap gap-2 mb-3">
-        <button type="button" class="shop-pill active" data-shop-id="main" onclick="selectShop('main')">
-          Main Store (Sammyreks)
-        </button>
       </div>
 
       <!-- Search, Category & Custom Request Panel -->
@@ -578,14 +657,14 @@
     </div>
 
     <!-- ===================================================================== -->
-    <!-- 2. STAFF & ADMIN DASHBOARD VIEW                                       -->
+    <!-- 2. STAFF & ADMIN DASHBOARD VIEW (ISOLATED PER BUSINESS)               -->
     <!-- ===================================================================== -->
     <div id="staffSection" class="d-none">
       <!-- Dashboard Top Summary & KPIs -->
       <div class="dark-panel mb-3">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pb-2 mb-3 border-bottom border-secondary-subtle">
           <div>
-            <h4 class="mb-0 fw-bold" style="color:var(--gold);">Staff &amp; Admin Dashboard</h4>
+            <h4 id="dashboardHeadingTitle" class="mb-0 fw-bold" style="color:var(--gold);">Staff &amp; Admin Dashboard</h4>
             <div id="staffContextSubtitle" class="small text-secondary">Signed in</div>
           </div>
           <div class="d-flex flex-wrap align-items-center gap-2">
@@ -658,7 +737,7 @@
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-settings" data-bs-toggle="pill" data-bs-target="#settingsTab" type="button" role="tab">
-            Overall App Settings
+            <span id="settingsTabLabel">Overall App Settings</span>
           </button>
         </li>
       </ul>
@@ -668,7 +747,6 @@
         <!-- TAB 1: INVENTORY & AUTO-STOCK -->
         <div class="tab-pane fade show active" id="inventoryTab" role="tabpanel">
           <div class="row g-3 mb-3">
-            <!-- Smart Auto-Stock & Barcode -->
             <div class="col-lg-5">
               <div class="dark-panel h-100">
                 <h6 class="fw-bold mb-2" style="color:var(--gold);">Barcode &amp; Smart Auto-Stock</h6>
@@ -691,7 +769,7 @@
                       <input id="autoStockDefaultCartons" type="number" step="0.5" min="0" value="5" class="form-control form-control-sm dark-input" />
                     </div>
                     <div class="col-6">
-                      <label for="autoStockLocationInput" class="form-label small text-secondary mb-0">Store Label</label>
+                      <label for="autoStockLocationInput" class="form-label small text-secondary mb-0">Store Location</label>
                       <input id="autoStockLocationInput" type="text" value="Calabar" class="form-control form-control-sm dark-input" />
                     </div>
                   </div>
@@ -777,7 +855,7 @@
                       </datalist>
                     </div>
                     <div class="col-md-3">
-                      <label for="prodLocation" class="form-label small mb-1">Store / Area</label>
+                      <label for="prodLocation" class="form-label small mb-1">Store Location</label>
                       <input id="prodLocation" name="location" type="text" class="form-control form-control-sm dark-input" value="Calabar" />
                     </div>
 
@@ -891,7 +969,7 @@
                     <th>Item</th>
                     <th>Category</th>
                     <th>Shop</th>
-                    <th>Stock</th>
+                    <th>Availability</th>
                     <th>Main Price</th>
                     <th>Pack Price</th>
                     <th>Retail Price</th>
@@ -1113,13 +1191,57 @@
           </div>
         </div>
 
-        <!-- TAB 5: OVERALL APP SETTINGS -->
+        <!-- TAB 5: SETTINGS (SEPARATED: PARTNER BUSINESS CONFIG VS MAIN APP SETTINGS) -->
         <div class="tab-pane fade" id="settingsTab" role="tabpanel">
-          <div class="dark-panel">
+
+          <!-- A. PARTNER BUSINESS ISOLATED CONFIGURATION PANEL (SHOWN FOR PARTNER SHOP OWNERS) -->
+          <div id="partnerShopConfigPanel" class="dark-panel d-none">
+            <div class="mb-3">
+              <h6 class="fw-bold mb-0 text-info">Your Business Storefront Configuration</h6>
+              <div class="small text-secondary">Configure your own store name, location, bank account details, and banner. Your store runs independently from the main app.</div>
+            </div>
+
+            <form id="partnerOwnSettingsForm" onsubmit="savePartnerOwnSettings(event)" enctype="multipart/form-data">
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label for="pSetName" class="form-label small mb-1">Business / Store Name *</label>
+                  <input id="pSetName" name="name" type="text" class="form-control form-control-sm dark-input" required />
+                </div>
+                <div class="col-md-6">
+                  <label for="pSetLocation" class="form-label small mb-1">Store Location (Shown in Sidebar &amp; Storefront) *</label>
+                  <input id="pSetLocation" name="location" type="text" class="form-control form-control-sm dark-input" placeholder="e.g. Marian Road, Calabar" required />
+                </div>
+                <div class="col-md-6">
+                  <label for="pSetPhone" class="form-label small mb-1">Business Phone / WhatsApp</label>
+                  <input id="pSetPhone" name="phone" type="text" class="form-control form-control-sm dark-input" />
+                </div>
+                <div class="col-md-6">
+                  <label for="pSetAvatarFile" class="form-label small mb-1">Update Business Logo / Photo</label>
+                  <input id="pSetAvatarFile" name="avatar_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
+                </div>
+                <div class="col-12">
+                  <label for="pSetTagline" class="form-label small mb-1">Storefront Headline / Banner Message</label>
+                  <input id="pSetTagline" name="tagline" type="text" class="form-control form-control-sm dark-input" placeholder="Welcome to our store! Fast delivery around Calabar." />
+                </div>
+                <div class="col-12">
+                  <label for="pSetBankDetails" class="form-label small mb-1">Your Bank / Transfer Details (Shown to Customers Buying from Your Store)</label>
+                  <textarea id="pSetBankDetails" name="bank_details" rows="2" class="form-control form-control-sm dark-input" placeholder="Bank Name / Account Number / Account Name"></textarea>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center gap-2 mt-3">
+                <button type="submit" class="btn btn-info btn-sm fw-bold text-dark px-4">Save Store Configuration</button>
+                <span id="partnerConfigFeedback" class="small"></span>
+              </div>
+            </form>
+          </div>
+
+          <!-- B. MAIN APP OVERALL SETTINGS (SUPER ADMIN / MAIN STORE ONLY) -->
+          <div id="mainAppSettingsPanel" class="dark-panel">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div>
-                <h6 class="fw-bold mb-0" style="color:var(--gold);">Business &amp; Storefront App Settings</h6>
-                <div class="small text-secondary">Control storefront identity, notice banner, broadcast video, tabs, toggles, tips, and floating awareness cards.</div>
+                <h6 class="fw-bold mb-0" style="color:var(--gold);">Main App &amp; Storefront Settings</h6>
+                <div class="small text-secondary">Control main app identity, auto-color theme cycling, notice banner, broadcast video, and storefront options.</div>
               </div>
               <button type="button" class="btn btn-sm btn-outline-warning" onclick="resetAllAppToggles()">
                 Reset All Toggles
@@ -1127,12 +1249,12 @@
             </div>
 
             <form id="appSettingsForm" onsubmit="saveAppSettings(event)" enctype="multipart/form-data">
-              <!-- 1. Business Identity, Notice & Broadcast -->
+              <!-- 1. Business Identity, Auto-Color Theme Control & Broadcast -->
               <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">1. Business Identity, Notice &amp; Broadcast</div>
-                <div class="row g-2">
+                <div class="fw-bold small text-warning mb-2">1. Main App Identity, Auto-Color Theme &amp; Broadcast</div>
+                <div class="row g-2 mb-2">
                   <div class="col-md-5">
-                    <label for="setBusinessName" class="form-label small mb-1">Business Name</label>
+                    <label for="setBusinessName" class="form-label small mb-1">Main Business Name</label>
                     <input id="setBusinessName" name="business_name" type="text" class="form-control form-control-sm dark-input" value="Sammyreks Business Center" />
                   </div>
                   <div class="col-md-5">
@@ -1143,9 +1265,21 @@
                     <label for="setCurrency" class="form-label small mb-1">Currency Symbol</label>
                     <input id="setCurrency" name="currency" type="text" class="form-control form-control-sm dark-input" value="₦" />
                   </div>
+                </div>
 
+                <!-- ADMIN-CONTROLLED AUTO-COLOR SWITCH -->
+                <div class="p-2 px-3 rounded mb-2" style="background:#0b1220;border:1px solid var(--gold);">
+                  <div class="form-check form-switch mb-0">
+                    <input id="togAutoColorCycle" type="checkbox" class="form-check-input" onchange="previewAdminAutoColorToggle()" />
+                    <label for="togAutoColorCycle" class="form-check-label small fw-bold text-warning">
+                      Enable Auto-Color Theme Cycling (Changes app colors every 10 seconds; reverts to default when OFF)
+                    </label>
+                  </div>
+                </div>
+
+                <div class="row g-2">
                   <div class="col-12">
-                    <label for="setActiveNotice" class="form-label small mb-1">Active Notice Banner (Shown at top of Customer Storefront)</label>
+                    <label for="setActiveNotice" class="form-label small mb-1">Active Notice Banner (Shown at top of Main App)</label>
                     <input id="setActiveNotice" name="active_notice" type="text" class="form-control form-control-sm dark-input" />
                   </div>
 
@@ -1162,8 +1296,8 @@
                   </div>
 
                   <div class="col-md-6">
-                    <label for="setFooterCopyright" class="form-label small mb-1">Footer Copyright Text (Optional override)</label>
-                    <input id="setFooterCopyright" type="text" class="form-control form-control-sm dark-input" placeholder="Leave blank to use default business copyright" />
+                    <label for="setFooterCopyright" class="form-label small mb-1">Footer Copyright Text</label>
+                    <input id="setFooterCopyright" type="text" class="form-control form-control-sm dark-input" />
                   </div>
                   <div class="col-md-6">
                     <label for="setReceiptFooter" class="form-label small mb-1">Thermal Receipt Footer Message</label>
@@ -1172,9 +1306,9 @@
                 </div>
               </div>
 
-              <!-- 2. Bottom Navigation Tabs, Cash Flow Analytics & Alerts -->
+              <!-- 2. Navigation Tabs, Cash Flow Analytics & Alerts -->
               <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">2. Bottom Navigation Tabs, Cash Flow Analytics &amp; Alerts</div>
+                <div class="fw-bold small text-warning mb-2">2. Navigation Tabs, Cash Flow Analytics &amp; Alerts</div>
                 <div class="row g-2 mb-2">
                   <div class="col-sm-6 col-md-4">
                     <div class="form-check form-switch">
@@ -1190,14 +1324,8 @@
                   </div>
                   <div class="col-sm-6 col-md-4">
                     <div class="form-check form-switch">
-                      <input id="togShowShopTab" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowShopTab" class="form-check-label small">Show Shop Tab</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-4">
-                    <div class="form-check form-switch">
                       <input id="togShowRequestTab" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowRequestTab" class="form-check-label small">Show Request Tab</label>
+                      <label for="togShowRequestTab" class="form-check-label small">Show Custom Request Button</label>
                     </div>
                   </div>
                   <div class="col-sm-6 col-md-4">
@@ -1217,17 +1345,6 @@
                       <input id="togShowHeaderCartBtn" type="checkbox" class="form-check-input" checked />
                       <label for="togShowHeaderCartBtn" class="form-check-label small">Show Top Header Cart Button</label>
                     </div>
-                  </div>
-                </div>
-
-                <div class="row g-2">
-                  <div class="col-md-4">
-                    <label for="setLowStockThreshold" class="form-label small mb-1">Low Stock Alert Threshold (Cartons)</label>
-                    <input id="setLowStockThreshold" type="number" min="0" step="0.5" value="2" class="form-control form-control-sm dark-input" />
-                  </div>
-                  <div class="col-md-8">
-                    <label for="setCustomTabNames" class="form-label small mb-1">Custom Mobile Tab Names (Shop | Request | Chat | Checkout)</label>
-                    <input id="setCustomTabNames" type="text" class="form-control form-control-sm dark-input" placeholder="Shop | Request | Chat & Receipts | Checkout" />
                   </div>
                 </div>
               </div>
@@ -1276,20 +1393,20 @@
                 </div>
                 <div class="row g-2">
                   <div class="col-md-6">
-                    <label for="setBankDetails" class="form-label small mb-1">Bank Account / Transfer Details (Shown in Checkout &amp; Chat)</label>
+                    <label for="setBankDetails" class="form-label small mb-1">Main Store Bank Account / Transfer Details</label>
                     <textarea id="setBankDetails" rows="2" class="form-control form-control-sm dark-input" placeholder="e.g. Moniepoint / 1234567890 / Sammyreks Business Center"></textarea>
                   </div>
                   <div class="col-md-6">
-                    <label for="setPinHelperMsg" class="form-label small mb-1">Customer PIN Helper Message (Shown on Chat Tab)</label>
-                    <textarea id="setPinHelperMsg" rows="2" class="form-control form-control-sm dark-input" placeholder="First time here? Place an order in Checkout or Request first—your private chat unlocks..."></textarea>
+                    <label for="setPinHelperMsg" class="form-label small mb-1">Customer PIN Helper Message</label>
+                    <textarea id="setPinHelperMsg" rows="2" class="form-control form-control-sm dark-input"></textarea>
                   </div>
                   <div class="col-md-6">
-                    <label for="setPinFieldLabel" class="form-label small mb-1">PIN Field Label (When Manual PIN is Shown)</label>
+                    <label for="setPinFieldLabel" class="form-label small mb-1">PIN Field Label</label>
                     <input id="setPinFieldLabel" type="text" class="form-control form-control-sm dark-input" value="4-Digit Chat PIN (leave blank — auto)" />
                   </div>
                   <div class="col-md-6">
                     <label for="setOrderNotePlaceholder" class="form-label small mb-1">Order Note Placeholder</label>
-                    <input id="setOrderNotePlaceholder" type="text" class="form-control form-control-sm dark-input" placeholder="Optional delivery address or note..." />
+                    <input id="setOrderNotePlaceholder" type="text" class="form-control form-control-sm dark-input" />
                   </div>
                 </div>
               </div>
@@ -1311,13 +1428,13 @@
                 </div>
                 <div>
                   <label for="setRotatingTips" class="form-label small mb-1">Rotate Tips (One per line or separate with |)</label>
-                  <textarea id="setRotatingTips" rows="2" class="form-control form-control-sm dark-input" placeholder="Tip 1 | Tip 2 | Tip 3"></textarea>
+                  <textarea id="setRotatingTips" rows="2" class="form-control form-control-sm dark-input"></textarea>
                 </div>
               </div>
 
-              <!-- 6. Floating Awareness Photos (Slideshow) & Bottom Caption -->
+              <!-- 6. Floating Awareness Photos -->
               <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">6. Floating Awareness Photos (Slideshow) &amp; Bottom Caption</div>
+                <div class="fw-bold small text-warning mb-2">6. Floating Awareness Photos &amp; Bottom Caption</div>
                 <div class="row g-2 mb-2">
                   <div class="col-sm-6 col-md-4">
                     <div class="form-check form-switch">
@@ -1327,37 +1444,29 @@
                   </div>
                   <div class="col-sm-6 col-md-4">
                     <div class="form-check form-switch">
-                      <input id="togShowFloatingAwarenessBottom" type="checkbox" class="form-check-input" />
-                      <label for="togShowFloatingAwarenessBottom" class="form-check-label small">Show Floating Awareness Card</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-4">
-                    <div class="form-check form-switch">
                       <input id="togAutoSlidePhotos" type="checkbox" class="form-check-input" checked />
                       <label for="togAutoSlidePhotos" class="form-check-label small">Auto-Slide Photos Every 3s</label>
                     </div>
                   </div>
                 </div>
-
                 <div class="row g-2 mb-2">
                   <div class="col-md-8">
-                    <label for="setAwarenessSlides" class="form-label small mb-1">Image Links / Upload Slides (One per line or separate with |)</label>
-                    <textarea id="setAwarenessSlides" rows="2" class="form-control form-control-sm dark-input" placeholder="https://.../slide1.jpg | https://.../slide2.jpg"></textarea>
+                    <label for="setAwarenessSlides" class="form-label small mb-1">Image Links (One per line or separate with |)</label>
+                    <textarea id="setAwarenessSlides" rows="2" class="form-control form-control-sm dark-input"></textarea>
                   </div>
                   <div class="col-md-4">
-                    <label for="setAwarenessImageFile" class="form-label small mb-1">Upload Awareness Photo(s)</label>
-                    <input id="setAwarenessImageFile" name="awareness_image_file" type="file" accept="image/*" multiple class="form-control form-control-sm dark-input" />
+                    <label for="setAwarenessImageFile" class="form-label small mb-1">Upload Awareness Photo</label>
+                    <input id="setAwarenessImageFile" name="awareness_image_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
                   </div>
                 </div>
-
                 <div class="row g-2">
                   <div class="col-md-7">
-                    <label for="setAwarenessDescriptions" class="form-label small mb-1">Button Descriptions (One per line or separate with |)</label>
-                    <input id="setAwarenessDescriptions" type="text" class="form-control form-control-sm dark-input" placeholder="Description for slide 1 | Description for slide 2" />
+                    <label for="setAwarenessDescriptions" class="form-label small mb-1">Slide Descriptions</label>
+                    <input id="setAwarenessDescriptions" type="text" class="form-control form-control-sm dark-input" />
                   </div>
                   <div class="col-md-5">
-                    <label for="setAwarenessBottomCaption" class="form-label small mb-1">Bottom Caption / Awareness Message</label>
-                    <input id="setAwarenessBottomCaption" type="text" class="form-control form-control-sm dark-input" placeholder="Shown at the bottom of the floating awareness card" />
+                    <label for="setAwarenessBottomCaption" class="form-label small mb-1">Bottom Caption</label>
+                    <input id="setAwarenessBottomCaption" type="text" class="form-control form-control-sm dark-input" />
                   </div>
                 </div>
               </div>
@@ -1409,7 +1518,7 @@
             <div class="mb-2">
               <label for="loginMode" class="form-label small">Login Mode</label>
               <select id="loginMode" class="form-select dark-select">
-                <option value="admin">Admin / CEO / Shop Owner</option>
+                <option value="admin">Admin / CEO / Business Owner</option>
                 <option value="staff">Staff</option>
               </select>
             </div>
@@ -1424,23 +1533,23 @@
     </div>
   </div>
 
-  <!-- MODAL 2: REGISTER PARTNER SHOP -->
+  <!-- MODAL 2: REGISTER PARTNER BUSINESS -->
   <div class="modal fade" id="registerShopModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title fw-bold text-warning">+ Register Your Shop</h5>
+          <h5 class="modal-title fw-bold text-warning">+ Register Your Business</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div id="registerShopNotice" class="small text-secondary mb-3">
-            Partner shops get their own isolated product portfolio and dashboard login (activated by Super Admin / CEO).
+            Registered businesses appear in the Stores sidebar with their exact location so nearby customers can shop directly on their dedicated store page.
           </div>
           <form id="registerShopForm" onsubmit="submitPartnerShop(event)" enctype="multipart/form-data">
             <div class="row g-2">
               <div class="col-md-6">
-                <label class="form-label small">Shop / Business Name *</label>
-                <input name="name" type="text" class="form-control form-control-sm dark-input" required />
+                <label class="form-label small">Business / Store Name *</label>
+                <input name="name" type="text" class="form-control form-control-sm dark-input" placeholder="e.g. Sammy Reks" required />
               </div>
               <div class="col-md-6">
                 <label class="form-label small">Owner Full Name</label>
@@ -1455,26 +1564,26 @@
                 <input name="owner_password" type="password" class="form-control form-control-sm dark-input" required />
               </div>
               <div class="col-md-4">
-                <label class="form-label small">Store Label</label>
-                <input name="location" type="text" class="form-control form-control-sm dark-input" value="Calabar" />
+                <label class="form-label small">Store Location (For Nearby Customers) *</label>
+                <input name="location" type="text" class="form-control form-control-sm dark-input" value="Calabar" placeholder="e.g. Marian Road, Calabar" required />
               </div>
               <div class="col-md-4">
                 <label class="form-label small">Phone Number</label>
                 <input name="phone" type="text" class="form-control form-control-sm dark-input" />
               </div>
               <div class="col-md-4">
-                <label class="form-label small">Shop Logo / Avatar</label>
+                <label class="form-label small">Store Logo / Photo</label>
                 <input name="avatar_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
               </div>
               <div class="col-12">
-                <label class="form-label small">Bank / Payment Details</label>
+                <label class="form-label small">Store Bank / Payment Details</label>
                 <input name="bank_details" type="text" class="form-control form-control-sm dark-input" placeholder="Bank name, account number, account name" />
               </div>
             </div>
             <div id="registerShopFeedback" class="small mt-2"></div>
             <div class="mt-3 d-flex justify-content-end gap-2">
               <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-warning btn-sm fw-bold px-4">Create Partner Shop</button>
+              <button type="submit" class="btn btn-warning btn-sm fw-bold px-4">Register Business</button>
             </div>
           </form>
         </div>
@@ -1487,7 +1596,7 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title fw-bold text-warning">Shopping Cart</h5>
+          <h5 id="cartModalTitle" class="modal-title fw-bold text-warning">Shopping Cart</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -1566,7 +1675,7 @@
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title fw-bold text-warning">Order Chat &amp; Official Receipt</h5>
+          <h5 id="customerChatModalTitle" class="modal-title fw-bold text-warning">Order Chat &amp; Official Receipt</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -1760,9 +1869,9 @@
         timer: null
       },
       tips: [
+        "Open Stores in the top-left menu to shop directly with registered businesses near your location.",
         "Choose Retail Unit, Pack, or Carton and tap Add to Cart.",
-        "Submit an order to get a Reference Code & PIN for Order Chat / Receipt.",
-        "Need an unlisted item? Tap Custom Request to send your list directly."
+        "Submit an order to get a Reference Code & PIN for Order Chat / Receipt."
       ],
       tipIndex: 0
     };
@@ -1806,6 +1915,11 @@
       return String(state.staff.role || "").trim().toUpperCase() === "CEO";
     }
 
+    function getActivePartnerShop() {
+      if (!state.selectedShopId || state.selectedShopId === "main") return null;
+      return state.shops.find(s => s.slug === state.selectedShopId) || null;
+    }
+
     function getStaffHeaders(extra = {}) {
       const headers = { ...extra };
       if (state.staff.token) headers["X-Staff-Token"] = state.staff.token;
@@ -1826,7 +1940,7 @@
     }
 
     // ========================================================================
-    // 10-SECOND AUTO COLOR CYCLER (OFF BY DEFAULT -> DEFAULT PALETTE)
+    // ADMIN-CONTROLLED 10-SECOND AUTO COLOR CYCLER
     // ========================================================================
     function applyColorTheme(themeObj) {
       const root = document.documentElement.style;
@@ -1839,54 +1953,34 @@
       root.setProperty("--gold", themeObj.gold);
     }
 
-    function syncColorCycleButton() {
-      const btn = document.getElementById("colorCycleBtn");
-      if (!btn) return;
-      if (state.colorCycle.active) {
-        const currentTheme = COLOR_THEMES[state.colorCycle.index % COLOR_THEMES.length];
-        btn.textContent = `Auto Color: ON (${currentTheme.name.split(" ")[0]})`;
-        btn.classList.add("hdr-btn-cycle-active");
-      } else {
-        btn.textContent = "Auto Color: OFF";
-        btn.classList.remove("hdr-btn-cycle-active");
+    function setAutoColorEnabled(enabled) {
+      const wantOn = Boolean(enabled);
+      if (!wantOn) {
+        state.colorCycle.active = false;
+        state.colorCycle.index = 0;
+        if (state.colorCycle.timer) {
+          clearInterval(state.colorCycle.timer);
+          state.colorCycle.timer = null;
+        }
+        applyColorTheme(COLOR_THEMES[0]);
+        return;
       }
-    }
 
-    function stopColorCycle() {
-      state.colorCycle.active = false;
-      state.colorCycle.index = 0;
-      if (state.colorCycle.timer) {
-        clearInterval(state.colorCycle.timer);
-        state.colorCycle.timer = null;
-      }
-      applyColorTheme(COLOR_THEMES[0]);
-      syncColorCycleButton();
-    }
-
-    function startColorCycle() {
-      if (state.colorCycle.timer) {
-        clearInterval(state.colorCycle.timer);
-        state.colorCycle.timer = null;
-      }
+      if (state.colorCycle.active && state.colorCycle.timer) return;
       state.colorCycle.active = true;
-      state.colorCycle.index = (state.colorCycle.index + 1) % COLOR_THEMES.length;
+      state.colorCycle.index = 1;
       applyColorTheme(COLOR_THEMES[state.colorCycle.index]);
-      syncColorCycleButton();
 
       state.colorCycle.timer = setInterval(() => {
         if (!state.colorCycle.active) return;
         state.colorCycle.index = (state.colorCycle.index + 1) % COLOR_THEMES.length;
         applyColorTheme(COLOR_THEMES[state.colorCycle.index]);
-        syncColorCycleButton();
       }, 10000);
     }
 
-    function toggleColorCycle() {
-      if (state.colorCycle.active) {
-        stopColorCycle();
-      } else {
-        startColorCycle();
-      }
+    function previewAdminAutoColorToggle() {
+      const checked = Boolean(document.getElementById("togAutoColorCycle")?.checked);
+      setAutoColorEnabled(checked);
     }
 
     // ========================================================================
@@ -1899,14 +1993,13 @@
 
     document.addEventListener("DOMContentLoaded", async () => {
       applyColorTheme(COLOR_THEMES[0]);
-      syncColorCycleButton();
       addSpecialRequestRow();
       updateTipDisplay();
       restartTipRotation(10);
 
       await loadSettings();
       await loadShops();
-      await loadProducts(state.selectedShopId);
+      await enterMainStorefront();
       updateCartBadge();
       syncHeaderState(false);
     });
@@ -1928,9 +2021,9 @@
 
     function resetAllAppToggles() {
       const defaults = {
+        togAutoColorCycle: false,
         togShowAnalytics: true,
         togShowStockAlerts: true,
-        togShowShopTab: true,
         togShowRequestTab: true,
         togShowLiveCartBadge: true,
         togShowChatReceiptsTab: true,
@@ -1942,13 +2035,13 @@
         togAutoGeneratePin: true,
         togShowRotatingTips: true,
         togShowFloatingAwareness: false,
-        togShowFloatingAwarenessBottom: false,
         togAutoSlidePhotos: true
       };
       for (const [id, checked] of Object.entries(defaults)) {
         const el = document.getElementById(id);
         if (el) el.checked = checked;
       }
+      setAutoColorEnabled(false);
       const fb = document.getElementById("settingsFeedbackText");
       if (fb) {
         fb.className = "small text-warning";
@@ -2007,9 +2100,15 @@
     function applySettingsToUI() {
       const s = state.settings || {};
       const extra = getExtraSettings();
+      const partner = getActivePartnerShop();
+
+      const autoColorOn = Boolean(extra.autoColorCycle);
+      setAutoColorEnabled(autoColorOn);
+      const autoColorChk = document.getElementById("togAutoColorCycle");
+      if (autoColorChk) autoColorChk.checked = autoColorOn;
 
       const bizName = s.business_name || "Sammyreks Business Center";
-      document.title = bizName;
+      document.title = partner ? `Shop with ${partner.name} — ${bizName}` : bizName;
 
       const nameEl = document.getElementById("brandNameDisplay");
       if (nameEl) nameEl.textContent = bizName;
@@ -2024,20 +2123,23 @@
         }
       }
 
+      // Notice banner: partner tagline when inside partner store, else main app active notice
       const noticeEl = document.getElementById("activeNoticeBanner");
       if (noticeEl) {
-        if (s.active_notice) {
-          noticeEl.textContent = s.active_notice;
+        const bannerText = partner ? (partner.tagline || "") : (s.active_notice || "");
+        if (bannerText) {
+          noticeEl.textContent = bannerText;
           noticeEl.classList.remove("d-none");
         } else {
           noticeEl.classList.add("d-none");
         }
       }
 
+      // Broadcast video & rotating tips belong to Main App front only
       const broadcastBox = document.getElementById("broadcastVideoContainer");
       const broadcastPlayer = document.getElementById("broadcastVideoPlayer");
       if (broadcastBox && broadcastPlayer) {
-        if (s.broadcast_video_url) {
+        if (!partner && s.broadcast_video_url) {
           broadcastPlayer.src = s.broadcast_video_url;
           broadcastBox.classList.remove("d-none");
         } else {
@@ -2049,7 +2151,6 @@
       const toggles = {
         togShowAnalytics: extra.showAnalytics !== false,
         togShowStockAlerts: extra.showStockAlerts !== false,
-        togShowShopTab: extra.showShopTab !== false,
         togShowRequestTab: extra.showRequestTab !== false,
         togShowLiveCartBadge: extra.showLiveCartBadge !== false,
         togShowChatReceiptsTab: extra.showChatReceiptsTab !== false,
@@ -2061,7 +2162,6 @@
         togAutoGeneratePin: extra.autoGeneratePin !== false,
         togShowRotatingTips: extra.showRotatingTips !== false,
         togShowFloatingAwareness: Boolean(extra.showFloatingAwareness),
-        togShowFloatingAwarenessBottom: Boolean(extra.showFloatingAwarenessBottom),
         togAutoSlidePhotos: extra.autoSlidePhotos !== false
       };
 
@@ -2086,7 +2186,7 @@
       if (alertsLine) alertsLine.classList.toggle("d-none", !toggles.togShowStockAlerts);
 
       const tipStrip = document.getElementById("rotatingTipStrip");
-      if (tipStrip) tipStrip.classList.toggle("d-none", !toggles.togShowRotatingTips);
+      if (tipStrip) tipStrip.classList.toggle("d-none", Boolean(partner) || !toggles.togShowRotatingTips);
 
       const tipsRaw = extra.rotatingTips || "";
       const parsedTips = parsePipeOrLineList(tipsRaw);
@@ -2097,12 +2197,17 @@
       }
       restartTipRotation(extra.secondsPerTip || 10);
 
-      const bankText = String(extra.bankDetails || "").trim();
+      // Bank details: strictly isolated to the active store (Partner bank vs Main Store bank)
+      const bankText = partner
+        ? String(partner.bank_details || "").trim()
+        : String(extra.bankDetails || "").trim();
+
       for (const boxId of ["checkoutBankDetailsBox", "chatBankDetailsBox"]) {
         const box = document.getElementById(boxId);
         if (box) {
           if (bankText) {
-            box.innerHTML = `<div class="fw-bold text-warning mb-1">Bank / Transfer Details</div><div style="white-space:pre-line;">${escapeHtml(bankText)}</div>`;
+            const storeOwnerLabel = partner ? `${partner.name} Payment Details` : "Bank / Transfer Details";
+            box.innerHTML = `<div class="fw-bold text-warning mb-1">${escapeHtml(storeOwnerLabel)}</div><div style="white-space:pre-line;">${escapeHtml(bankText)}</div>`;
             box.classList.remove("d-none");
           } else {
             box.classList.add("d-none");
@@ -2128,24 +2233,22 @@
       const slideDescs = parsePipeOrLineList(extra.awarenessDescriptions || "");
       awarenessSlidesList = slideUrls.map((url, i) => ({
         url,
-        caption: slideDescs[i] || extra.awarenessBottomCaption || extra.awarenessBody || ""
+        caption: slideDescs[i] || extra.awarenessBottomCaption || ""
       }));
       awarenessSlideIdx = 0;
 
-      const bottomCaption = extra.awarenessBottomCaption || extra.awarenessBody || "";
+      const bottomCaption = extra.awarenessBottomCaption || "";
       const bodyEl = document.getElementById("awarenessCardBody");
       if (bodyEl) bodyEl.textContent = bottomCaption;
 
       const toggleBtn = document.getElementById("toggleAwarenessBtn");
-      const hasAwareness = Boolean(awarenessSlidesList.length || bottomCaption || extra.awarenessTitle);
-      if (toggleBtn) {
-        toggleBtn.classList.toggle("d-none", !hasAwareness);
-        toggleBtn.textContent = extra.awarenessTitle || "Updates";
-      }
+      const hasAwareness = Boolean(awarenessSlidesList.length || bottomCaption);
+      if (toggleBtn) toggleBtn.classList.toggle("d-none", !hasAwareness);
 
       startAwarenessSlideshow(toggles.togAutoSlidePhotos);
-      toggleAwarenessCard(toggles.togShowFloatingAwareness || toggles.togShowFloatingAwarenessBottom);
+      toggleAwarenessCard(!partner && toggles.togShowFloatingAwareness);
 
+      // Populate Main App Settings Form inputs
       const inputs = {
         setBusinessName: bizName,
         setTagline: s.tagline || "",
@@ -2154,10 +2257,8 @@
         setBroadcastVideoUrl: s.broadcast_video_url || "",
         setFooterCopyright: extra.footerCopyright || "",
         setReceiptFooter: extra.receiptFooter || "",
-        setLowStockThreshold: extra.lowStockThreshold ?? 2,
-        setCustomTabNames: extra.customTabNames || "",
         setSearchPlaceholder: extra.searchPlaceholder || "Search products, brands, or sponsors...",
-        setBankDetails: bankText,
+        setBankDetails: String(extra.bankDetails || "").trim(),
         setPinHelperMsg: pinHelper,
         setPinFieldLabel: extra.pinFieldLabel || "4-Digit Chat PIN (leave blank — auto)",
         setOrderNotePlaceholder: extra.orderNotePlaceholder || "",
@@ -2210,6 +2311,171 @@
     }
 
     // ========================================================================
+    // SIDEBAR REGISTERED STORES & DEDICATED PARTNER STOREFRONT INTERFACE
+    // ========================================================================
+    async function loadShops() {
+      try {
+        const res = await fetch("/api/shops", { headers: getStaffHeaders() });
+        const data = await safeJson(res);
+        state.shops = res.ok && Array.isArray(data.shops) ? data.shops : [];
+      } catch {
+        state.shops = [];
+      }
+      renderSidebarShopsList();
+      populateStaffShopSelector();
+    }
+
+    function renderSidebarShopsList() {
+      const listEl = document.getElementById("sidebarPartnerShopsList");
+      const badgeEl = document.getElementById("sidebarShopCountBadge");
+      const mainCard = document.getElementById("sidebarMainStoreCard");
+      if (!listEl) return;
+
+      const partnerShops = state.shops.filter(sh => sh.slug && sh.slug !== "main");
+      if (badgeEl) badgeEl.textContent = String(partnerShops.length);
+      if (mainCard) mainCard.classList.toggle("active-shop", state.selectedShopId === "main");
+
+      if (!partnerShops.length) {
+        listEl.innerHTML = `<div class="small text-secondary py-2">No registered partner businesses yet.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = partnerShops.map(sh => {
+        const isCurrent = state.selectedShopId === sh.slug;
+        const cleanLoc = stripMarketLabel(sh.location || "Calabar") || "Calabar";
+        const avatarHtml = sh.avatar_url
+          ? `<img src="${escapeHtml(sh.avatar_url)}" alt="" class="rounded" style="width:42px;height:42px;object-fit:cover;border:1px solid var(--border-subtle);" />`
+          : `<div class="brand-icon-badge" style="width:42px;height:42px;">
+               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                 <path d="M3 9l1.5-5h15L21 9"></path>
+                 <path d="M5 11.5V20h14v-8.5"></path>
+                 <rect x="9" y="13" width="6" height="4" rx="1"></rect>
+               </svg>
+             </div>`;
+
+        return `
+          <div class="sidebar-shop-card ${isCurrent ? "active-shop" : ""}">
+            <div class="d-flex align-items-start gap-2 mb-2">
+              ${avatarHtml}
+              <div class="flex-grow-1 min-w-0">
+                <div class="fw-bold text-light text-truncate">Shop with ${escapeHtml(sh.name)}</div>
+                <div class="small text-info">Location: <strong>${escapeHtml(cleanLoc)}</strong></div>
+                ${sh.phone ? `<div class="text-secondary" style="font-size:0.74rem;">Contact: ${escapeHtml(sh.phone)}</div>` : ""}
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm ${isCurrent ? "btn-info text-dark" : "btn-outline-warning"} fw-bold w-100" data-bs-dismiss="offcanvas" onclick="enterPartnerStorefront('${escapeHtml(sh.slug)}')">
+              ${isCurrent ? "Currently Shopping Here" : `Shop / Buy with ${escapeHtml(sh.name)}`}
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function enterMainStorefront() {
+      state.selectedShopId = "main";
+      state.cart = [];
+      updateCartBadge();
+
+      document.getElementById("staffSection")?.classList.add("d-none");
+      document.getElementById("storefrontSection")?.classList.remove("d-none");
+      document.getElementById("partnerStoreFrontHeader")?.classList.add("d-none");
+
+      renderSidebarShopsList();
+      applySettingsToUI();
+      syncHeaderState(false);
+      await loadProducts("main");
+    }
+
+    async function enterPartnerStorefront(shopSlug) {
+      const partner = state.shops.find(s => s.slug === shopSlug);
+      if (!partner) {
+        await enterMainStorefront();
+        return;
+      }
+
+      state.selectedShopId = partner.slug;
+      state.cart = [];
+      updateCartBadge();
+
+      document.getElementById("staffSection")?.classList.add("d-none");
+      document.getElementById("storefrontSection")?.classList.remove("d-none");
+
+      const hero = document.getElementById("partnerStoreFrontHeader");
+      const heroTitle = document.getElementById("partnerHeroTitle");
+      const heroMeta = document.getElementById("partnerHeroMeta");
+      const heroAvatar = document.getElementById("partnerHeroAvatar");
+      const heroFallback = document.getElementById("partnerHeroFallbackIcon");
+
+      const cleanLoc = stripMarketLabel(partner.location || "Calabar") || "Calabar";
+      if (heroTitle) heroTitle.textContent = `Shop with ${partner.name}`;
+      if (heroMeta) {
+        const parts = [`Location: ${cleanLoc}`];
+        if (partner.phone) parts.push(`Phone: ${partner.phone}`);
+        heroMeta.textContent = parts.join(" • ");
+      }
+
+      if (partner.avatar_url && heroAvatar && heroFallback) {
+        heroAvatar.src = partner.avatar_url;
+        heroAvatar.classList.remove("d-none");
+        heroFallback.classList.add("d-none");
+      } else if (heroAvatar && heroFallback) {
+        heroAvatar.classList.add("d-none");
+        heroFallback.classList.remove("d-none");
+      }
+
+      if (hero) hero.classList.remove("d-none");
+
+      renderSidebarShopsList();
+      applySettingsToUI();
+      syncHeaderState(false);
+      await loadProducts(partner.slug);
+    }
+
+    function openRegisterShopModal() {
+      const fb = document.getElementById("registerShopFeedback");
+      const notice = document.getElementById("registerShopNotice");
+      if (fb) fb.innerHTML = "";
+      if (notice) {
+        notice.textContent = isSuperAdmin()
+          ? "Register a business with its store location. Customers will see it in the Stores sidebar and enter its dedicated storefront."
+          : "Sign in as Super Admin (CEO) first to activate a new business storefront.";
+      }
+      getModal("registerShopModal")?.show();
+    }
+
+    async function submitPartnerShop(event) {
+      event.preventDefault();
+      const fb = document.getElementById("registerShopFeedback");
+      if (!isSuperAdmin()) {
+        if (fb) fb.innerHTML = `<span class="text-danger">Please log in as Super Admin (CEO) to register a business.</span>`;
+        return;
+      }
+
+      const form = document.getElementById("registerShopForm");
+      if (!form) return;
+
+      try {
+        const fd = new FormData(form);
+        fd.set("location", stripMarketLabel(fd.get("location") || "Calabar") || "Calabar");
+        const res = await fetch("/api/shops", {
+          method: "POST",
+          headers: getStaffHeaders(),
+          body: fd
+        });
+        const data = await safeJson(res);
+        if (!res.ok || data.ok === false) {
+          throw new Error(data.detail || "Could not register business");
+        }
+        form.reset();
+        if (fb) fb.innerHTML = `<span class="text-success">Business "${escapeHtml(data.shop?.name || "")}" registered in Stores sidebar!</span>`;
+        await loadShops();
+        renderPartnerShopsAdminList();
+      } catch (err) {
+        if (fb) fb.innerHTML = `<span class="text-danger">${escapeHtml(err.message)}</span>`;
+      }
+    }
+
+    // ========================================================================
     // VIEW SWITCHING & HEADER STATE
     // ========================================================================
     function syncHeaderState(inDashboard) {
@@ -2219,7 +2485,7 @@
       const logoutBtn = document.getElementById("navLogoutBtn");
       const storeBtn = document.getElementById("navStorefrontBtn");
 
-      if (storeBtn) storeBtn.classList.toggle("active", !inDashboard);
+      if (storeBtn) storeBtn.classList.toggle("active", !inDashboard && state.selectedShopId === "main");
       if (dashBtn) dashBtn.classList.toggle("active", inDashboard);
 
       if (isStaffLoggedIn()) {
@@ -2238,13 +2504,6 @@
       }
     }
 
-    function showStorefrontView() {
-      document.getElementById("staffSection")?.classList.add("d-none");
-      document.getElementById("storefrontSection")?.classList.remove("d-none");
-      syncHeaderState(false);
-      loadProducts(state.selectedShopId);
-    }
-
     async function showDashboardView() {
       if (!isStaffLoggedIn()) {
         openStaffLoginModal();
@@ -2255,12 +2514,32 @@
       document.getElementById("staffSection")?.classList.remove("d-none");
       syncHeaderState(true);
 
+      const isPartnerOwner = !isSuperAdmin() && state.staff.shop_id && state.staff.shop_id !== "main";
       state.staffShopId = isSuperAdmin() ? (state.staffShopId || "main") : (state.staff.shop_id || "main");
       populateStaffShopSelector();
 
+      const dashTitle = document.getElementById("dashboardHeadingTitle");
+      const settingsTabLbl = document.getElementById("settingsTabLabel");
+      const partnerConfigPanel = document.getElementById("partnerShopConfigPanel");
+      const mainSettingsPanel = document.getElementById("mainAppSettingsPanel");
+
+      if (isPartnerOwner) {
+        const myShop = state.shops.find(s => s.slug === state.staffShopId);
+        if (dashTitle) dashTitle.textContent = `${myShop ? myShop.name : state.staffShopId} — Business Control`;
+        if (settingsTabLbl) settingsTabLbl.textContent = "Business Configuration";
+        partnerConfigPanel?.classList.remove("d-none");
+        mainSettingsPanel?.classList.add("d-none");
+        populatePartnerOwnSettingsForm(myShop);
+      } else {
+        if (dashTitle) dashTitle.textContent = "Staff & Admin Dashboard";
+        if (settingsTabLbl) settingsTabLbl.textContent = "Overall App Settings";
+        partnerConfigPanel?.classList.add("d-none");
+        mainSettingsPanel?.classList.remove("d-none");
+      }
+
       const subEl = document.getElementById("staffContextSubtitle");
       if (subEl) {
-        subEl.textContent = `Logged in as ${state.staff.username} (${state.staff.role}) • Portfolio: ${state.staffShopId}`;
+        subEl.textContent = `Logged in as ${state.staff.username} (${state.staff.role}) • Store: ${state.staffShopId}`;
       }
 
       const prodShopInp = document.getElementById("productShopIdInput");
@@ -2275,100 +2554,48 @@
       await refreshStaffWorkspace();
     }
 
-    // ========================================================================
-    // SHOPS PILLS & REGISTRATION
-    // ========================================================================
-    async function loadShops() {
-      try {
-        const res = await fetch("/api/shops", { headers: getStaffHeaders() });
-        const data = await safeJson(res);
-        state.shops = res.ok && Array.isArray(data.shops) ? data.shops : [];
-      } catch {
-        state.shops = [];
-      }
-      renderShopPills();
-      populateStaffShopSelector();
+    function populatePartnerOwnSettingsForm(shopObj) {
+      if (!shopObj) return;
+      document.getElementById("pSetName").value = shopObj.name || "";
+      document.getElementById("pSetLocation").value = stripMarketLabel(shopObj.location || "Calabar") || "Calabar";
+      document.getElementById("pSetPhone").value = shopObj.phone || "";
+      document.getElementById("pSetTagline").value = shopObj.tagline || "";
+      document.getElementById("pSetBankDetails").value = shopObj.bank_details || "";
     }
 
-    function renderShopPills() {
-      const rail = document.getElementById("partnerShopsRail");
-      if (!rail) return;
-
-      const mainActive = state.selectedShopId === "main" ? "active" : "";
-      let html = `
-        <button type="button" class="shop-pill ${mainActive}" data-shop-id="main" onclick="selectShop('main')">
-          Main Store (Sammyreks)
-        </button>
-      `;
-
-      for (const sh of state.shops) {
-        if (!sh.slug || sh.slug === "main") continue;
-        const activeCls = state.selectedShopId === sh.slug ? "active" : "";
-        const avatar = sh.avatar_url
-          ? `<img src="${escapeHtml(sh.avatar_url)}" alt="" class="shop-pill-avatar" />`
-          : "";
-        html += `
-          <button type="button" class="shop-pill ${activeCls}" data-shop-id="${escapeHtml(sh.slug)}" onclick="selectShop('${escapeHtml(sh.slug)}')">
-            ${avatar}
-            <span>${escapeHtml(sh.name)}</span>
-          </button>
-        `;
-      }
-
-      rail.innerHTML = html;
-    }
-
-    async function selectShop(shopId) {
-      state.selectedShopId = shopId || "main";
-      renderShopPills();
-      await loadProducts(state.selectedShopId);
-    }
-
-    function openRegisterShopModal() {
-      const fb = document.getElementById("registerShopFeedback");
-      const notice = document.getElementById("registerShopNotice");
-      if (fb) fb.innerHTML = "";
-      if (notice) {
-        notice.textContent = isSuperAdmin()
-          ? "Create a new partner shop with an isolated product catalog and owner login."
-          : "Sign in as Super Admin (CEO) first to activate a new partner shop.";
-      }
-      getModal("registerShopModal")?.show();
-    }
-
-    async function submitPartnerShop(event) {
+    async function savePartnerOwnSettings(event) {
       event.preventDefault();
-      const fb = document.getElementById("registerShopFeedback");
-      if (!isSuperAdmin()) {
-        if (fb) fb.innerHTML = `<span class="text-danger">Please log in as Super Admin (CEO) to register a partner shop.</span>`;
-        return;
-      }
+      const fb = document.getElementById("partnerConfigFeedback");
+      const shopSlug = state.staff.shop_id;
+      if (!shopSlug || shopSlug === "main") return;
 
-      const form = document.getElementById("registerShopForm");
-      if (!form) return;
+      const form = document.getElementById("partnerOwnSettingsForm");
+      const fd = new FormData(form);
+      fd.set("location", stripMarketLabel(fd.get("location") || "Calabar") || "Calabar");
 
       try {
-        const fd = new FormData(form);
-        const res = await fetch("/api/shops", {
+        const res = await fetch(`/api/shops/${encodeURIComponent(shopSlug)}`, {
           method: "POST",
           headers: getStaffHeaders(),
           body: fd
         });
         const data = await safeJson(res);
-        if (!res.ok || data.ok === false) {
-          throw new Error(data.detail || "Could not register shop");
-        }
-        form.reset();
-        if (fb) fb.innerHTML = `<span class="text-success">Partner shop "${escapeHtml(data.shop?.name || "")}" registered!</span>`;
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not update store configuration");
         await loadShops();
-        renderPartnerShopsAdminList();
+        if (fb) {
+          fb.className = "small text-success fw-semibold";
+          fb.textContent = "Store configuration updated!";
+        }
       } catch (err) {
-        if (fb) fb.innerHTML = `<span class="text-danger">${escapeHtml(err.message)}</span>`;
+        if (fb) {
+          fb.className = "small text-danger";
+          fb.textContent = err.message;
+        }
       }
     }
 
     // ========================================================================
-    // STOREFRONT PRODUCTS (IN STOCK / OUT OF STOCK ONLY + POS SPONSOR TAG)
+    // STOREFRONT PRODUCTS
     // ========================================================================
     let activeAdvertProductId = null;
 
@@ -2443,7 +2670,7 @@
         grid.innerHTML = `
           <div class="col-12">
             <div class="dark-panel text-center text-secondary py-4">
-              No products found matching your search.
+              No products listed in this store yet.
             </div>
           </div>`;
         return;
@@ -2682,6 +2909,11 @@
     }
 
     function openCartModal() {
+      const partner = getActivePartnerShop();
+      const titleEl = document.getElementById("cartModalTitle");
+      if (titleEl) {
+        titleEl.textContent = partner ? `Cart — ${partner.name}` : "Shopping Cart — Sammyreks Business Center";
+      }
       renderCartItems();
       const box = document.getElementById("checkoutResultBox");
       if (box) box.innerHTML = "";
@@ -2830,6 +3062,11 @@
     }
 
     function openCustomerChatModal() {
+      const partner = getActivePartnerShop();
+      const titleEl = document.getElementById("customerChatModalTitle");
+      if (titleEl) {
+        titleEl.textContent = partner ? `Order Chat — ${partner.name}` : "Order Chat & Official Receipt";
+      }
       const pEl = document.getElementById("custChatPhone");
       const pinEl = document.getElementById("custChatPin");
       if (pEl && state.customerChat.phone) pEl.value = state.customerChat.phone;
@@ -2993,7 +3230,7 @@
       sessionStorage.removeItem("srk_staff_user");
       sessionStorage.removeItem("srk_staff_role");
       sessionStorage.removeItem("srk_staff_shop");
-      showStorefrontView();
+      enterMainStorefront();
     }
 
     function populateStaffShopSelector() {
@@ -3870,16 +4107,17 @@
               <div class="dark-subpanel small d-flex justify-content-between align-items-start gap-2">
                 <div>
                   <div class="fw-bold text-warning">${escapeHtml(sh.name)} (${escapeHtml(sh.slug)})</div>
+                  <div class="text-info">Location: ${escapeHtml(stripMarketLabel(sh.location || "Calabar"))}</div>
                   <div class="text-secondary">Owner: ${escapeHtml(sh.owner_name || sh.owner_username || "-")}</div>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deletePartnerShop('${escapeHtml(sh.slug)}')">Del</button>
               </div>
             </div>`).join("")
-        : `<div class="col-12 text-secondary small">No partner shops registered yet.</div>`;
+        : `<div class="col-12 text-secondary small">No partner businesses registered yet.</div>`;
     }
 
     async function deletePartnerShop(shopId) {
-      if (!confirm(`Delete partner shop "${shopId}"?`)) return;
+      if (!confirm(`Delete partner business "${shopId}"?`)) return;
       const res = await fetch(`/api/shops/${encodeURIComponent(shopId)}`, { method: "DELETE", headers: getStaffHeaders() });
       if (res.ok) {
         await loadShops();
@@ -3919,17 +4157,15 @@
       const existingExtra = getExtraSettings();
       const updatedExtra = {
         ...existingExtra,
+        autoColorCycle: Boolean(document.getElementById("togAutoColorCycle")?.checked),
         footerCopyright: (document.getElementById("setFooterCopyright")?.value || "").trim(),
         receiptFooter: (document.getElementById("setReceiptFooter")?.value || "").trim(),
         showAnalytics: Boolean(document.getElementById("togShowAnalytics")?.checked),
         showStockAlerts: Boolean(document.getElementById("togShowStockAlerts")?.checked),
-        showShopTab: Boolean(document.getElementById("togShowShopTab")?.checked),
         showRequestTab: Boolean(document.getElementById("togShowRequestTab")?.checked),
         showLiveCartBadge: Boolean(document.getElementById("togShowLiveCartBadge")?.checked),
         showChatReceiptsTab: Boolean(document.getElementById("togShowChatReceiptsTab")?.checked),
         showHeaderCartBtn: Boolean(document.getElementById("togShowHeaderCartBtn")?.checked),
-        lowStockThreshold: parseFloat(document.getElementById("setLowStockThreshold")?.value || "2") || 2,
-        customTabNames: (document.getElementById("setCustomTabNames")?.value || "").trim(),
         showWatchAd: Boolean(document.getElementById("togShowWatchAd")?.checked),
         showVendorTags: Boolean(document.getElementById("togShowVendorTags")?.checked),
         showAvailability: Boolean(document.getElementById("togShowAvailability")?.checked),
@@ -3944,7 +4180,6 @@
         secondsPerTip: parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10,
         rotatingTips: document.getElementById("setRotatingTips")?.value || "",
         showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
-        showFloatingAwarenessBottom: Boolean(document.getElementById("togShowFloatingAwarenessBottom")?.checked),
         autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
         awarenessSlides: document.getElementById("setAwarenessSlides")?.value || "",
         awarenessDescriptions: document.getElementById("setAwarenessDescriptions")?.value || "",

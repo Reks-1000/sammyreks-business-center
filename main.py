@@ -9,7 +9,6 @@ import secrets
 import tempfile
 import time
 import uuid
-from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import quote, unquote, urlparse
@@ -133,8 +132,6 @@ SESSION_SECRET = (
     or hashlib.sha256(f"{ADMIN_USERNAME}:{ADMIN_PASSWORD}:sammyreks-v2".encode("utf-8")).hexdigest()
 )
 
-_attempt_buckets: Dict[str, List[float]] = defaultdict(list)
-
 _local_cache: Dict[str, Tuple[float, Any]] = {}
 _fallback_store: Dict[str, Any] = {
     "products": [],
@@ -200,25 +197,6 @@ def validate_multi_tier_pricing(
             f"Retail price ({price_retail:.2f}) exceeds carton price ({price_carton:.2f})."
         )
     return warnings
-
-
-def _check_rate_limit(key: str, max_attempts: int = 15, window_seconds: int = 300) -> None:
-    now = time.time()
-    recent = [t for t in _attempt_buckets[key] if now - t < window_seconds]
-    if len(recent) >= max_attempts:
-        raise HTTPException(
-            status_code=429,
-            detail="Too many attempts. Please wait a few minutes and try again.",
-        )
-    recent.append(now)
-    _attempt_buckets[key] = recent
-
-
-def _client_ip(request: Request) -> str:
-    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
-    if forwarded:
-        return forwarded
-    return request.client.host if request.client else "unknown"
 
 
 def now_str() -> str:
@@ -1043,7 +1021,6 @@ def index(request: Request):
 
 @app.post("/api/login")
 async def login(request: Request):
-    _check_rate_limit(f"login:{_client_ip(request)}", max_attempts=15, window_seconds=300)
     payload = await request.json()
     username = str(payload.get("username", "")).strip()
     password = str(payload.get("password", ""))
@@ -1317,7 +1294,6 @@ def get_orders(request: Request, shop_id: Optional[str] = Query(default=None)):
 
 @app.post("/api/orders")
 async def create_order(request: Request):
-    _check_rate_limit(f"order:{_client_ip(request)}", max_attempts=20, window_seconds=300)
     payload = await request.json()
     target_shop = normalize_shop_id(str(payload.get("shop_id") or MAIN_SHOP_ID))
     customer = str(payload.get("customer") or payload.get("customer_name") or "Customer").strip()
@@ -1576,7 +1552,6 @@ def get_messages(
 
     if not staff:
         target_shop = normalize_shop_id(shop_id)
-        _check_rate_limit(f"pin:{_client_ip(request)}:{target_shop}:{clean_phone}", max_attempts=15, window_seconds=300)
         if not clean_phone or not clean_pin:
             raise HTTPException(status_code=401, detail="Enter your phone number and PIN or Order Ref to view chat")
         if not _customer_pin_authorized(clean_phone, clean_pin, shop_id=target_shop):
@@ -1620,7 +1595,6 @@ async def post_message(
 
     if not staff:
         target_shop = normalize_shop_id(shop_id)
-        _check_rate_limit(f"msg:{_client_ip(request)}:{target_shop}:{clean_phone}", max_attempts=20, window_seconds=300)
         if not _customer_pin_authorized(clean_phone, pin, shop_id=target_shop):
             raise HTTPException(status_code=401, detail="Unlock your chat with your phone number and PIN or Order Ref first")
     else:

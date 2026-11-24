@@ -29,7 +29,7 @@
       color: var(--text-primary);
       font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
       min-height: 100vh;
-      padding-bottom: 40px;
+      padding-bottom: 84px;
       overflow-x: hidden;
       transition: background-color 0.45s ease, color 0.35s ease;
     }
@@ -139,6 +139,53 @@
       font-size: 0.9rem;
       text-align: center;
       padding: 8px 14px;
+    }
+
+    /* Fixed Static Bottom Navigation Bar */
+    .fixed-bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1030;
+      background: var(--bg-header);
+      border-top: 1px solid var(--border-subtle);
+      box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.45);
+      padding: 6px 8px;
+      transition: background-color 0.45s ease, border-color 0.45s ease;
+    }
+
+    .bottom-nav-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      max-width: 920px;
+      margin: 0 auto;
+    }
+
+    .bottom-nav-btn {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-primary);
+      border-radius: 10px;
+      padding: 6px 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1.15;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .bottom-nav-btn:hover,
+    .bottom-nav-btn.active {
+      border-color: var(--gold);
+      color: var(--gold);
+      background: var(--bg-surface-2);
     }
 
     /* Dedicated Partner Store Banner (Separate Interface Mode) */
@@ -335,21 +382,22 @@
       border-radius: 6px;
     }
 
-    /* Rotating Tip Strip */
+    /* Rotating Tip Strip at Top */
     .tip-banner {
       background: var(--bg-surface-2);
       border: 1px solid var(--border-subtle);
       border-radius: 10px;
-      padding: 7px 12px;
-      font-size: 0.82rem;
-      color: #e2e8f0;
+      padding: 8px 12px;
+      font-size: 0.83rem;
+      color: #f8fafc;
+      transition: background-color 0.45s ease, border-color 0.45s ease;
     }
 
     /* Floating Awareness Card */
     .awareness-popup {
       position: fixed;
       right: 16px;
-      bottom: 20px;
+      bottom: 82px;
       width: 310px;
       max-width: calc(100vw - 32px);
       background: var(--bg-surface);
@@ -570,6 +618,21 @@
   <!-- MAIN CONTENT AREA -->
   <div class="container-fluid py-3 px-3 px-md-4">
 
+    <!-- ROTATING TIPS BAR PLACED AT THE TOP -->
+    <div id="rotatingTipStrip" class="tip-banner mb-3 d-flex justify-content-between align-items-center gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge text-bg-warning text-dark">Tip</span>
+        <span id="rotatingTipText">Choose Retail Unit, Pack, or Carton and tap Add to Cart.</span>
+      </div>
+      <div class="d-flex align-items-center gap-1 flex-shrink-0">
+        <button type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2" onclick="cycleTip(-1)">‹</button>
+        <button type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2" onclick="cycleTip(1)">›</button>
+        <button id="toggleAwarenessBtn" type="button" class="btn btn-sm btn-outline-warning py-0 px-2 d-none" onclick="toggleAwarenessCard()">
+          Updates
+        </button>
+      </div>
+    </div>
+
     <!-- ===================================================================== -->
     <!-- 1. STOREFRONT VIEW (MAIN APP OR DEDICATED PARTNER STORE INTERFACE)    -->
     <!-- ===================================================================== -->
@@ -615,21 +678,6 @@
         </div>
         <div id="broadcastVideoBody">
           <video id="broadcastVideoPlayer" class="w-100 rounded" style="max-height:280px;object-fit:contain;background:#000;" controls playsinline></video>
-        </div>
-      </div>
-
-      <!-- MAIN APP ROTATING TIPS BAR (ONLY ON MAIN APP FRONT) -->
-      <div id="rotatingTipStrip" class="tip-banner mb-3 d-flex justify-content-between align-items-center gap-2">
-        <div class="d-flex align-items-center gap-2">
-          <span class="badge text-bg-warning text-dark">Tip</span>
-          <span id="rotatingTipText">Choose Retail Unit, Pack, or Carton and tap Add to Cart.</span>
-        </div>
-        <div class="d-flex align-items-center gap-1 flex-shrink-0">
-          <button type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2" onclick="cycleTip(-1)">‹</button>
-          <button type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2" onclick="cycleTip(1)">›</button>
-          <button id="toggleAwarenessBtn" type="button" class="btn btn-sm btn-outline-warning py-0 px-2 d-none" onclick="toggleAwarenessCard()">
-            Updates
-          </button>
         </div>
       </div>
 
@@ -1272,7 +1320,7 @@
                   <div class="form-check form-switch mb-0">
                     <input id="togAutoColorCycle" type="checkbox" class="form-check-input" onchange="previewAdminAutoColorToggle()" />
                     <label for="togAutoColorCycle" class="form-check-label small fw-bold text-warning">
-                      Enable Auto-Color Theme Cycling (Changes app colors every 10 seconds; reverts to default when OFF)
+                      Enable Auto-Color Theme Cycling (Cycles Ocean, Seafoam, Sunset, Royal &amp; Gold palettes every 10s; reverts when OFF)
                     </label>
                   </div>
                 </div>
@@ -1484,6 +1532,36 @@
       </div>
     </div>
   </div>
+
+  <!-- STATIC FIXED BOTTOM NAVIGATION BAR (SO USERS NEVER SCROLL UP/DOWN TO NAVIGATE) -->
+  <nav id="bottomNavBar" class="fixed-bottom-nav" aria-label="Quick Navigation">
+    <div class="bottom-nav-grid">
+      <button id="bnavHomeBtn" type="button" class="bottom-nav-btn active" onclick="enterMainStorefront()">
+        <span>🏠</span>
+        <span>Main App</span>
+      </button>
+
+      <button id="bnavStoresBtn" type="button" class="bottom-nav-btn" data-bs-toggle="offcanvas" data-bs-target="#registeredShopsSidebar">
+        <span>🏪</span>
+        <span>Stores</span>
+      </button>
+
+      <button id="bnavCartBtn" type="button" class="bottom-nav-btn" onclick="openCartModal()">
+        <span>🛒 Cart (<span id="bottomCartCount">0</span>)</span>
+        <span>Checkout</span>
+      </button>
+
+      <button id="bnavChatBtn" type="button" class="bottom-nav-btn" onclick="openCustomerChatModal()">
+        <span>💬</span>
+        <span>Chat/Receipt</span>
+      </button>
+
+      <button id="bnavRequestBtn" type="button" class="bottom-nav-btn" onclick="openSpecialRequestModal()">
+        <span>📝</span>
+        <span>Request</span>
+      </button>
+    </div>
+  </nav>
 
   <!-- FLOATING AWARENESS CARD -->
   <div id="awarenessFloatCard" class="awareness-popup">
@@ -1787,6 +1865,36 @@
         gold: "#f5b700"
       },
       {
+        name: "Deep Ocean & Aqua",
+        body: "#041c2c",
+        surface: "#082b42",
+        surface2: "#0d3b59",
+        input: "#03131e",
+        header: "#031624",
+        border: "#15557d",
+        gold: "#22d3ee"
+      },
+      {
+        name: "Seafoam & Coral",
+        body: "#062326",
+        surface: "#0b353a",
+        surface2: "#11484f",
+        input: "#04181a",
+        header: "#051c1f",
+        border: "#1b6770",
+        gold: "#fb7185"
+      },
+      {
+        name: "Sunset Lagoon",
+        body: "#1b1433",
+        surface: "#281e4a",
+        surface2: "#352861",
+        input: "#120d24",
+        header: "#150f29",
+        border: "#4d3a8a",
+        gold: "#fb923c"
+      },
+      {
         name: "Emerald & Amber",
         body: "#071c19",
         surface: "#0d2b26",
@@ -1869,7 +1977,7 @@
         timer: null
       },
       tips: [
-        "Open Stores in the top-left menu to shop directly with registered businesses near your location.",
+        "Open Stores in the top-left or bottom bar to shop directly with registered businesses near your location.",
         "Choose Retail Unit, Pack, or Carton and tap Add to Cart.",
         "Submit an order to get a Reference Code & PIN for Order Chat / Receipt."
       ],
@@ -2123,7 +2231,6 @@
         }
       }
 
-      // Notice banner: partner tagline when inside partner store, else main app active notice
       const noticeEl = document.getElementById("activeNoticeBanner");
       if (noticeEl) {
         const bannerText = partner ? (partner.tagline || "") : (s.active_notice || "");
@@ -2135,7 +2242,6 @@
         }
       }
 
-      // Broadcast video & rotating tips belong to Main App front only
       const broadcastBox = document.getElementById("broadcastVideoContainer");
       const broadcastPlayer = document.getElementById("broadcastVideoPlayer");
       if (broadcastBox && broadcastPlayer) {
@@ -2176,8 +2282,14 @@
       const chatBtn = document.getElementById("navChatBtn");
       if (chatBtn) chatBtn.classList.toggle("d-none", !toggles.togShowChatReceiptsTab);
 
+      const bnavChatBtn = document.getElementById("bnavChatBtn");
+      if (bnavChatBtn) bnavChatBtn.classList.toggle("d-none", !toggles.togShowChatReceiptsTab);
+
       const customReqCol = document.getElementById("customRequestCol");
       if (customReqCol) customReqCol.classList.toggle("d-none", !toggles.togShowRequestTab);
+
+      const bnavRequestBtn = document.getElementById("bnavRequestBtn");
+      if (bnavRequestBtn) bnavRequestBtn.classList.toggle("d-none", !toggles.togShowRequestTab);
 
       const analyticsRow = document.getElementById("analyticsKpiRow");
       if (analyticsRow) analyticsRow.classList.toggle("d-none", !toggles.togShowAnalytics);
@@ -2186,7 +2298,7 @@
       if (alertsLine) alertsLine.classList.toggle("d-none", !toggles.togShowStockAlerts);
 
       const tipStrip = document.getElementById("rotatingTipStrip");
-      if (tipStrip) tipStrip.classList.toggle("d-none", Boolean(partner) || !toggles.togShowRotatingTips);
+      if (tipStrip) tipStrip.classList.toggle("d-none", !toggles.togShowRotatingTips);
 
       const tipsRaw = extra.rotatingTips || "";
       const parsedTips = parsePipeOrLineList(tipsRaw);
@@ -2197,7 +2309,6 @@
       }
       restartTipRotation(extra.secondsPerTip || 10);
 
-      // Bank details: strictly isolated to the active store (Partner bank vs Main Store bank)
       const bankText = partner
         ? String(partner.bank_details || "").trim()
         : String(extra.bankDetails || "").trim();
@@ -2248,7 +2359,6 @@
       startAwarenessSlideshow(toggles.togAutoSlidePhotos);
       toggleAwarenessCard(!partner && toggles.togShowFloatingAwareness);
 
-      // Populate Main App Settings Form inputs
       const inputs = {
         setBusinessName: bizName,
         setTagline: s.tagline || "",
@@ -2379,6 +2489,7 @@
       document.getElementById("staffSection")?.classList.add("d-none");
       document.getElementById("storefrontSection")?.classList.remove("d-none");
       document.getElementById("partnerStoreFrontHeader")?.classList.add("d-none");
+      document.getElementById("bnavHomeBtn")?.classList.add("active");
 
       renderSidebarShopsList();
       applySettingsToUI();
@@ -2399,6 +2510,7 @@
 
       document.getElementById("staffSection")?.classList.add("d-none");
       document.getElementById("storefrontSection")?.classList.remove("d-none");
+      document.getElementById("bnavHomeBtn")?.classList.remove("active");
 
       const hero = document.getElementById("partnerStoreFrontHeader");
       const heroTitle = document.getElementById("partnerHeroTitle");
@@ -2512,6 +2624,7 @@
       document.getElementById("storefrontSection")?.classList.add("d-none");
       toggleAwarenessCard(false);
       document.getElementById("staffSection")?.classList.remove("d-none");
+      document.getElementById("bnavHomeBtn")?.classList.remove("active");
       syncHeaderState(true);
 
       const isPartnerOwner = !isSuperAdmin() && state.staff.shop_id && state.staff.shop_id !== "main";
@@ -2899,12 +3012,16 @@
 
     function updateCartBadge() {
       const badge = document.getElementById("topCartBadge");
+      const bottomCount = document.getElementById("bottomCartCount");
       const extra = getExtraSettings();
       const showBadge = extra.showLiveCartBadge !== false;
       const count = state.cart.reduce((sum, it) => sum + Number(it.qty || 1), 0);
       if (badge) {
         badge.textContent = String(count);
         badge.classList.toggle("d-none", !showBadge);
+      }
+      if (bottomCount) {
+        bottomCount.textContent = String(count);
       }
     }
 

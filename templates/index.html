@@ -11,6 +11,7 @@
       --bg-surface: #162033;
       --bg-surface-2: #1e293b;
       --bg-input: #0b1220;
+      --bg-header: #0d1526;
       --border-subtle: #2b3952;
       --text-primary: #f8fafc;
       --text-secondary: #94a3b8;
@@ -30,13 +31,28 @@
       min-height: 100vh;
       padding-bottom: 40px;
       overflow-x: hidden;
+      transition: background-color 0.45s ease, color 0.35s ease;
     }
 
     /* Top Header */
     .app-header {
-      background: #0d1526;
+      background: var(--bg-header);
       border-bottom: 1px solid var(--border-subtle);
       padding: 12px 16px;
+      transition: background-color 0.45s ease, border-color 0.45s ease;
+    }
+
+    .brand-icon-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      background: rgba(245, 183, 0, 0.14);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
     }
 
     .brand-heading {
@@ -105,6 +121,12 @@
       background: rgba(239, 68, 68, 0.16);
     }
 
+    .hdr-btn-cycle-active {
+      background: var(--gold) !important;
+      color: #111827 !important;
+      border-color: var(--gold) !important;
+    }
+
     .staff-pill-badge {
       background: #14532d;
       border: 1px solid #22c55e;
@@ -131,6 +153,7 @@
       border: 1px solid var(--border-subtle);
       border-radius: 14px;
       padding: 14px;
+      transition: background-color 0.45s ease, border-color 0.45s ease;
     }
 
     .dark-subpanel {
@@ -138,6 +161,7 @@
       border: 1px solid var(--border-subtle);
       border-radius: 10px;
       padding: 12px;
+      transition: background-color 0.45s ease, border-color 0.45s ease;
     }
 
     .dark-input,
@@ -195,6 +219,7 @@
       display: flex;
       flex-direction: column;
       height: 100%;
+      transition: background-color 0.45s ease, border-color 0.45s ease;
     }
 
     .product-media-wrap {
@@ -266,6 +291,19 @@
       display: inline-flex;
       align-items: center;
       gap: 5px;
+    }
+
+    .sponsor-pos-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(14, 165, 233, 0.14);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #7dd3fc;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
     }
 
     .gold-price-tag {
@@ -416,6 +454,14 @@
   <header class="app-header">
     <div class="container-fluid">
       <div class="d-flex align-items-center gap-2 mb-2">
+        <span id="brandStoreIcon" class="brand-icon-badge" aria-hidden="true" title="Sammyreks Business Center Store">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l1.5-5h15L21 9"></path>
+            <path d="M3 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 3-2.45"></path>
+            <path d="M5 11.5V20h14v-8.5"></path>
+            <path d="M10 20v-5h4v5"></path>
+          </svg>
+        </span>
         <img id="headerLogoImg" src="" alt="Logo" class="rounded-circle d-none" style="width:36px;height:36px;object-fit:cover;border:1px solid var(--gold);" />
         <div>
           <h1 id="brandNameDisplay" class="brand-heading">Sammyreks Business Center</h1>
@@ -439,6 +485,10 @@
 
         <button id="navChatBtn" type="button" class="hdr-pill-btn hdr-btn-green" onclick="openCustomerChatModal()">
           Order Chat / Receipt
+        </button>
+
+        <button id="colorCycleBtn" type="button" class="hdr-pill-btn hdr-btn-gold" onclick="toggleColorCycle()" title="Cycle app colors every 10 seconds">
+          Auto Color: OFF
         </button>
 
         <span id="staffSessionBadge" class="staff-pill-badge d-none"></span>
@@ -508,7 +558,7 @@
       <div class="dark-panel mb-3">
         <div class="row g-2 align-items-center">
           <div class="col-md-5">
-            <input id="storeSearchInput" type="search" class="form-control dark-input" placeholder="Search products, brands, or locations..." oninput="renderProductsGrid()" />
+            <input id="storeSearchInput" type="search" class="form-control dark-input" placeholder="Search products, brands, or sponsors..." oninput="renderProductsGrid()" />
           </div>
           <div class="col-md-4">
             <select id="storeCategoryFilter" class="form-select dark-select" onchange="renderProductsGrid()">
@@ -641,8 +691,8 @@
                       <input id="autoStockDefaultCartons" type="number" step="0.5" min="0" value="5" class="form-control form-control-sm dark-input" />
                     </div>
                     <div class="col-6">
-                      <label for="autoStockLocationInput" class="form-label small text-secondary mb-0">Location</label>
-                      <input id="autoStockLocationInput" type="text" value="Watt Market, Calabar" class="form-control form-control-sm dark-input" />
+                      <label for="autoStockLocationInput" class="form-label small text-secondary mb-0">Store Label</label>
+                      <input id="autoStockLocationInput" type="text" value="Calabar" class="form-control form-control-sm dark-input" />
                     </div>
                   </div>
                   <div class="d-flex flex-wrap gap-2">
@@ -727,12 +777,12 @@
                       </datalist>
                     </div>
                     <div class="col-md-3">
-                      <label for="prodLocation" class="form-label small mb-1">Location</label>
-                      <input id="prodLocation" name="location" type="text" class="form-control form-control-sm dark-input" value="Watt Market, Calabar" />
+                      <label for="prodLocation" class="form-label small mb-1">Store / Area</label>
+                      <input id="prodLocation" name="location" type="text" class="form-control form-control-sm dark-input" value="Calabar" />
                     </div>
 
                     <div class="col-md-4">
-                      <label for="prodVendor" class="form-label small mb-1">Brand / Vendor</label>
+                      <label for="prodVendor" class="form-label small mb-1">Sponsor / Brand</label>
                       <input id="prodVendor" name="vendor_name" type="text" class="form-control form-control-sm dark-input" />
                     </div>
                     <div class="col-md-4">
@@ -1069,7 +1119,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div>
                 <h6 class="fw-bold mb-0" style="color:var(--gold);">Business &amp; Storefront App Settings</h6>
-                <div class="small text-secondary">Control storefront identity, notice banner, broadcast video, tabs, toggles, tips, and floating awareness cards[cite: 4, 5].</div>
+                <div class="small text-secondary">Control storefront identity, notice banner, broadcast video, tabs, toggles, tips, and floating awareness cards.</div>
               </div>
               <button type="button" class="btn btn-sm btn-outline-warning" onclick="resetAllAppToggles()">
                 Reset All Toggles
@@ -1195,13 +1245,13 @@
                   <div class="col-sm-6 col-md-3">
                     <div class="form-check form-switch">
                       <input id="togShowVendorTags" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowVendorTags" class="form-check-label small">Show Vendor / Sponsor Tags</label>
+                      <label for="togShowVendorTags" class="form-check-label small">Show Sponsor Tags</label>
                     </div>
                   </div>
                   <div class="col-sm-6 col-md-3">
                     <div class="form-check form-switch">
                       <input id="togShowAvailability" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowAvailability" class="form-check-label small">Show Availability on Cards</label>
+                      <label for="togShowAvailability" class="form-check-label small">Show Availability Status</label>
                     </div>
                   </div>
                   <div class="col-sm-6 col-md-3">
@@ -1213,7 +1263,7 @@
                 </div>
                 <div>
                   <label for="setSearchPlaceholder" class="form-label small mb-1">Search Box Placeholder</label>
-                  <input id="setSearchPlaceholder" type="text" class="form-control form-control-sm dark-input" value="Search products, brands, or locations..." />
+                  <input id="setSearchPlaceholder" type="text" class="form-control form-control-sm dark-input" value="Search products, brands, or sponsors..." />
                 </div>
               </div>
 
@@ -1405,7 +1455,7 @@
                 <input name="owner_password" type="password" class="form-control form-control-sm dark-input" required />
               </div>
               <div class="col-md-4">
-                <label class="form-label small">Location</label>
+                <label class="form-label small">Store Label</label>
                 <input name="location" type="text" class="form-control form-control-sm dark-input" value="Calabar" />
               </div>
               <div class="col-md-4">
@@ -1583,7 +1633,7 @@
         </div>
         <div class="modal-body">
           <div id="advertNoVideoBanner" class="dark-subpanel text-center text-secondary small py-2 mb-3 d-none">
-            No video advert attached for this product yet[cite: 3].
+            No video advert attached for this product yet.
           </div>
 
           <div id="advertVideoPlayerWrap" class="mb-3 d-none">
@@ -1599,8 +1649,8 @@
             </div>
             <div class="col-md-7">
               <h5 id="advertModalName" class="fw-bold text-uppercase mb-1"></h5>
-              <div id="advertModalVendor" class="small text-secondary mb-1"></div>
-              <div id="advertModalMeta" class="small text-secondary mb-2"></div>
+              <div id="advertModalSponsor" class="mb-2"></div>
+              <div id="advertModalAvail" class="mb-2"></div>
               <p id="advertModalDesc" class="small mb-2"></p>
               <div id="advertModalPrice" class="fw-bold" style="color:var(--gold);"></div>
             </div>
@@ -1616,6 +1666,59 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    const COLOR_THEMES = [
+      {
+        name: "Default Slate & Gold",
+        body: "#0f172a",
+        surface: "#162033",
+        surface2: "#1e293b",
+        input: "#0b1220",
+        header: "#0d1526",
+        border: "#2b3952",
+        gold: "#f5b700"
+      },
+      {
+        name: "Emerald & Amber",
+        body: "#071c19",
+        surface: "#0d2b26",
+        surface2: "#143b35",
+        input: "#051412",
+        header: "#061714",
+        border: "#1e5249",
+        gold: "#fbbf24"
+      },
+      {
+        name: "Royal Indigo & Gold",
+        body: "#11132b",
+        surface: "#191d3f",
+        surface2: "#222854",
+        input: "#0b0d1f",
+        header: "#0c0f24",
+        border: "#323a73",
+        gold: "#facc15"
+      },
+      {
+        name: "Crimson & Gold",
+        body: "#1e0d12",
+        surface: "#2d131b",
+        surface2: "#3d1924",
+        input: "#14080c",
+        header: "#17090e",
+        border: "#592334",
+        gold: "#f59e0b"
+      },
+      {
+        name: "Midnight Teal & Lime",
+        body: "#091b24",
+        surface: "#0f2936",
+        surface2: "#16384a",
+        input: "#051218",
+        header: "#07151c",
+        border: "#234f66",
+        gold: "#a3e635"
+      }
+    ];
+
     const state = {
       selectedShopId: "main",
       staffShopId: "main",
@@ -1651,7 +1754,11 @@
         unlocked: false,
         messages: []
       },
-      mediaModeByProduct: {},
+      colorCycle: {
+        active: false,
+        index: 0,
+        timer: null
+      },
       tips: [
         "Choose Retail Unit, Pack, or Carton and tap Add to Cart.",
         "Submit an order to get a Reference Code & PIN for Order Chat / Receipt.",
@@ -1676,6 +1783,13 @@
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#39;");
+    }
+
+    function stripMarketLabel(text) {
+      return String(text || "")
+        .replace(/\bwatt\s*market\b[,\s-]*/gi, "")
+        .replace(/^[,\s•-]+|[,\s•-]+$/g, "")
+        .trim();
     }
 
     function formatMoney(amount) {
@@ -1712,6 +1826,70 @@
     }
 
     // ========================================================================
+    // 10-SECOND AUTO COLOR CYCLER (OFF BY DEFAULT -> DEFAULT PALETTE)
+    // ========================================================================
+    function applyColorTheme(themeObj) {
+      const root = document.documentElement.style;
+      root.setProperty("--bg-body", themeObj.body);
+      root.setProperty("--bg-surface", themeObj.surface);
+      root.setProperty("--bg-surface-2", themeObj.surface2);
+      root.setProperty("--bg-input", themeObj.input);
+      root.setProperty("--bg-header", themeObj.header);
+      root.setProperty("--border-subtle", themeObj.border);
+      root.setProperty("--gold", themeObj.gold);
+    }
+
+    function syncColorCycleButton() {
+      const btn = document.getElementById("colorCycleBtn");
+      if (!btn) return;
+      if (state.colorCycle.active) {
+        const currentTheme = COLOR_THEMES[state.colorCycle.index % COLOR_THEMES.length];
+        btn.textContent = `Auto Color: ON (${currentTheme.name.split(" ")[0]})`;
+        btn.classList.add("hdr-btn-cycle-active");
+      } else {
+        btn.textContent = "Auto Color: OFF";
+        btn.classList.remove("hdr-btn-cycle-active");
+      }
+    }
+
+    function stopColorCycle() {
+      state.colorCycle.active = false;
+      state.colorCycle.index = 0;
+      if (state.colorCycle.timer) {
+        clearInterval(state.colorCycle.timer);
+        state.colorCycle.timer = null;
+      }
+      applyColorTheme(COLOR_THEMES[0]);
+      syncColorCycleButton();
+    }
+
+    function startColorCycle() {
+      if (state.colorCycle.timer) {
+        clearInterval(state.colorCycle.timer);
+        state.colorCycle.timer = null;
+      }
+      state.colorCycle.active = true;
+      state.colorCycle.index = (state.colorCycle.index + 1) % COLOR_THEMES.length;
+      applyColorTheme(COLOR_THEMES[state.colorCycle.index]);
+      syncColorCycleButton();
+
+      state.colorCycle.timer = setInterval(() => {
+        if (!state.colorCycle.active) return;
+        state.colorCycle.index = (state.colorCycle.index + 1) % COLOR_THEMES.length;
+        applyColorTheme(COLOR_THEMES[state.colorCycle.index]);
+        syncColorCycleButton();
+      }, 10000);
+    }
+
+    function toggleColorCycle() {
+      if (state.colorCycle.active) {
+        stopColorCycle();
+      } else {
+        startColorCycle();
+      }
+    }
+
+    // ========================================================================
     // INITIALIZATION & SETTINGS
     // ========================================================================
     let tipTimerHandle = null;
@@ -1720,6 +1898,8 @@
     let awarenessSlideIdx = 0;
 
     document.addEventListener("DOMContentLoaded", async () => {
+      applyColorTheme(COLOR_THEMES[0]);
+      syncColorCycleButton();
       addSpecialRequestRow();
       updateTipDisplay();
       restartTipRotation(10);
@@ -1890,7 +2070,6 @@
         if (el) el.checked = val;
       }
 
-      // Apply storefront visibility toggles
       const headerCartBtn = document.getElementById("navCartBtn");
       if (headerCartBtn) headerCartBtn.classList.toggle("d-none", !toggles.togShowHeaderCartBtn);
 
@@ -1918,7 +2097,6 @@
       }
       restartTipRotation(extra.secondsPerTip || 10);
 
-      // Bank details & PIN helper text
       const bankText = String(extra.bankDetails || "").trim();
       for (const boxId of ["checkoutBankDetailsBox", "chatBankDetailsBox"]) {
         const box = document.getElementById(boxId);
@@ -1946,7 +2124,6 @@
       const notesInp = document.getElementById("checkoutNotes");
       if (notesInp && extra.orderNotePlaceholder) notesInp.placeholder = extra.orderNotePlaceholder;
 
-      // Floating awareness slideshow
       const slideUrls = parsePipeOrLineList(extra.awarenessSlides || s.awareness_image_url || "");
       const slideDescs = parsePipeOrLineList(extra.awarenessDescriptions || "");
       awarenessSlidesList = slideUrls.map((url, i) => ({
@@ -1969,7 +2146,6 @@
       startAwarenessSlideshow(toggles.togAutoSlidePhotos);
       toggleAwarenessCard(toggles.togShowFloatingAwareness || toggles.togShowFloatingAwarenessBottom);
 
-      // Sync form fields
       const inputs = {
         setBusinessName: bizName,
         setTagline: s.tagline || "",
@@ -1980,7 +2156,7 @@
         setReceiptFooter: extra.receiptFooter || "",
         setLowStockThreshold: extra.lowStockThreshold ?? 2,
         setCustomTabNames: extra.customTabNames || "",
-        setSearchPlaceholder: extra.searchPlaceholder || "Search products, brands, or locations...",
+        setSearchPlaceholder: extra.searchPlaceholder || "Search products, brands, or sponsors...",
         setBankDetails: bankText,
         setPinHelperMsg: pinHelper,
         setPinFieldLabel: extra.pinFieldLabel || "4-Digit Chat PIN (leave blank — auto)",
@@ -2192,9 +2368,24 @@
     }
 
     // ========================================================================
-    // STOREFRONT PRODUCTS (UN-CROPPED IMAGES + ADVERT MODAL ON EVERY CARD)
+    // STOREFRONT PRODUCTS (IN STOCK / OUT OF STOCK ONLY + POS SPONSOR TAG)
     // ========================================================================
     let activeAdvertProductId = null;
+
+    function buildSponsorBadgeHtml(sponsorName) {
+      const cleanSponsor = stripMarketLabel(sponsorName);
+      if (!cleanSponsor) return "";
+      return `
+        <span class="sponsor-pos-badge" title="Point of Service / Sponsor">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 9l1.5-5h15L21 9"></path>
+            <path d="M5 11.5V20h14v-8.5"></path>
+            <rect x="9" y="13" width="6" height="4" rx="1"></rect>
+          </svg>
+          <span>Sponsor: ${escapeHtml(cleanSponsor)}</span>
+        </span>
+      `;
+    }
 
     async function loadProducts(shopId = "main") {
       try {
@@ -2245,7 +2436,7 @@
         if (hideOutOfStock && stockNum <= 0) return false;
         if (cat !== "All" && p.category !== cat) return false;
         if (!q) return true;
-        return `${p.name} ${p.category} ${p.location} ${p.vendor_name} ${p.description}`.toLowerCase().includes(q);
+        return `${p.name} ${p.category} ${p.vendor_name} ${p.description}`.toLowerCase().includes(q);
       });
 
       if (!filtered.length) {
@@ -2289,9 +2480,9 @@
         if (packPrice > 0) unitOpts.push(`<option value="${packLbl}">${packLbl} (${formatMoney(packPrice)})</option>`);
         if (retailPrice > 0) unitOpts.push(`<option value="${retailLbl}">${retailLbl} (${formatMoney(retailPrice)})</option>`);
 
-        const vendorText = (showVendorTags && p.vendor_name) ? ` • ${escapeHtml(p.vendor_name)}` : "";
+        const sponsorHtml = showVendorTags ? buildSponsorBadgeHtml(p.vendor_name) : "";
         const availBadge = showAvailability
-          ? `<span class="badge ${inStock ? "text-bg-success" : "text-bg-danger"}">${inStock ? `${stockNum} ${mainLbl}` : "Out"}</span>`
+          ? `<span class="badge ${inStock ? "text-bg-success" : "text-bg-danger"}">${inStock ? "In Stock" : "Out of Stock"}</span>`
           : "";
 
         return `
@@ -2308,7 +2499,8 @@
                   <h6 class="fw-bold mb-0 text-light">${escapeHtml(p.name)}</h6>
                   ${availBadge}
                 </div>
-                <div class="small text-secondary mb-2">${escapeHtml(p.location || "")}${vendorText}</div>
+
+                ${sponsorHtml ? `<div class="mb-2">${sponsorHtml}</div>` : ""}
 
                 <div class="d-flex flex-wrap gap-1 mb-2">
                   <span class="gold-price-tag">${mainLbl}: ${formatMoney(p.price_carton)}</span>
@@ -2350,20 +2542,24 @@
       document.getElementById("advertModalTitle").textContent = `${p.name || "Product"} — Product Advert`;
       document.getElementById("advertModalName").textContent = p.name || "";
 
-      const vendorText = p.vendor_name ? `Vendor / Sponsor: ${p.vendor_name}` : "";
-      const vendorEl = document.getElementById("advertModalVendor");
-      vendorEl.textContent = vendorText;
-      vendorEl.classList.toggle("d-none", !vendorText);
+      const sponsorEl = document.getElementById("advertModalSponsor");
+      const sponsorBadge = buildSponsorBadgeHtml(p.vendor_name);
+      sponsorEl.innerHTML = sponsorBadge;
+      sponsorEl.classList.toggle("d-none", !sponsorBadge);
 
       const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
-      const unitLbl = p.unit_main_label || "Carton";
-      document.getElementById("advertModalMeta").textContent =
-        `Category: ${p.category || "General"} | Stock: ${stockVal} ${unitLbl}`;
+      const inStock = stockVal > 0;
+      const availEl = document.getElementById("advertModalAvail");
+      availEl.innerHTML = `
+        <span class="small text-secondary">Category: ${escapeHtml(p.category || "General")}</span>
+        <span class="badge ms-2 ${inStock ? "text-bg-success" : "text-bg-danger"}">${inStock ? "In Stock" : "Out of Stock"}</span>
+      `;
 
       const descEl = document.getElementById("advertModalDesc");
       descEl.textContent = p.description || "";
       descEl.classList.toggle("d-none", !p.description);
 
+      const unitLbl = p.unit_main_label || "Carton";
       const priceLines = [`${unitLbl.toUpperCase()}: ${formatMoney(p.price_carton)}`];
       if (Number(p.price_pack || 0) > 0) {
         priceLines.push(`${(p.unit_pack_label || "Pack").toUpperCase()}: ${formatMoney(p.price_pack)}`);
@@ -2861,7 +3057,7 @@
       if (stEl) stEl.textContent = "Searching...";
 
       try {
-        const loc = encodeURIComponent(document.getElementById("prodLocation")?.value || "Watt Market, Calabar");
+        const loc = encodeURIComponent(document.getElementById("prodLocation")?.value || "Calabar");
         const stock = encodeURIComponent(document.getElementById("prodStockCartons")?.value || "5");
         const res = await fetch(`/api/auto-stock/barcode/${encodeURIComponent(code)}?location=${loc}&default_stock_cartons=${stock}`, {
           headers: getStaffHeaders()
@@ -2885,7 +3081,7 @@
       const names = (document.getElementById("autoStockNamesInput")?.value || "").trim();
       const stEl = document.getElementById("autoStockBatchStatus");
       const defaultCartons = parseFloat(document.getElementById("autoStockDefaultCartons")?.value || "5") || 5;
-      const location = (document.getElementById("autoStockLocationInput")?.value || "Watt Market, Calabar").trim();
+      const location = (document.getElementById("autoStockLocationInput")?.value || "Calabar").trim();
       if (!names) return;
 
       if (stEl) {
@@ -2926,7 +3122,7 @@
       const category = document.getElementById("autoStockCategorySelect")?.value || "Beverages";
       const count = parseInt(document.getElementById("autoStockCategoryCount")?.value || "5", 10) || 5;
       const defaultCartons = parseFloat(document.getElementById("autoStockDefaultCartons")?.value || "5") || 5;
-      const location = (document.getElementById("autoStockLocationInput")?.value || "Watt Market, Calabar").trim();
+      const location = (document.getElementById("autoStockLocationInput")?.value || "Calabar").trim();
       const fetchVideo = Boolean(document.getElementById("autoStockFetchVideoCheck")?.checked);
       const stEl = document.getElementById("autoStockBatchStatus");
 
@@ -2978,7 +3174,7 @@
           <div class="form-check mb-0">
             <input type="checkbox" class="form-check-input staged-item-check" data-idx="${idx}" checked />
             <label class="form-check-label small fw-semibold">${escapeHtml(it.name)}</label>
-            <div class="text-secondary" style="font-size:0.72rem;">${escapeHtml(it.category || "General")} • ${Number(it.stock_cartons || 0)} cartons</div>
+            <div class="text-secondary" style="font-size:0.72rem;">${escapeHtml(it.category || "General")} • ${Number(it.stock_cartons || 0) > 0 ? "In Stock" : "Out of Stock"}</div>
           </div>
           <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="applyItemToProductForm(state.stagedBatchItems[${idx}])">Edit</button>
         </div>
@@ -2996,8 +3192,8 @@
       };
       setV("prodName", item.name || "");
       setV("prodCategory", item.category || "General");
-      setV("prodLocation", item.location || "Watt Market, Calabar");
-      setV("prodVendor", item.vendor_name || "");
+      setV("prodLocation", stripMarketLabel(item.location || "Calabar") || "Calabar");
+      setV("prodVendor", stripMarketLabel(item.vendor_name || ""));
       setV("prodMainUnit", item.main_unit || item.unit_main_label || "Carton");
       setV("prodSubUnit", item.sub_unit || item.unit_pack_label || "Pack");
       setV("prodRetailUnit", item.retail_unit || item.unit_retail_label || "Retail Unit");
@@ -3028,8 +3224,8 @@
         fd.append("shop_id", state.staffShopId === "all" ? "main" : (state.staffShopId || "main"));
         fd.append("name", it.name || "Item");
         fd.append("category", it.category || "General");
-        fd.append("location", it.location || "Watt Market, Calabar");
-        fd.append("vendor_name", it.vendor_name || "");
+        fd.append("location", stripMarketLabel(it.location || "Calabar") || "Calabar");
+        fd.append("vendor_name", stripMarketLabel(it.vendor_name || ""));
         fd.append("main_unit", it.main_unit || "Carton");
         fd.append("sub_unit", it.sub_unit || "Pack");
         fd.append("retail_unit", it.retail_unit || "Retail Unit");
@@ -3106,8 +3302,8 @@
 
       document.getElementById("prodName").value = p.name || "";
       document.getElementById("prodCategory").value = p.category || "General";
-      document.getElementById("prodLocation").value = p.location || "Watt Market, Calabar";
-      document.getElementById("prodVendor").value = p.vendor_name || "";
+      document.getElementById("prodLocation").value = stripMarketLabel(p.location || "Calabar") || "Calabar";
+      document.getElementById("prodVendor").value = stripMarketLabel(p.vendor_name || "");
       document.getElementById("prodShelf").value = p.shelf || "";
       document.getElementById("prodExpiry").value = p.expiry || "";
       document.getElementById("prodMainUnit").value = p.unit_main_label || "Carton";
@@ -3140,6 +3336,8 @@
 
       try {
         const fd = new FormData(form);
+        fd.set("location", stripMarketLabel(fd.get("location") || "Calabar") || "Calabar");
+        fd.set("vendor_name", stripMarketLabel(fd.get("vendor_name") || ""));
         const res = await fetch("/api/products", {
           method: "POST",
           headers: getStaffHeaders(),
@@ -3177,7 +3375,7 @@
       const tbody = document.getElementById("staffInventoryTbody");
       if (!tbody) return;
       const q = (document.getElementById("staffInventorySearch")?.value || "").trim().toLowerCase();
-      const rows = state.products.filter(p => !q || `${p.name} ${p.category} ${p.shop_id}`.toLowerCase().includes(q));
+      const rows = state.products.filter(p => !q || `${p.name} ${p.category} ${p.shop_id} ${p.vendor_name}`.toLowerCase().includes(q));
 
       if (!rows.length) {
         tbody.innerHTML = `<tr><td colspan="9" class="text-center text-secondary py-3">No inventory items found.</td></tr>`;
@@ -3186,7 +3384,8 @@
 
       tbody.innerHTML = rows.map(p => {
         const stock = Number(p.qty_cartons ?? p.stock ?? 0);
-        const threshold = Number(getExtraSettings().lowStockThreshold ?? 2);
+        const inStock = stock > 0;
+        const sponsorClean = stripMarketLabel(p.vendor_name || "");
         const mediaTags = [
           p.image_url ? `<span class="badge text-bg-info text-dark">Photo</span>` : "",
           p.video_url ? `<span class="badge text-bg-warning text-dark">Video</span>` : ""
@@ -3196,11 +3395,11 @@
           <tr>
             <td>
               <div class="fw-semibold">${escapeHtml(p.name)}</div>
-              <div class="text-secondary" style="font-size:0.72rem;">${escapeHtml(p.location || "")}</div>
+              ${sponsorClean ? `<div class="text-info" style="font-size:0.72rem;">Sponsor: ${escapeHtml(sponsorClean)}</div>` : ""}
             </td>
             <td>${escapeHtml(p.category || "General")}</td>
             <td><span class="badge text-bg-secondary">${escapeHtml(p.shop_id || "main")}</span></td>
-            <td><span class="badge ${stock <= threshold ? "text-bg-danger" : "text-bg-success"}">${stock} ${escapeHtml(p.unit_main_label || "Carton")}</span></td>
+            <td><span class="badge ${inStock ? "text-bg-success" : "text-bg-danger"}">${inStock ? "In Stock" : "Out of Stock"}</span></td>
             <td>${formatMoney(p.price_carton)}</td>
             <td>${Number(p.price_pack || 0) > 0 ? formatMoney(p.price_pack) : "-"}</td>
             <td>${Number(p.price_retail || 0) > 0 ? formatMoney(p.price_retail) : "-"}</td>
@@ -3219,11 +3418,10 @@
       const line = document.getElementById("stockAlertsLine");
       if (!badge || !line) return;
 
-      const threshold = Number(getExtraSettings().lowStockThreshold ?? 2);
       const alerts = [];
       for (const p of state.products) {
         const stock = Number(p.qty_cartons ?? p.stock ?? 0);
-        if (stock <= threshold) alerts.push(`Low stock: ${p.name} (${stock})`);
+        if (stock <= 0) alerts.push(`Out of stock: ${p.name}`);
       }
       badge.textContent = `${alerts.length} alert${alerts.length === 1 ? "" : "s"}`;
       badge.className = alerts.length ? "badge text-bg-danger" : "badge text-bg-success";
@@ -3237,7 +3435,7 @@
       const sel = document.getElementById("posProductSelect");
       if (!sel) return;
       sel.innerHTML = state.products.length
-        ? state.products.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${Number(p.qty_cartons ?? p.stock ?? 0)} ${escapeHtml(p.unit_main_label || "Carton")})</option>`).join("")
+        ? state.products.map(p => `<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} (${Number(p.qty_cartons ?? p.stock ?? 0) > 0 ? "In Stock" : "Out of Stock"})</option>`).join("")
         : `<option value="">No products</option>`;
       onPosProductChange();
     }

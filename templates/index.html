@@ -22,7 +22,7 @@
       --danger: #ef4444;
     }
 
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; }
 
     body {
       background-color: var(--bg-body);
@@ -1776,7 +1776,7 @@
           <img id="lightboxFullImage" src="" alt="Full attachment preview" class="img-fluid rounded" style="max-height:70vh;object-fit:contain;" />
         </div>
         <div class="modal-footer py-2 justify-content-between">
-          <a id="lightboxOriginalLink" href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline-info">
+          <a id="lightboxOriginalLink" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info">
             Open Raw File
           </a>
           <button type="button" class="btn btn-sm btn-warning fw-bold px-3" data-bs-dismiss="modal">
@@ -1906,7 +1906,7 @@
               </div>
               <div id="checkoutPinFieldWrap" class="col-md-6">
                 <label id="checkoutPinLabel" for="checkoutPin" class="form-label small">4-Digit Chat PIN (leave blank — auto)</label>
-                <input id="checkoutPin" type="text" maxlength="8" class="form-control form-control-sm dark-input" />
+                <input id="checkoutPin" type="text" maxlength="12" class="form-control form-control-sm dark-input" />
               </div>
               <div class="col-md-6">
                 <label for="checkoutNotes" class="form-label small">Delivery / Pickup Notes</label>
@@ -2238,6 +2238,13 @@
         .replace(/'/g, "&#39;");
     }
 
+    function isSafeMediaUrl(url) {
+      const s = String(url || "").trim();
+      if (!s) return false;
+      if (s.startsWith("/")) return true;
+      return /^https?:\/\//i.test(s);
+    }
+
     function stripMarketLabel(text) {
       return String(text || "")
         .replace(/\bwatt\s*market\b[,\s-]*/gi, "")
@@ -2297,6 +2304,14 @@
       }
     }
 
+    function handleStaffUnauthorized(res) {
+      if (res && res.status === 401) {
+        logoutStaff();
+        return true;
+      }
+      return false;
+    }
+
     function getExtraSettings() {
       const s = state.settings || {};
       return (typeof s.extra_settings === "object" && s.extra_settings) ? s.extra_settings : {};
@@ -2306,7 +2321,7 @@
     // IN-APP LIGHTBOX & WHATSAPP BUBBLE RENDERER (USED IN BOTH CHATS)
     // ========================================================================
     function openChatImageLightbox(url, caption = "Attachment Preview") {
-      if (!url) return;
+      if (!url || !isSafeMediaUrl(url)) return;
       const img = document.getElementById("lightboxFullImage");
       const title = document.getElementById("lightboxCaptionTitle");
       const orig = document.getElementById("lightboxOriginalLink");
@@ -2318,6 +2333,8 @@
 
     function renderWhatsAppBubble(msg, perspective = "customer", canDeletePhoto = false) {
       const sender = String(msg.sender || "Customer");
+      const rawBody = String(msg.message ?? msg.text ?? "");
+      const isOfficialReceiptCard = sender.toLowerCase() === "system" && rawBody.includes("OFFICIAL PURCHASE RECEIPT");
       const isSystem = sender.toLowerCase() === "system";
       const isStaff = sender.toLowerCase() === "staff";
 
@@ -2330,15 +2347,16 @@
         bubbleClass = isStaff ? "wa-bubble-outgoing" : "wa-bubble-incoming";
       }
 
-      const contentHtml = isSystem
-        ? (msg.message || "")
-        : escapeHtml(msg.message || msg.text || "");
+      const contentHtml = isOfficialReceiptCard
+        ? rawBody
+        : escapeHtml(rawBody);
 
-      const safeUrl = escapeHtml(msg.proof_url || "");
+      const hasSafeProof = Boolean(msg.proof_url) && isSafeMediaUrl(msg.proof_url);
+      const safeUrl = hasSafeProof ? escapeHtml(msg.proof_url) : "";
       const safeCaption = escapeHtml(`${sender}${msg.customer_phone ? ` (${msg.customer_phone})` : ""} • ${msg.timestamp || "Attachment"}`);
 
       let attachmentHtml = "";
-      if (msg.proof_url) {
+      if (hasSafeProof) {
         const removeBtnHtml = canDeletePhoto && msg.id && !String(msg.id).startsWith("opt_")
           ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:0.68rem;" onclick="event.stopPropagation();deleteSingleChatPhoto('${escapeHtml(msg.id)}')">Remove Photo</button>`
           : "";
@@ -2582,8 +2600,13 @@
         if (!awarenessSlidesList.length) return;
         const idx = awarenessSlideIdx % awarenessSlidesList.length;
         const slide = awarenessSlidesList[idx];
-        imgEl.src = slide.url;
-        imgEl.style.display = "block";
+        if (isSafeMediaUrl(slide.url)) {
+          imgEl.src = slide.url;
+          imgEl.style.display = "block";
+        } else {
+          imgEl.removeAttribute("src");
+          imgEl.style.display = "none";
+        }
         if (slide.caption) bodyEl.textContent = slide.caption;
       };
 
@@ -2651,7 +2674,7 @@
       const broadcastBox = document.getElementById("broadcastVideoContainer");
       const broadcastPlayer = document.getElementById("broadcastVideoPlayer");
       if (broadcastBox && broadcastPlayer) {
-        if (!partner && s.broadcast_video_url) {
+        if (!partner && s.broadcast_video_url && isSafeMediaUrl(s.broadcast_video_url)) {
           broadcastPlayer.src = s.broadcast_video_url;
           broadcastBox.classList.remove("d-none");
         } else {
@@ -2859,7 +2882,7 @@
       listEl.innerHTML = partnerShops.map(sh => {
         const isCurrent = state.selectedShopId === sh.slug;
         const cleanLoc = stripMarketLabel(sh.location || "Calabar") || "Calabar";
-        const avatarHtml = sh.avatar_url
+        const avatarHtml = (sh.avatar_url && isSafeMediaUrl(sh.avatar_url))
           ? `<img src="${escapeHtml(sh.avatar_url)}" alt="" class="rounded" style="width:42px;height:42px;object-fit:cover;border:1px solid var(--border-subtle);" />`
           : `<div class="brand-icon-badge" style="width:42px;height:42px;">
                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2932,11 +2955,12 @@
         heroMeta.textContent = parts.join(" • ");
       }
 
-      if (partner.avatar_url && heroAvatar && heroFallback) {
+      if (partner.avatar_url && isSafeMediaUrl(partner.avatar_url) && heroAvatar && heroFallback) {
         heroAvatar.src = partner.avatar_url;
         heroAvatar.classList.remove("d-none");
         heroFallback.classList.add("d-none");
       } else if (heroAvatar && heroFallback) {
+        heroAvatar.removeAttribute("src");
         heroAvatar.classList.add("d-none");
         heroFallback.classList.remove("d-none");
       }
@@ -2980,6 +3004,7 @@
           headers: getStaffHeaders(),
           body: fd
         });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) {
           throw new Error(data.detail || "Could not register business");
@@ -3105,6 +3130,7 @@
           headers: getStaffHeaders(),
           body: fd
         });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not update store configuration");
         await loadShops();
@@ -3211,8 +3237,8 @@
       grid.innerHTML = filtered.map(p => {
         const stockNum = Number(p.qty_cartons ?? p.stock ?? 0);
         const inStock = stockNum > 0;
-        const hasImage = Boolean(p.image_url);
-        const hasVideo = Boolean(p.video_url);
+        const hasImage = Boolean(p.image_url) && isSafeMediaUrl(p.image_url);
+        const hasVideo = Boolean(p.video_url) && isSafeMediaUrl(p.video_url);
 
         let mediaHtml = `<div class="text-secondary small py-4">No image</div>`;
         if (hasImage) {
@@ -3332,7 +3358,7 @@
       const vidWrap = document.getElementById("advertVideoPlayerWrap");
       const vidEl = document.getElementById("advertModalVideo");
 
-      if (p.video_url) {
+      if (p.video_url && isSafeMediaUrl(p.video_url)) {
         noVidBanner.classList.add("d-none");
         vidWrap.classList.remove("d-none");
         vidEl.src = p.video_url;
@@ -3345,7 +3371,7 @@
 
       const imgEl = document.getElementById("advertModalImg");
       const noImgEl = document.getElementById("advertModalNoImg");
-      if (p.image_url) {
+      if (p.image_url && isSafeMediaUrl(p.image_url)) {
         imgEl.src = p.image_url;
         imgEl.classList.remove("d-none");
         noImgEl.classList.add("d-none");
@@ -3628,6 +3654,13 @@
         const url = `/api/messages?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&shop_id=${encodeURIComponent(state.selectedShopId || "main")}`;
         const res = await fetch(url);
         const data = await safeJson(res);
+        if (res.status === 429) {
+          if (!silent && stEl) {
+            stEl.className = "small text-warning mb-2";
+            stEl.textContent = data.detail || "Too many attempts. Please wait a moment and try again.";
+          }
+          return;
+        }
         if (!res.ok) {
           if (!silent) {
             state.customerChat.unlocked = false;
@@ -3692,8 +3725,12 @@
 
     async function sendCustomerChatMessage(event) {
       event.preventDefault();
+      const stEl = document.getElementById("custChatAuthStatus");
       if (!state.customerChat.unlocked) {
-        alert("Please unlock the chat with your phone number and PIN/Ref first.");
+        if (stEl) {
+          stEl.className = "small text-warning mb-2";
+          stEl.textContent = "Please unlock the chat with your phone number and PIN/Ref first.";
+        }
         return;
       }
       const txtEl = document.getElementById("custMsgText");
@@ -3730,7 +3767,10 @@
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Send failed");
         await fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin, true);
       } catch (err) {
-        alert(err.message);
+        if (stEl) {
+          stEl.className = "small text-danger mb-2";
+          stEl.textContent = err.message;
+        }
       }
     }
 
@@ -3852,6 +3892,7 @@
         const res = await fetch(`/api/auto-stock/barcode/${encodeURIComponent(code)}?location=${loc}&default_stock_cartons=${stock}`, {
           headers: getStaffHeaders()
         });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || !data.item) throw new Error(data.detail || "No match found");
         applyItemToProductForm(data.item);
@@ -3870,7 +3911,7 @@
     async function runNameBatchAutoStock(fillFirst = true) {
       const names = (document.getElementById("autoStockNamesInput")?.value || "").trim();
       const stEl = document.getElementById("autoStockBatchStatus");
-      const defaultCartons = parseFloat(document.getElementById("autoStockDefaultCartons")?.value || "5") || 5;
+      const defaultCartons = Math.max(0, parseFloat(document.getElementById("autoStockDefaultCartons")?.value || "5") || 0);
       const location = (document.getElementById("autoStockLocationInput")?.value || "Calabar").trim();
       if (!names) return;
 
@@ -3889,6 +3930,7 @@
             location
           })
         });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || !Array.isArray(data.items) || !data.items.length) {
           throw new Error(data.detail || "Search returned no items");
@@ -3910,8 +3952,8 @@
 
     async function runCategoryAutoStock() {
       const category = document.getElementById("autoStockCategorySelect")?.value || "Beverages";
-      const count = parseInt(document.getElementById("autoStockCategoryCount")?.value || "5", 10) || 5;
-      const defaultCartons = parseFloat(document.getElementById("autoStockDefaultCartons")?.value || "5") || 5;
+      const count = Math.min(15, Math.max(1, parseInt(document.getElementById("autoStockCategoryCount")?.value || "5", 10) || 5));
+      const defaultCartons = Math.max(0, parseFloat(document.getElementById("autoStockDefaultCartons")?.value || "5") || 0);
       const location = (document.getElementById("autoStockLocationInput")?.value || "Calabar").trim();
       const fetchVideo = Boolean(document.getElementById("autoStockFetchVideoCheck")?.checked);
       const stEl = document.getElementById("autoStockBatchStatus");
@@ -3933,6 +3975,7 @@
             fetch_video: fetchVideo
           })
         });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || !Array.isArray(data.items)) throw new Error(data.detail || "Category search failed");
         state.stagedBatchItems = data.items;
@@ -4019,18 +4062,19 @@
         fd.append("main_unit", it.main_unit || "Carton");
         fd.append("sub_unit", it.sub_unit || "Pack");
         fd.append("retail_unit", it.retail_unit || "Retail Unit");
-        fd.append("price_carton", String(it.price_carton ?? 0));
-        fd.append("cost_price_carton", String(it.cost_price_carton ?? 0));
-        fd.append("stock_cartons", String(it.stock_cartons ?? 5));
-        fd.append("price_pack", String(it.price_pack ?? 0));
-        fd.append("packs_per_carton", String(it.packs_per_carton ?? 1));
-        fd.append("price_retail", String(it.price_retail ?? 0));
-        fd.append("retail_per_pack", String(it.units_per_pack ?? 1));
+        fd.append("price_carton", String(Math.max(0, Number(it.price_carton ?? 0) || 0)));
+        fd.append("cost_price_carton", String(Math.max(0, Number(it.cost_price_carton ?? 0) || 0)));
+        fd.append("stock_cartons", String(Math.max(0, Number(it.stock_cartons ?? 5) || 0)));
+        fd.append("price_pack", String(Math.max(0, Number(it.price_pack ?? 0) || 0)));
+        fd.append("packs_per_carton", String(Math.max(1, parseInt(it.packs_per_carton ?? 1, 10) || 1)));
+        fd.append("price_retail", String(Math.max(0, Number(it.price_retail ?? 0) || 0)));
+        fd.append("retail_per_pack", String(Math.max(1, parseInt(it.units_per_pack ?? 1, 10) || 1)));
         fd.append("image_url", it.image_url || "");
         fd.append("video_link", it.video_url || "");
         fd.append("description", it.description || "");
 
         const res = await fetch("/api/products", { method: "POST", headers: getStaffHeaders(), body: fd });
+        if (handleStaffUnauthorized(res)) return;
         if (res.ok) saved += 1;
       }
 
@@ -4067,10 +4111,11 @@
       const txt = document.getElementById("productFormMediaText");
       if (!bar || !img || !txt) return;
       if (imgUrl || label) {
-        if (imgUrl) {
+        if (imgUrl && isSafeMediaUrl(imgUrl)) {
           img.src = imgUrl;
           img.classList.remove("d-none");
         } else {
+          img.removeAttribute("src");
           img.classList.add("d-none");
         }
         txt.textContent = label || imgUrl;
@@ -4133,10 +4178,14 @@
           headers: getStaffHeaders(),
           body: fd
         });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Save failed");
 
-        if (fb) fb.innerHTML = `<span class="text-success fw-semibold">Saved "${escapeHtml(data.product?.name || "")}".</span>`;
+        const warnings = Array.isArray(data.pricing_warnings) && data.pricing_warnings.length
+          ? `<div class="text-warning mt-1">Note: ${escapeHtml(data.pricing_warnings.join(" • "))}</div>`
+          : "";
+        if (fb) fb.innerHTML = `<span class="text-success fw-semibold">Saved "${escapeHtml(data.product?.name || "")}".</span>${warnings}`;
         resetProductForm();
         await loadProducts(state.staffShopId || "main");
       } catch (err) {
@@ -4153,6 +4202,7 @@
           method: "DELETE",
           headers: getStaffHeaders()
         });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Delete failed");
         await loadProducts(state.staffShopId || "main");
@@ -4296,6 +4346,7 @@
             record_debt: recordDebt
           })
         });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Sale failed");
 
@@ -4310,7 +4361,7 @@
           <div><strong>Date:</strong> ${escapeHtml(rcpt.timestamp || "-")}</div>
           <div><strong>Customer:</strong> ${escapeHtml(rcpt.customer_name || "Walk-in")}</div>
           <hr class="my-2" />
-          <div>${escapeHtml(rcpt.item_name)} (${rcpt.qty} ${escapeHtml(rcpt.unit_type)})</div>
+          <div>${escapeHtml(rcpt.item_name)} (${escapeHtml(rcpt.qty)} ${escapeHtml(rcpt.unit_type)})</div>
           <hr class="my-2" />
           <div class="fw-bold d-flex justify-content-between"><span>TOTAL</span><span>${formatMoney(rcpt.total)}</span></div>
           <div class="text-center mt-2 pt-2 border-top" style="font-size:0.75rem;">${escapeHtml(footerMsg)}</div>
@@ -4325,6 +4376,7 @@
     async function loadStaffSales(qShop) {
       try {
         const res = await fetch(`/api/sales?shop_id=${qShop}`, { headers: getStaffHeaders() });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         state.sales = res.ok && Array.isArray(data.sales) ? data.sales : [];
       } catch {
@@ -4347,6 +4399,7 @@
     async function loadStaffOrders(qShop) {
       try {
         const res = await fetch(`/api/orders?shop_id=${qShop}`, { headers: getStaffHeaders() });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         state.orders = res.ok && Array.isArray(data.orders) ? data.orders : [];
       } catch {
@@ -4500,6 +4553,7 @@
           headers: getStaffHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({ verified_by: state.staff.username || "admin" })
         });
+        if (handleStaffUnauthorized(res)) return;
         if (!res.ok) throw new Error("Verification failed");
         const qShop = encodeURIComponent(state.staffShopId || "main");
         await Promise.all([loadStaffOrders(qShop), loadStaffMessages(qShop)]);
@@ -4511,12 +4565,14 @@
     async function deleteStaffOrder(orderId) {
       if (!confirm("Delete this order?")) return;
       const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE", headers: getStaffHeaders() });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) await loadStaffOrders(encodeURIComponent(state.staffShopId || "main"));
     }
 
     async function loadStaffMessages(qShop, silent = false) {
       try {
         const res = await fetch(`/api/messages?shop_id=${qShop}`, { headers: getStaffHeaders() });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (res.ok && Array.isArray(data.messages)) {
           const pendingOpts = state.staffMessages.filter(m => String(m.id || "").startsWith("opt_"));
@@ -4586,6 +4642,7 @@
       if (file) fd.append("proof_file", file);
 
       const res = await fetch("/api/messages", { method: "POST", headers: getStaffHeaders(), body: fd });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
         await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
       }
@@ -4593,6 +4650,7 @@
 
     async function deleteSingleChatPhoto(messageId) {
       const res = await fetch(`/api/messages/${encodeURIComponent(messageId)}/photo`, { method: "DELETE", headers: getStaffHeaders() });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"));
     }
 
@@ -4600,12 +4658,14 @@
       if (!confirm("Delete all proof photos in this shop?")) return;
       const qShop = encodeURIComponent(state.staffShopId || "main");
       const res = await fetch(`/api/messages/photos?shop_id=${qShop}`, { method: "DELETE", headers: getStaffHeaders() });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) await loadStaffMessages(qShop);
     }
 
     async function loadStaffDebtors(qShop) {
       try {
         const res = await fetch(`/api/debtors?shop_id=${qShop}`, { headers: getStaffHeaders() });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         state.debtors = res.ok && Array.isArray(data.debtors) ? data.debtors : [];
       } catch {
@@ -4638,10 +4698,11 @@
           shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main"),
           customer: document.getElementById("debtorCustomer").value.trim(),
           phone: document.getElementById("debtorPhone").value.trim(),
-          amount: parseFloat(document.getElementById("debtorAmount").value || "0") || 0,
+          amount: Math.max(0, parseFloat(document.getElementById("debtorAmount").value || "0") || 0),
           items_bought: document.getElementById("debtorItems").value.trim()
         })
       });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
         document.getElementById("debtorForm").reset();
         await loadStaffDebtors(encodeURIComponent(state.staffShopId || "main"));
@@ -4650,17 +4711,20 @@
 
     async function markDebtorPaid(id) {
       const res = await fetch(`/api/debtors/${encodeURIComponent(id)}/pay`, { method: "POST", headers: getStaffHeaders() });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) await loadStaffDebtors(encodeURIComponent(state.staffShopId || "main"));
     }
 
     async function deleteDebtor(id) {
       const res = await fetch(`/api/debtors/${encodeURIComponent(id)}`, { method: "DELETE", headers: getStaffHeaders() });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) await loadStaffDebtors(encodeURIComponent(state.staffShopId || "main"));
     }
 
     async function loadStaffExpenses(qShop) {
       try {
         const res = await fetch(`/api/expenses?shop_id=${qShop}`, { headers: getStaffHeaders() });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         state.expenses = res.ok && Array.isArray(data.expenses) ? data.expenses : [];
       } catch {
@@ -4688,10 +4752,11 @@
         body: JSON.stringify({
           shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main"),
           category: document.getElementById("expenseCategory").value.trim() || "Operations",
-          amount: parseFloat(document.getElementById("expenseAmount").value || "0") || 0,
+          amount: Math.max(0, parseFloat(document.getElementById("expenseAmount").value || "0") || 0),
           note: document.getElementById("expenseNote").value.trim()
         })
       });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
         document.getElementById("expenseForm").reset();
         const qShop = encodeURIComponent(state.staffShopId || "main");
@@ -4701,6 +4766,7 @@
 
     async function deleteExpense(id) {
       const res = await fetch(`/api/expenses/${encodeURIComponent(id)}`, { method: "DELETE", headers: getStaffHeaders() });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
         const qShop = encodeURIComponent(state.staffShopId || "main");
         await Promise.all([loadStaffExpenses(qShop), loadStaffAnalytics(qShop)]);
@@ -4710,6 +4776,7 @@
     async function loadStaffWorkers() {
       try {
         const res = await fetch("/api/workers", { headers: getStaffHeaders() });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         state.workers = res.ok && Array.isArray(data.workers) ? data.workers : [];
       } catch {
@@ -4743,6 +4810,7 @@
           shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main")
         })
       });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
         document.getElementById("workerForm").reset();
         await loadStaffWorkers();
@@ -4752,6 +4820,7 @@
     async function deleteWorker(id) {
       if (!isSuperAdmin()) return;
       const res = await fetch(`/api/workers/${encodeURIComponent(id)}`, { method: "DELETE", headers: getStaffHeaders() });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) await loadStaffWorkers();
     }
 
@@ -4777,6 +4846,7 @@
     async function deletePartnerShop(shopId) {
       if (!confirm(`Delete partner business "${shopId}"?`)) return;
       const res = await fetch(`/api/shops/${encodeURIComponent(shopId)}`, { method: "DELETE", headers: getStaffHeaders() });
+      if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
         await loadShops();
         renderPartnerShopsAdminList();
@@ -4786,6 +4856,7 @@
     async function loadStaffAnalytics(qShop) {
       try {
         const res = await fetch(`/api/analytics?shop_id=${qShop}`, { headers: getStaffHeaders() });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (res.ok && data.analytics) {
           const a = data.analytics;
@@ -4864,6 +4935,7 @@
           headers: getStaffHeaders(),
           body: fd
         });
+        if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Save failed");
 

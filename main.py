@@ -681,6 +681,73 @@ def delete_shop(shop_id: str, request: Request):
     return {"ok": True, "id": clean_id}
 
 
+@app.post("/api/shops/{shop_id}")
+async def update_shop(
+    shop_id: str,
+    request: Request,
+    name: str = Form(...),
+    location: str = Form("Calabar"),
+    phone: str = Form(""),
+    bank_details: str = Form(""),
+    tagline: str = Form(""),
+    avatar_file: Optional[UploadFile] = File(None),
+):
+    staff = require_staff(request)
+    clean_id = normalize_shop_id(shop_id)
+    if clean_id == MAIN_SHOP_ID:
+        raise HTTPException(status_code=400, detail="Use Business Settings for the main store")
+
+    role_upper = staff.get("role", "").strip().upper()
+    staff_shop = normalize_shop_id(staff.get("shop_id"))
+    is_owner_of_shop = role_upper == "SHOPOWNER" and staff_shop == clean_id
+    if not is_super_admin(staff) and not is_owner_of_shop:
+        raise HTTPException(status_code=403, detail="You do not have permission to edit this store")
+
+    shop_ref = db.collection("shops").document(clean_id)
+    snap = shop_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Registered shop not found")
+
+    existing = snap.to_dict() or {}
+    clean_name = name.strip()
+    if not clean_name:
+        raise HTTPException(status_code=400, detail="Business name is required")
+
+    old_avatar_url = str(existing.get("avatar_url") or "").strip()
+    old_avatar_public_id = str(existing.get("avatar_public_id") or "").strip()
+
+    new_avatar_url, new_avatar_public_id = upload_to_cloudinary(
+        avatar_file, folder="sammyreks_shops", resource_type="image", max_dim=400
+    )
+    if new_avatar_url:
+        if old_avatar_public_id or old_avatar_url:
+            delete_from_cloudinary(
+                public_id=old_avatar_public_id,
+                url=old_avatar_url,
+                resource_type="image",
+            )
+        final_avatar_url = new_avatar_url
+        final_avatar_public_id = new_avatar_public_id or ""
+    else:
+        final_avatar_url = old_avatar_url
+        final_avatar_public_id = old_avatar_public_id
+
+    updated_doc: Dict[str, Any] = {
+        "name": clean_name,
+        "location": location.strip() or "Calabar",
+        "phone": phone.strip(),
+        "bank_details": bank_details.strip(),
+        "tagline": tagline.strip(),
+        "avatar_url": final_avatar_url,
+        "avatar_public_id": final_avatar_public_id,
+        "updated_at": now_str(),
+    }
+    shop_ref.set(updated_doc, merge=True)
+
+    merged = {**existing, **updated_doc, "slug": clean_id}
+    return {"ok": True, "shop": normalize_shop(clean_id, merged)}
+
+
 # ==============================================================================
 # AUTO-STOCK ROUTES (BARCODE, CATEGORY & NAME-FIRST BATCH SEARCH)
 # ==============================================================================

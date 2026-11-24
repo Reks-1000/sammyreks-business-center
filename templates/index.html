@@ -22,7 +22,7 @@
       --danger: #ef4444;
     }
 
-    * { box-sizing: border-box; }
+- { box-sizing: border-box; }
 
     body {
       background-color: var(--bg-body);
@@ -2627,6 +2627,8 @@
       document.getElementById("bnavHomeBtn")?.classList.remove("active");
       syncHeaderState(true);
 
+      await loadShops();
+
       const isPartnerOwner = !isSuperAdmin() && state.staff.shop_id && state.staff.shop_id !== "main";
       state.staffShopId = isSuperAdmin() ? (state.staffShopId || "main") : (state.staff.shop_id || "main");
       populateStaffShopSelector();
@@ -2686,6 +2688,11 @@
       const fd = new FormData(form);
       fd.set("location", stripMarketLabel(fd.get("location") || "Calabar") || "Calabar");
 
+      if (fb) {
+        fb.className = "small text-secondary";
+        fb.textContent = "Saving store configuration...";
+      }
+
       try {
         const res = await fetch(`/api/shops/${encodeURIComponent(shopSlug)}`, {
           method: "POST",
@@ -2695,6 +2702,12 @@
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not update store configuration");
         await loadShops();
+        const updatedShop = state.shops.find(s => s.slug === shopSlug) || data.shop;
+        if (updatedShop) {
+          populatePartnerOwnSettingsForm(updatedShop);
+          const dashTitle = document.getElementById("dashboardHeadingTitle");
+          if (dashTitle) dashTitle.textContent = `${updatedShop.name} — Business Control`;
+        }
         if (fb) {
           fb.className = "small text-success fw-semibold";
           fb.textContent = "Store configuration updated!";

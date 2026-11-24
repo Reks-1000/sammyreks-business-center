@@ -22,7 +22,7 @@
       --danger: #ef4444;
     }
 
-- { box-sizing: border-box; }
+    * { box-sizing: border-box; }
 
     body {
       background-color: var(--bg-body);
@@ -188,7 +188,7 @@
       background: var(--bg-surface-2);
     }
 
-    /* Dedicated Partner Store Banner (Separate Interface Mode) */
+    /* Dedicated Partner Store Banner */
     .partner-store-hero {
       background: linear-gradient(135deg, #0b192c 0%, #152a45 100%);
       border: 1px solid var(--cyan);
@@ -418,43 +418,150 @@
       display: block;
     }
 
-    /* Chat Box */
-    .chat-stream {
-      height: 330px;
-      overflow-y: auto;
-      background: #0b1220;
+    /* ===================================================================== */
+    /* PROFESSIONAL WHATSAPP-STYLE CHAT BOARD & IN-APP LIGHTBOX            */
+    /* ===================================================================== */
+    .wa-chat-board {
+      display: flex;
+      flex-direction: column;
+      height: 410px;
+      background: #080f1c;
+      background-image: radial-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 0);
+      background-size: 18px 18px;
       border: 1px solid var(--border-subtle);
-      border-radius: 10px;
-      padding: 10px;
+      border-radius: 12px;
+      overflow: hidden;
     }
 
-    .chat-msg {
-      max-width: 86%;
-      padding: 8px 11px;
-      border-radius: 11px;
-      margin-bottom: 8px;
-      font-size: 0.84rem;
+    .wa-chat-topbar {
+      background: #0d1526;
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 8px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .wa-chat-messages {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .wa-bubble {
+      max-width: 82%;
+      padding: 9px 12px;
+      border-radius: 13px;
+      font-size: 0.87rem;
+      line-height: 1.42;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
       word-break: break-word;
     }
 
-    .chat-msg-customer {
-      background: #1d4ed8;
-      color: #eff6ff;
-      margin-left: auto;
-    }
-
-    .chat-msg-staff {
+    .wa-bubble-outgoing {
+      align-self: flex-end;
       background: #14532d;
-      color: #ecfdf5;
-      margin-right: auto;
+      border: 1px solid rgba(74, 222, 128, 0.28);
+      color: #f0fdf4;
+      border-bottom-right-radius: 4px;
     }
 
-    .chat-msg-system {
+    .wa-bubble-incoming {
+      align-self: flex-start;
       background: #1e293b;
-      border: 1px solid var(--gold);
+      border: 1px solid var(--border-subtle);
       color: #f8fafc;
-      margin: 0 auto 10px auto;
-      max-width: 96%;
+      border-bottom-left-radius: 4px;
+    }
+
+    .wa-bubble-system {
+      align-self: center;
+      max-width: 94%;
+      background: rgba(245, 183, 0, 0.13);
+      border: 1px solid rgba(245, 183, 0, 0.45);
+      color: #fef3c7;
+      font-size: 0.81rem;
+      border-radius: 10px;
+    }
+
+    .wa-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.71rem;
+      opacity: 0.82;
+      margin-bottom: 4px;
+    }
+
+    .wa-photo-card {
+      margin-top: 6px;
+      background: #060b14;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 6px;
+    }
+
+    .wa-photo-thumb {
+      width: 100%;
+      max-width: 255px;
+      max-height: 195px;
+      object-fit: contain;
+      border-radius: 7px;
+      cursor: zoom-in;
+      display: block;
+      margin: 0 auto;
+    }
+
+    .wa-photo-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.71rem;
+      color: #cbd5e1;
+      margin-top: 5px;
+      padding: 0 2px;
+    }
+
+    .wa-composer {
+      background: #0d1526;
+      border-top: 1px solid var(--border-subtle);
+      padding: 8px 10px;
+    }
+
+    .wa-thread-item {
+      background: var(--bg-surface-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: 9px;
+      padding: 8px 10px;
+      text-align: left;
+      width: 100%;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: border-color 0.15s ease, background-color 0.15s ease;
+    }
+
+    .wa-thread-item:hover,
+    .wa-thread-item.active {
+      border-color: var(--gold);
+      background: rgba(245, 183, 0, 0.1);
+    }
+
+    .wa-attach-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(14, 165, 233, 0.14);
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      color: #e0f2fe;
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.76rem;
     }
 
     /* Staff Tabs & Tables */
@@ -574,7 +681,7 @@
     </div>
   </header>
 
-  <!-- SIDEBAR DRAWER: REGISTERED BUSINESSES (SEPARATED FROM APP FRONT) -->
+  <!-- SIDEBAR DRAWER: REGISTERED BUSINESSES -->
   <div class="offcanvas offcanvas-start offcanvas-dark-custom" tabindex="-1" id="registeredShopsSidebar" aria-labelledby="registeredShopsSidebarLabel">
     <div class="offcanvas-header border-bottom border-secondary-subtle">
       <div>
@@ -584,7 +691,6 @@
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
     <div class="offcanvas-body d-flex flex-column gap-3">
-      <!-- Main App Store Card -->
       <div id="sidebarMainStoreCard" class="sidebar-shop-card active-shop">
         <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
           <div class="fw-bold text-warning">Shop with Sammyreks Business Center</div>
@@ -634,11 +740,10 @@
     </div>
 
     <!-- ===================================================================== -->
-    <!-- 1. STOREFRONT VIEW (MAIN APP OR DEDICATED PARTNER STORE INTERFACE)    -->
+    <!-- 1. STOREFRONT VIEW                                                    -->
     <!-- ===================================================================== -->
     <div id="storefrontSection">
 
-      <!-- DEDICATED PARTNER BUSINESS HEADER (ONLY SHOWN WHEN CUSTOMER ENTERS A REGISTERED STORE) -->
       <div id="partnerStoreFrontHeader" class="partner-store-hero d-none">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
           <div class="d-flex align-items-center gap-3">
@@ -668,7 +773,6 @@
         </div>
       </div>
 
-      <!-- MAIN APP PROMO BROADCAST (ONLY ON MAIN APP FRONT) -->
       <div id="broadcastVideoContainer" class="dark-panel mb-3 d-none">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h5 class="mb-0 fw-bold" style="color:var(--gold);">Featured Promo Broadcast</h5>
@@ -681,7 +785,6 @@
         </div>
       </div>
 
-      <!-- Search, Category & Custom Request Panel -->
       <div class="dark-panel mb-3">
         <div class="row g-2 align-items-center">
           <div class="col-md-5">
@@ -700,15 +803,13 @@
         </div>
       </div>
 
-      <!-- Products Grid -->
       <div id="productsGrid" class="row g-3"></div>
     </div>
 
     <!-- ===================================================================== -->
-    <!-- 2. STAFF & ADMIN DASHBOARD VIEW (ISOLATED PER BUSINESS)               -->
+    <!-- 2. STAFF & ADMIN DASHBOARD VIEW                                       -->
     <!-- ===================================================================== -->
     <div id="staffSection" class="d-none">
-      <!-- Dashboard Top Summary & KPIs -->
       <div class="dark-panel mb-3">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pb-2 mb-3 border-bottom border-secondary-subtle">
           <div>
@@ -761,7 +862,6 @@
         <div id="stockAlertsLine" class="small text-warning mt-2"></div>
       </div>
 
-      <!-- Dashboard Navigation Pills -->
       <ul class="nav nav-pills gap-2 mb-3 flex-wrap" role="tablist">
         <li class="nav-item" role="presentation">
           <button class="nav-link active" id="tab-inventory" data-bs-toggle="pill" data-bs-target="#inventoryTab" type="button" role="tab">
@@ -870,7 +970,6 @@
               </div>
             </div>
 
-            <!-- Add / Update Product Form -->
             <div class="col-lg-7">
               <div class="dark-panel h-100">
                 <div class="d-flex justify-content-between align-items-center mb-2">
@@ -1004,7 +1103,6 @@
             </div>
           </div>
 
-          <!-- Saved Inventory Table -->
           <div class="dark-panel">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
               <h6 class="fw-bold mb-0" style="color:var(--gold);">Saved Inventory</h6>
@@ -1116,51 +1214,85 @@
           </div>
         </div>
 
-        <!-- TAB 3: ORDERS & LIVE CHAT -->
+        <!-- TAB 3: ORDERS & WHATSAPP-STYLE LIVE CHAT -->
         <div class="tab-pane fade" id="staffOrdersChatTab" role="tabpanel">
           <div class="row g-3">
-            <div class="col-lg-6">
-              <div class="dark-panel h-100">
+            <!-- Left Column: Orders & Active Customer Threads -->
+            <div class="col-lg-5">
+              <div class="dark-panel mb-3">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                  <h6 class="fw-bold mb-0" style="color:var(--gold);">Customer Orders &amp; Requests</h6>
+                  <h6 class="fw-bold mb-0" style="color:var(--gold);">Customer Orders</h6>
                   <div class="btn-group btn-group-sm" role="group">
                     <button type="button" class="btn btn-outline-warning active" data-order-filter="All" onclick="setOrderFilter('All', this)">All</button>
                     <button type="button" class="btn btn-outline-warning" data-order-filter="Pending" onclick="setOrderFilter('Pending', this)">Pending</button>
                     <button type="button" class="btn btn-outline-warning" data-order-filter="Verified" onclick="setOrderFilter('Verified', this)">Verified</button>
                   </div>
                 </div>
-                <div id="staffOrdersList" class="d-flex flex-column gap-2" style="max-height:450px;overflow-y:auto;"></div>
+                <div id="staffOrdersList" class="d-flex flex-column gap-2" style="max-height:240px;overflow-y:auto;"></div>
+              </div>
+
+              <div class="dark-panel">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h6 class="fw-bold mb-0 text-info">Customer Chat Threads</h6>
+                  <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="clearStaffThreadSelection()">All Threads</button>
+                </div>
+                <div id="staffChatThreadsList" class="d-flex flex-column gap-2" style="max-height:190px;overflow-y:auto;">
+                  <div class="small text-secondary">No active customer chats yet.</div>
+                </div>
               </div>
             </div>
 
-            <div class="col-lg-6">
+            <!-- Right Column: WhatsApp-Style Chat Board -->
+            <div class="col-lg-7">
               <div class="dark-panel h-100 d-flex flex-column">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                  <h6 class="fw-bold mb-0" style="color:var(--gold);">Live Chat &amp; Payment Proofs</h6>
-                  <div class="d-flex gap-1">
-                    <input id="staffChatPhoneFilter" type="text" class="form-control form-control-sm dark-input" style="width:150px;" placeholder="Filter phone..." oninput="renderStaffChatMessages()" />
+                  <div>
+                    <h6 class="fw-bold mb-0" style="color:var(--gold);">WhatsApp-Style Live Chat Board</h6>
+                    <div id="staffActiveChatTargetLabel" class="small text-secondary">Viewing all store conversations</div>
+                  </div>
+                  <div class="d-flex gap-1 align-items-center">
+                    <input id="staffChatPhoneFilter" type="text" class="form-control form-control-sm dark-input" style="width:155px;" placeholder="Filter phone..." oninput="onStaffPhoneFilterChange()" />
                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAllStaffChatPhotos()">Clear Photos</button>
                   </div>
                 </div>
 
-                <div id="staffChatMessagesBox" class="chat-stream mb-2 flex-grow-1"></div>
-
-                <form id="staffReplyForm" onsubmit="sendStaffChatReply(event)" enctype="multipart/form-data">
-                  <div class="row g-2">
-                    <div class="col-sm-4">
-                      <input id="staffReplyPhone" type="text" class="form-control form-control-sm dark-input" placeholder="Customer phone *" required />
-                    </div>
-                    <div class="col-sm-5">
-                      <input id="staffReplyText" type="text" class="form-control form-control-sm dark-input" placeholder="Reply to customer..." />
-                    </div>
-                    <div class="col-sm-3">
-                      <button type="submit" class="btn btn-warning btn-sm fw-bold w-100">Send</button>
-                    </div>
-                    <div class="col-12">
-                      <input id="staffReplyProofFile" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
+                <div class="wa-chat-board flex-grow-1">
+                  <div class="wa-chat-topbar">
+                    <span id="staffChatStatusBadge" class="badge text-bg-success">Live Desk</span>
+                    <div class="d-flex flex-wrap gap-1">
+                      <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size:0.72rem;" onclick="applyStaffQuickReply('Payment received and verified. Thank you!')">
+                        Payment Verified
+                      </button>
+                      <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" style="font-size:0.72rem;" onclick="applyStaffQuickReply('Your order is being processed. Please confirm delivery details.')">
+                        Order Processing
+                      </button>
                     </div>
                   </div>
-                </form>
+
+                  <div id="staffChatMessagesBox" class="wa-chat-messages"></div>
+
+                  <form id="staffReplyForm" class="wa-composer" onsubmit="sendStaffChatReply(event)" enctype="multipart/form-data">
+                    <div id="staffAttachPreviewBar" class="mb-2 d-none">
+                      <span class="wa-attach-pill">
+                        <span id="staffAttachFileName"></span>
+                        <button type="button" class="btn-close" style="transform:scale(0.75);" onclick="clearStaffAttachment()"></button>
+                      </span>
+                    </div>
+                    <div class="row g-2 align-items-center">
+                      <div class="col-sm-4">
+                        <input id="staffReplyPhone" type="text" class="form-control form-control-sm dark-input" placeholder="Customer phone *" required />
+                      </div>
+                      <div class="col-sm-5">
+                        <input id="staffReplyText" type="text" class="form-control form-control-sm dark-input" placeholder="Type a message..." />
+                      </div>
+                      <div class="col-sm-3 d-flex gap-1">
+                        <label for="staffReplyProofFile" class="btn btn-sm btn-outline-info mb-0" title="Attach image or receipt">📎</label>
+                        <input id="staffReplyProofFile" type="file" accept="image/*" class="d-none" onchange="onStaffAttachmentSelected()" />
+                        <button type="submit" class="btn btn-warning btn-sm fw-bold flex-grow-1">Send</button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
           </div>
@@ -1229,7 +1361,6 @@
             </div>
           </div>
 
-          <!-- Registered Partner Shops Admin List -->
           <div id="ceoPartnerShopsCard" class="dark-panel d-none">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <h6 class="fw-bold mb-0" style="color:var(--gold);">Registered Partner Shops (Super Admin)</h6>
@@ -1239,10 +1370,8 @@
           </div>
         </div>
 
-        <!-- TAB 5: SETTINGS (SEPARATED: PARTNER BUSINESS CONFIG VS MAIN APP SETTINGS) -->
+        <!-- TAB 5: SETTINGS -->
         <div class="tab-pane fade" id="settingsTab" role="tabpanel">
-
-          <!-- A. PARTNER BUSINESS ISOLATED CONFIGURATION PANEL (SHOWN FOR PARTNER SHOP OWNERS) -->
           <div id="partnerShopConfigPanel" class="dark-panel d-none">
             <div class="mb-3">
               <h6 class="fw-bold mb-0 text-info">Your Business Storefront Configuration</h6>
@@ -1284,7 +1413,6 @@
             </form>
           </div>
 
-          <!-- B. MAIN APP OVERALL SETTINGS (SUPER ADMIN / MAIN STORE ONLY) -->
           <div id="mainAppSettingsPanel" class="dark-panel">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div>
@@ -1297,7 +1425,6 @@
             </div>
 
             <form id="appSettingsForm" onsubmit="saveAppSettings(event)" enctype="multipart/form-data">
-              <!-- 1. Business Identity, Auto-Color Theme Control & Broadcast -->
               <div class="dark-subpanel mb-3">
                 <div class="fw-bold small text-warning mb-2">1. Main App Identity, Auto-Color Theme &amp; Broadcast</div>
                 <div class="row g-2 mb-2">
@@ -1315,7 +1442,6 @@
                   </div>
                 </div>
 
-                <!-- ADMIN-CONTROLLED AUTO-COLOR SWITCH -->
                 <div class="p-2 px-3 rounded mb-2" style="background:#0b1220;border:1px solid var(--gold);">
                   <div class="form-check form-switch mb-0">
                     <input id="togAutoColorCycle" type="checkbox" class="form-check-input" onchange="previewAdminAutoColorToggle()" />
@@ -1354,7 +1480,6 @@
                 </div>
               </div>
 
-              <!-- 2. Navigation Tabs, Cash Flow Analytics & Alerts -->
               <div class="dark-subpanel mb-3">
                 <div class="fw-bold small text-warning mb-2">2. Navigation Tabs, Cash Flow Analytics &amp; Alerts</div>
                 <div class="row g-2 mb-2">
@@ -1397,7 +1522,6 @@
                 </div>
               </div>
 
-              <!-- 3. Shop Display & Product Cards -->
               <div class="dark-subpanel mb-3">
                 <div class="fw-bold small text-warning mb-2">3. Shop Display &amp; Product Cards</div>
                 <div class="row g-2 mb-2">
@@ -1432,7 +1556,6 @@
                 </div>
               </div>
 
-              <!-- 4. Checkout, Bank Details & Automatic PIN Help -->
               <div class="dark-subpanel mb-3">
                 <div class="fw-bold small text-warning mb-2">4. Checkout, Bank Details &amp; Automatic PIN Help</div>
                 <div class="form-check form-switch mb-2">
@@ -1459,7 +1582,6 @@
                 </div>
               </div>
 
-              <!-- 5. Rotating Storefront Tips -->
               <div class="dark-subpanel mb-3">
                 <div class="fw-bold small text-warning mb-2">5. Rotating Storefront Tips</div>
                 <div class="row g-2 align-items-center mb-2">
@@ -1480,7 +1602,6 @@
                 </div>
               </div>
 
-              <!-- 6. Floating Awareness Photos -->
               <div class="dark-subpanel mb-3">
                 <div class="fw-bold small text-warning mb-2">6. Floating Awareness Photos &amp; Bottom Caption</div>
                 <div class="row g-2 mb-2">
@@ -1533,7 +1654,7 @@
     </div>
   </div>
 
-  <!-- STATIC FIXED BOTTOM NAVIGATION BAR (SO USERS NEVER SCROLL UP/DOWN TO NAVIGATE) -->
+  <!-- STATIC FIXED BOTTOM NAVIGATION BAR -->
   <nav id="bottomNavBar" class="fixed-bottom-nav" aria-label="Quick Navigation">
     <div class="bottom-nav-grid">
       <button id="bnavHomeBtn" type="button" class="bottom-nav-btn active" onclick="enterMainStorefront()">
@@ -1572,6 +1693,29 @@
     <img id="awarenessCardImg" src="" alt="Awareness" style="display:none;" />
     <div class="p-3 small">
       <p id="awarenessCardBody" class="mb-0"></p>
+    </div>
+  </div>
+
+  <!-- IN-APP CHAT PHOTO / RECEIPT LIGHTBOX MODAL -->
+  <div class="modal fade" id="chatImageLightboxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content" style="background:#0b1220;border:1px solid var(--border-subtle);">
+        <div class="modal-header py-2">
+          <h6 id="lightboxCaptionTitle" class="modal-title fw-bold text-warning mb-0">Payment Proof / Attachment</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center p-3" style="background:#050912;">
+          <img id="lightboxFullImage" src="" alt="Full attachment preview" class="img-fluid rounded" style="max-height:70vh;object-fit:contain;" />
+        </div>
+        <div class="modal-footer py-2 justify-content-between">
+          <a id="lightboxOriginalLink" href="#" target="_blank" rel="noopener" class="btn btn-sm btn-outline-info">
+            Open Raw File
+          </a>
+          <button type="button" class="btn btn-sm btn-warning fw-bold px-3" data-bs-dismiss="modal">
+            Back to Chat
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1748,16 +1892,20 @@
     </div>
   </div>
 
-  <!-- MODAL 5: CUSTOMER ORDER CHAT & RECEIPT -->
+  <!-- MODAL 5: WHATSAPP-STYLE CUSTOMER ORDER CHAT & RECEIPT -->
   <div class="modal fade" id="customerChatModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 id="customerChatModalTitle" class="modal-title fw-bold text-warning">Order Chat &amp; Official Receipt</h5>
+          <div>
+            <h5 id="customerChatModalTitle" class="modal-title fw-bold text-warning mb-0">Order Chat &amp; Official Receipt</h5>
+            <div id="customerChatSubHeader" class="small text-secondary">Everything stays inside this chat window</div>
+          </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div id="chatBankDetailsBox" class="dark-subpanel small mb-2 d-none"></div>
+
           <form id="customerChatUnlockForm" onsubmit="unlockCustomerChat(event)" class="row g-2 mb-2">
             <div class="col-md-5">
               <input id="custChatPhone" type="tel" class="form-control form-control-sm dark-input" placeholder="Your Phone Number *" required />
@@ -1771,21 +1919,33 @@
           </form>
           <div id="custChatAuthStatus" class="small text-secondary mb-2">Enter your phone number and PIN or Order Reference Code.</div>
 
-          <div id="customerChatBox" class="chat-stream mb-3"></div>
+          <div class="wa-chat-board">
+            <div class="wa-chat-topbar">
+              <span id="customerChatSessionBadge" class="badge text-bg-secondary">Locked</span>
+              <span class="small text-secondary">Tap any receipt or image to enlarge in-app</span>
+            </div>
 
-          <form id="customerSendMessageForm" onsubmit="sendCustomerChatMessage(event)" enctype="multipart/form-data">
-            <div class="row g-2">
-              <div class="col-md-8">
-                <input id="custMsgText" type="text" class="form-control form-control-sm dark-input" placeholder="Write a message or payment note..." />
+            <div id="customerChatBox" class="wa-chat-messages"></div>
+
+            <form id="customerSendMessageForm" class="wa-composer" onsubmit="sendCustomerChatMessage(event)" enctype="multipart/form-data">
+              <div id="custAttachPreviewBar" class="mb-2 d-none">
+                <span class="wa-attach-pill">
+                  <span id="custAttachFileName"></span>
+                  <button type="button" class="btn-close" style="transform:scale(0.75);" onclick="clearCustomerAttachment()"></button>
+                </span>
               </div>
-              <div class="col-md-4">
-                <input id="custMsgProofFile" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
+              <div class="row g-2 align-items-center">
+                <div class="col-9 col-md-10">
+                  <input id="custMsgText" type="text" class="form-control form-control-sm dark-input" placeholder="Write a message or payment note..." />
+                </div>
+                <div class="col-3 col-md-2 d-flex gap-1">
+                  <label for="custMsgProofFile" class="btn btn-sm btn-outline-info mb-0" title="Attach payment screenshot or photo">📎</label>
+                  <input id="custMsgProofFile" type="file" accept="image/*" class="d-none" onchange="onCustomerAttachmentSelected()" />
+                  <button type="submit" class="btn btn-warning btn-sm fw-bold flex-grow-1">Send</button>
+                </div>
               </div>
-            </div>
-            <div class="mt-2 d-flex justify-content-end">
-              <button type="submit" class="btn btn-warning btn-sm fw-bold px-4">Send Message</button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
     </div>
@@ -2045,6 +2205,125 @@
     function getExtraSettings() {
       const s = state.settings || {};
       return (typeof s.extra_settings === "object" && s.extra_settings) ? s.extra_settings : {};
+    }
+
+    // ========================================================================
+    // IN-APP LIGHTBOX & WHATSAPP BUBBLE RENDERER (USED IN BOTH CHATS)
+    // ========================================================================
+    function openChatImageLightbox(url, caption = "Attachment Preview") {
+      if (!url) return;
+      const img = document.getElementById("lightboxFullImage");
+      const title = document.getElementById("lightboxCaptionTitle");
+      const orig = document.getElementById("lightboxOriginalLink");
+      if (img) img.src = url;
+      if (title) title.textContent = caption;
+      if (orig) orig.href = url;
+      getModal("chatImageLightboxModal")?.show();
+    }
+
+    function renderWhatsAppBubble(msg, perspective = "customer", canDeletePhoto = false) {
+      const sender = String(msg.sender || "Customer");
+      const isSystem = sender.toLowerCase() === "system";
+      const isStaff = sender.toLowerCase() === "staff";
+
+      let bubbleClass = "wa-bubble-incoming";
+      if (isSystem) {
+        bubbleClass = "wa-bubble-system";
+      } else if (perspective === "customer") {
+        bubbleClass = isStaff ? "wa-bubble-incoming" : "wa-bubble-outgoing";
+      } else {
+        bubbleClass = isStaff ? "wa-bubble-outgoing" : "wa-bubble-incoming";
+      }
+
+      const contentHtml = isSystem
+        ? (msg.message || "")
+        : escapeHtml(msg.message || msg.text || "");
+
+      const safeUrl = escapeHtml(msg.proof_url || "");
+      const safeCaption = escapeHtml(`${sender}${msg.customer_phone ? ` (${msg.customer_phone})` : ""} • ${msg.timestamp || "Attachment"}`);
+
+      let attachmentHtml = "";
+      if (msg.proof_url) {
+        const removeBtnHtml = canDeletePhoto && msg.id
+          ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:0.68rem;" onclick="event.stopPropagation();deleteSingleChatPhoto('${escapeHtml(msg.id)}')">Remove Photo</button>`
+          : "";
+
+        attachmentHtml = `
+          <div class="wa-photo-card">
+            <img
+              src="${safeUrl}"
+              alt="Chat attachment"
+              class="wa-photo-thumb"
+              onclick="openChatImageLightbox('${safeUrl}', '${safeCaption}')"
+            />
+            <div class="wa-photo-footer">
+              <span style="cursor:pointer;color:#7dd3fc;" onclick="openChatImageLightbox('${safeUrl}', '${safeCaption}')">🔍 View full size in chat</span>
+              ${removeBtnHtml}
+            </div>
+          </div>
+        `;
+      }
+
+      const phoneTag = perspective === "staff" && msg.customer_phone
+        ? ` • ${escapeHtml(msg.customer_phone)}`
+        : "";
+
+      return `
+        <div class="wa-bubble ${bubbleClass}">
+          <div class="wa-meta">
+            <strong>${escapeHtml(sender)}${phoneTag}</strong>
+            <span>${escapeHtml(msg.timestamp || "")}</span>
+          </div>
+          ${contentHtml ? `<div>${contentHtml}</div>` : ""}
+          ${attachmentHtml}
+        </div>
+      `;
+    }
+
+    function onCustomerAttachmentSelected() {
+      const file = document.getElementById("custMsgProofFile")?.files?.[0];
+      const bar = document.getElementById("custAttachPreviewBar");
+      const nameEl = document.getElementById("custAttachFileName");
+      if (file && bar && nameEl) {
+        nameEl.textContent = `📎 ${file.name}`;
+        bar.classList.remove("d-none");
+      } else if (bar) {
+        bar.classList.add("d-none");
+      }
+    }
+
+    function clearCustomerAttachment() {
+      const inp = document.getElementById("custMsgProofFile");
+      const bar = document.getElementById("custAttachPreviewBar");
+      if (inp) inp.value = "";
+      if (bar) bar.classList.add("d-none");
+    }
+
+    function onStaffAttachmentSelected() {
+      const file = document.getElementById("staffReplyProofFile")?.files?.[0];
+      const bar = document.getElementById("staffAttachPreviewBar");
+      const nameEl = document.getElementById("staffAttachFileName");
+      if (file && bar && nameEl) {
+        nameEl.textContent = `📎 ${file.name}`;
+        bar.classList.remove("d-none");
+      } else if (bar) {
+        bar.classList.add("d-none");
+      }
+    }
+
+    function clearStaffAttachment() {
+      const inp = document.getElementById("staffReplyProofFile");
+      const bar = document.getElementById("staffAttachPreviewBar");
+      if (inp) inp.value = "";
+      if (bar) bar.classList.add("d-none");
+    }
+
+    function applyStaffQuickReply(text) {
+      const inp = document.getElementById("staffReplyText");
+      if (inp) {
+        inp.value = text;
+        inp.focus();
+      }
     }
 
     // ========================================================================
@@ -3138,7 +3417,7 @@
     }
 
     // ========================================================================
-    // CUSTOM REQUEST & CUSTOMER CHAT
+    // CUSTOM REQUEST & WHATSAPP-STYLE CUSTOMER CHAT
     // ========================================================================
     function openSpecialRequestModal() {
       const box = document.getElementById("specialRequestResultBox");
@@ -3217,16 +3496,22 @@
 
     async function fetchCustomerChatMessages(phone, pin) {
       const stEl = document.getElementById("custChatAuthStatus");
+      const badge = document.getElementById("customerChatSessionBadge");
       try {
         const url = `/api/messages?phone=${encodeURIComponent(phone)}&pin=${encodeURIComponent(pin)}&shop_id=${encodeURIComponent(state.selectedShopId || "main")}`;
         const res = await fetch(url);
         const data = await safeJson(res);
         if (!res.ok) {
           state.customerChat.unlocked = false;
+          if (badge) {
+            badge.className = "badge text-bg-danger";
+            badge.textContent = "Locked";
+          }
           if (stEl) {
             stEl.className = "small text-danger mb-2";
             stEl.textContent = data.detail || "Invalid phone number or PIN/Ref.";
           }
+          renderCustomerChatMessages();
           return;
         }
         state.customerChat = {
@@ -3235,6 +3520,10 @@
           unlocked: true,
           messages: Array.isArray(data.messages) ? data.messages : []
         };
+        if (badge) {
+          badge.className = "badge text-bg-success";
+          badge.textContent = `Connected • ${phone}`;
+        }
         if (stEl) {
           stEl.className = "small text-success mb-2";
           stEl.textContent = `Unlocked chat for ${phone}`;
@@ -3253,32 +3542,16 @@
       if (!box) return;
       if (!state.customerChat.unlocked) {
         const helper = String(getExtraSettings().pinHelperMsg || "").trim();
-        box.innerHTML = `<div class="text-secondary small text-center py-4">${escapeHtml(helper || "Unlock with your phone number and PIN or Reference Code.")}</div>`;
+        box.innerHTML = `<div class="text-secondary small text-center py-5">${escapeHtml(helper || "Enter your phone number and PIN or Reference Code above to open your chat thread.")}</div>`;
         return;
       }
       if (!state.customerChat.messages.length) {
-        box.innerHTML = `<div class="text-secondary small text-center py-4">No messages yet.</div>`;
+        box.innerHTML = `<div class="text-secondary small text-center py-5">No messages yet. Send a message or attach a payment receipt below.</div>`;
         return;
       }
-      box.innerHTML = state.customerChat.messages.map(m => {
-        const sender = String(m.sender || "Customer");
-        const isSys = sender.toLowerCase() === "system";
-        const isStaff = sender.toLowerCase() === "staff";
-        const cls = isSys ? "chat-msg-system" : (isStaff ? "chat-msg-staff" : "chat-msg-customer");
-        const body = isSys ? (m.message || "") : escapeHtml(m.message || m.text || "");
-        const imgHtml = m.proof_url
-          ? `<div class="mt-1"><a href="${escapeHtml(m.proof_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(m.proof_url)}" alt="Receipt" class="rounded" style="max-width:150px;max-height:120px;object-fit:contain;" /></a></div>`
-          : "";
-        return `
-          <div class="chat-msg ${cls}">
-            <div class="d-flex justify-content-between gap-2 mb-1" style="font-size:0.72rem;opacity:0.8;">
-              <strong>${escapeHtml(sender)}</strong>
-              <span>${escapeHtml(m.timestamp || "")}</span>
-            </div>
-            <div>${body}</div>
-            ${imgHtml}
-          </div>`;
-      }).join("");
+      box.innerHTML = state.customerChat.messages
+        .map(m => renderWhatsAppBubble(m, "customer", false))
+        .join("");
       box.scrollTop = box.scrollHeight;
     }
 
@@ -3304,7 +3577,7 @@
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Send failed");
         if (txtEl) txtEl.value = "";
-        if (fileEl) fileEl.value = "";
+        clearCustomerAttachment();
         await fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin);
       } catch (err) {
         alert(err.message);
@@ -3796,7 +4069,7 @@
     }
 
     // ========================================================================
-    // POS, ORDERS, CHAT, RECORDS, ANALYTICS & SETTINGS SAVE
+    // POS, ORDERS, STAFF WHATSAPP CHAT, RECORDS, ANALYTICS & SETTINGS SAVE
     // ========================================================================
     function populatePosProductSelect() {
       const sel = document.getElementById("posProductSelect");
@@ -3930,6 +4203,7 @@
         state.orders = [];
       }
       renderStaffOrders();
+      renderStaffChatThreads();
     }
 
     function setOrderFilter(filterName, btnEl) {
@@ -3965,7 +4239,7 @@
                 ${summary ? `<div class="small mt-1">${escapeHtml(summary)}</div>` : ""}
                 <div class="d-flex flex-wrap gap-1 mt-2">
                   ${!verified ? `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="verifyStaffOrder('${escapeHtml(o.id)}')">Verify &amp; Receipt</button>` : ""}
-                  <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="focusStaffChatPhone('${escapeHtml(o.contact_phone || "")}')">Chat</button>
+                  <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="focusStaffChatPhone('${escapeHtml(o.contact_phone || "")}')">Open Chat</button>
                   <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteStaffOrder('${escapeHtml(o.id)}')">Delete</button>
                 </div>
               </div>`;
@@ -3974,9 +4248,95 @@
     }
 
     function focusStaffChatPhone(phone) {
-      document.getElementById("staffChatPhoneFilter").value = phone;
-      document.getElementById("staffReplyPhone").value = phone;
+      const cleanPhone = String(phone || "").trim();
+      const filterInp = document.getElementById("staffChatPhoneFilter");
+      const replyInp = document.getElementById("staffReplyPhone");
+      if (filterInp) filterInp.value = cleanPhone;
+      if (replyInp) replyInp.value = cleanPhone;
+      updateStaffChatTargetLabel();
+      renderStaffChatThreads();
       renderStaffChatMessages();
+    }
+
+    function clearStaffThreadSelection() {
+      const filterInp = document.getElementById("staffChatPhoneFilter");
+      if (filterInp) filterInp.value = "";
+      updateStaffChatTargetLabel();
+      renderStaffChatThreads();
+      renderStaffChatMessages();
+    }
+
+    function onStaffPhoneFilterChange() {
+      const val = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+      const replyInp = document.getElementById("staffReplyPhone");
+      if (val && replyInp) replyInp.value = val;
+      updateStaffChatTargetLabel();
+      renderStaffChatThreads();
+      renderStaffChatMessages();
+    }
+
+    function updateStaffChatTargetLabel() {
+      const val = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+      const lbl = document.getElementById("staffActiveChatTargetLabel");
+      if (lbl) {
+        lbl.textContent = val
+          ? `Conversation with ${val}`
+          : "Viewing all store conversations";
+      }
+    }
+
+    function renderStaffChatThreads() {
+      const list = document.getElementById("staffChatThreadsList");
+      if (!list) return;
+      const activePhone = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+
+      const threadMap = new Map();
+      for (const o of state.orders) {
+        const ph = String(o.contact_phone || "").trim();
+        if (!ph) continue;
+        if (!threadMap.has(ph)) {
+          threadMap.set(ph, {
+            phone: ph,
+            name: o.customer || "Customer",
+            preview: `Order ${o.payment_ref || ""}`,
+            time: o.timestamp || ""
+          });
+        }
+      }
+
+      for (const m of state.staffMessages) {
+        const ph = String(m.customer_phone || m.phone || "").trim();
+        if (!ph) continue;
+        const txt = m.proof_url
+          ? "📷 Sent an image / receipt"
+          : String(m.message || m.text || "").replace(/<[^>]*>/g, "").trim() || "Message";
+        const existing = threadMap.get(ph);
+        threadMap.set(ph, {
+          phone: ph,
+          name: existing?.name || "Customer",
+          preview: txt,
+          time: m.timestamp || existing?.time || ""
+        });
+      }
+
+      const threads = Array.from(threadMap.values());
+      if (!threads.length) {
+        list.innerHTML = `<div class="small text-secondary py-2">No active customer chats yet.</div>`;
+        return;
+      }
+
+      list.innerHTML = threads.map(t => {
+        const isSelected = activePhone && t.phone === activePhone;
+        return `
+          <button type="button" class="wa-thread-item ${isSelected ? "active" : ""}" onclick="focusStaffChatPhone('${escapeHtml(t.phone)}')">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <strong class="small text-light">${escapeHtml(t.name)} • <span class="text-warning">${escapeHtml(t.phone)}</span></strong>
+              <span style="font-size:0.68rem;" class="text-secondary">${escapeHtml(t.time)}</span>
+            </div>
+            <div class="small text-secondary text-truncate mt-1">${escapeHtml(t.preview)}</div>
+          </button>
+        `;
+      }).join("");
     }
 
     async function verifyStaffOrder(orderId) {
@@ -4008,6 +4368,7 @@
       } catch {
         state.staffMessages = [];
       }
+      renderStaffChatThreads();
       renderStaffChatMessages();
     }
 
@@ -4018,26 +4379,8 @@
       const rows = state.staffMessages.filter(m => !phoneFilter || String(m.customer_phone || m.phone || "").includes(phoneFilter));
 
       box.innerHTML = rows.length
-        ? rows.map(m => {
-            const sender = String(m.sender || "Customer");
-            const isSys = sender.toLowerCase() === "system";
-            const isStaff = sender.toLowerCase() === "staff";
-            const cls = isSys ? "chat-msg-system" : (isStaff ? "chat-msg-staff" : "chat-msg-customer");
-            const body = isSys ? (m.message || "") : escapeHtml(m.message || m.text || "");
-            const proof = m.proof_url
-              ? `<div class="mt-1 d-flex align-items-center gap-2"><a href="${escapeHtml(m.proof_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(m.proof_url)}" alt="Proof" class="rounded" style="max-width:120px;max-height:95px;object-fit:contain;" /></a><button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="deleteSingleChatPhoto('${escapeHtml(m.id)}')">Remove</button></div>`
-              : "";
-            return `
-              <div class="chat-msg ${cls}">
-                <div class="d-flex justify-content-between gap-2 mb-1" style="font-size:0.72rem;opacity:0.8;">
-                  <strong>${escapeHtml(sender)} (${escapeHtml(m.customer_phone || "")})</strong>
-                  <span>${escapeHtml(m.timestamp || "")}</span>
-                </div>
-                <div>${body}</div>
-                ${proof}
-              </div>`;
-          }).join("")
-        : `<div class="text-secondary small text-center py-4">No messages.</div>`;
+        ? rows.map(m => renderWhatsAppBubble(m, "staff", true)).join("")
+        : `<div class="text-secondary small text-center py-5">No messages in this conversation.</div>`;
       box.scrollTop = box.scrollHeight;
     }
 
@@ -4058,7 +4401,7 @@
       const res = await fetch("/api/messages", { method: "POST", headers: getStaffHeaders(), body: fd });
       if (res.ok) {
         document.getElementById("staffReplyText").value = "";
-        document.getElementById("staffReplyProofFile").value = "";
+        clearStaffAttachment();
         await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"));
       }
     }

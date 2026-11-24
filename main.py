@@ -522,6 +522,46 @@ def upload_to_cloudinary(
     return (result.get("secure_url") or result.get("url")), result.get("public_id")
 
 
+def _deduct_product_stock_in_firestore(
+    product_id: str,
+    unit_type: str,
+    qty: float,
+    ts: str,
+) -> None:
+    """Transactionally deduct cartons/packs/retail units from a Firestore product."""
+    if not product_id or qty <= 0:
+        return
+    prod_ref = db.collection("products").document(product_id)
+
+    @firestore.transactional
+    def _deduct_stock_tx(transaction: firestore.Transaction, ref: firestore.DocumentReference):
+        snap = ref.get(transaction=transaction)
+        if not snap.exists:
+            return
+        pdata = snap.to_dict() or {}
+        m_lbl = str(pdata.get("unit_main_label") or "Carton").strip()
+        p_lbl = str(pdata.get("unit_pack_label") or "Pack").strip()
+        packs_per_carton = max(1.0, float(pdata.get("packs_per_carton") or 1))
+        units_per_pack = max(1.0, float(pdata.get("units_per_pack") or 1))
+
+        if unit_type == m_lbl or unit_type.lower() == "carton":
+            deduct_cartons = qty
+        elif unit_type == p_lbl or unit_type.lower() == "pack":
+            deduct_cartons = qty / packs_per_carton
+        else:
+            deduct_cartons = qty / (packs_per_carton * units_per_pack)
+
+        current_stock = float(
+            pdata.get("qty_cartons")
+            if pdata.get("qty_cartons") is not None
+            else (pdata.get("stock") or 0)
+        )
+        new_stock = max(0.0, current_stock - deduct_cartons)
+        transaction.set(ref, {"qty_cartons": new_stock, "stock": new_stock, "updated_at": ts}, merge=True)
+
+    _deduct_stock_tx(db.transaction(), prod_ref)
+
+
 # ==============================================================================
 # AUTO-STOCK: LOCATION POPULARITY, AUTO IMAGES, PACKAGING & OPTIONAL VIDEO ADS
 # ==============================================================================
@@ -667,6 +707,71 @@ def auto_stock_by_barcode(
         raise HTTPException(status_code=502, detail=f"Barcode/keyword lookup failed: {exc}")
 
 
+@app.post("/api/auto-stock/search-names")
+async def auto_stock_by_names(request: Request):
+    """Batch lookup & auto-categorization by product names for the frontend Smart Auto-Stock table."""
+    require_staff(request)
+    payload = await request.json()
+    raw_names = payload.get("product_names") if isinstance(payload.get("product_names"), list) else []
+    names = [str(n).strip() for n in raw_names if str(n).strip()]
+    if not names:
+        raise HTTPException(status_code=400, detail="Provide at least one product name.")
+    if len(names) > MAX_BATCH_ITEMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot auto-stock more than {MAX_BATCH_ITEMS} items per batch.",
+        )
+
+    location = str(payload.get("location") or "Watt Market, Calabar").strip() or "Watt Market, Calabar"
+    default_stock = max(
+        0.0,
+        float(
+            payload.get("default_stock_cartons")
+            if payload.get("default_stock_cartons") is not None
+            else 5.0
+        ),
+    )
+
+    items: List[Dict[str, Any]] = []
+    for prod_name in names:
+        try:
+            res = lookup_barcode_or_keyword(
+                prod_name,
+                default_stock_cartons=default_stock,
+                location=location,
+            )
+            item = res.get("item") if isinstance(res, dict) else None
+            if isinstance(item, dict):
+                item["selected"] = True
+                items.append(item)
+        except Exception as exc:
+            print(f"[WARN] Name lookup fallback for '{prod_name}': {exc}")
+            items.append(
+                {
+                    "name": prod_name,
+                    "description": f"{prod_name} — stocked in {location}.",
+                    "category": "General",
+                    "location": location,
+                    "vendor_name": "",
+                    "main_unit": "Carton",
+                    "sub_unit": "Pack",
+                    "retail_unit": "Retail Unit",
+                    "price_carton": 0.0,
+                    "price_pack": 0.0,
+                    "price_retail": 0.0,
+                    "cost_price_carton": 0.0,
+                    "packs_per_carton": 1,
+                    "units_per_pack": 1,
+                    "stock_cartons": default_stock,
+                    "image_url": "",
+                    "price_benchmark_note": "Verify prices before publishing.",
+                    "selected": True,
+                }
+            )
+
+    return {"ok": True, "count": len(items), "items": items}
+
+
 @app.post("/api/auto-stock/category")
 async def auto_stock_by_category(request: Request):
     require_staff(request)
@@ -716,8 +821,85 @@ async def auto_stock_by_category(request: Request):
     }
 
 
+@app.post("/api/products/batch")
+async def batch_create_products(request: Request):
+    """Publish multiple reviewed auto-stock products into Firestore in one batch."""
+    require_staff(request)
+    payload = await request.json()
+    raw_items = payload.get("items") if isinstance(payload.get("items"), list) else []
+    if not raw_items:
+        raise HTTPException(status_code=400, detail="Select at least one product to publish.")
+    if len(raw_items) > MAX_BATCH_ITEMS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot publish more than {MAX_BATCH_ITEMS} items at once.",
+        )
+
+    batch = db.batch()
+    created_ids: List[str] = []
+    ts = now_str()
+
+    for raw in raw_items:
+        if not isinstance(raw, dict):
+            continue
+        clean_name = str(raw.get("name") or "").strip()
+        if not clean_name:
+            continue
+
+        price_carton = max(0.0, float(raw.get("price_carton") or 0.0))
+        price_pack = max(0.0, float(raw.get("price_pack") or 0.0))
+        price_retail = max(0.0, float(raw.get("price_retail") or 0.0))
+        stock_cartons = max(0.0, float(raw.get("stock_cartons") or 0.0))
+        cost_carton = max(0.0, float(raw.get("cost_price_carton") or 0.0))
+        ppc = max(1, int(raw.get("packs_per_carton") or 1))
+        upp = max(1, int(raw.get("units_per_pack") or 1))
+        safe_img = sanitize_url(str(raw.get("image_url") or ""))
+        clean_vid = str(raw.get("video_url") or "").strip()
+
+        doc_id = uuid.uuid4().hex
+        doc_ref = db.collection("products").document(doc_id)
+        batch.set(
+            doc_ref,
+            {
+                "name": clean_name,
+                "category": str(raw.get("category") or "General").strip() or "General",
+                "location": str(raw.get("location") or "Watt Market, Calabar").strip(),
+                "vendor_name": str(raw.get("vendor_name") or "").strip(),
+                "unit_main_label": str(raw.get("main_unit") or "Carton").strip() or "Carton",
+                "unit_pack_label": str(raw.get("sub_unit") or "Pack").strip() or "Pack",
+                "unit_retail_label": str(raw.get("retail_unit") or "Retail Unit").strip() or "Retail Unit",
+                "price_carton": price_carton,
+                "price": price_carton,
+                "qty_cartons": stock_cartons,
+                "stock": stock_cartons,
+                "cost": cost_carton,
+                "price_pack": price_pack,
+                "packs_per_carton": ppc,
+                "shelf": str(raw.get("location") or "").strip(),
+                "price_retail": price_retail,
+                "units_per_pack": upp,
+                "expiry": "",
+                "video_url": clean_vid,
+                "video_public_id": "",
+                "description": str(raw.get("description") or "").strip(),
+                "image_url": safe_img,
+                "image_public_id": "",
+                "created_at": ts,
+                "updated_at": ts,
+            },
+        )
+        created_ids.append(doc_id)
+
+    if not created_ids:
+        raise HTTPException(status_code=400, detail="No valid products found in batch payload.")
+
+    batch.commit()
+    _cache_invalidate("products:")
+    return {"ok": True, "count": len(created_ids), "ids": created_ids}
+
+
 # ==============================================================================
-# EXISTING ROUTES (WITH AUTO-STOCK IMAGE_URL FALLBACK SUPPORT)
+# CORE ROUTES
 # ==============================================================================
 
 @app.get("/", response_class=HTMLResponse)
@@ -1058,6 +1240,7 @@ async def verify_order(order_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Order not found")
 
     order_data = snap.to_dict() or {}
+    already_verified = str(order_data.get("status") or "").strip().lower() == "verified"
     payload = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
     verified_by = str(payload.get("verified_by") or staff.get("username") or "admin").strip()
 
@@ -1066,7 +1249,8 @@ async def verify_order(order_id: str, request: Request):
     biz_name = html.escape(str(settings_data.get("business_name") or "SAMMYREKS BUSINESS CENTER").upper())
     currency = html.escape(str(settings_data.get("currency") or "₦"))
 
-    customer = html.escape(str(order_data.get("customer") or order_data.get("customer_name") or "Customer").strip())
+    customer_raw = str(order_data.get("customer") or order_data.get("customer_name") or "Customer").strip()
+    customer = html.escape(customer_raw)
     phone_raw = str(order_data.get("contact_phone") or order_data.get("phone") or "").strip()
     phone_esc = html.escape(phone_raw or "N/A")
     ref_code = str(order_data.get("payment_ref") or make_ref()).strip()
@@ -1085,17 +1269,47 @@ async def verify_order(order_id: str, request: Request):
             lines_html += f"<p style='margin:2px 0;'>{sp_text}</p>"
     elif items:
         for it in items:
-            it_name = html.escape(str(it.get("name") or "Item"))
-            it_unit = html.escape(str(it.get("unit") or "Unit"))
-            it_qty = html.escape(str(it.get("qty") or 1))
-            it_total = float(it.get("total_price") or 0.0)
+            pid = str(it.get("product_id") or "").strip()
+            it_name_raw = str(it.get("name") or "Item").strip()
+            it_unit_raw = str(it.get("unit") or "Unit").strip()
+            it_qty_num = max(0.0, float(it.get("qty") or 1))
+            it_unit_price = float(it.get("unit_price") or 0.0)
+            it_total = float(it.get("total_price") or (it_unit_price * it_qty_num))
             total_val += it_total
+
+            if not already_verified:
+                if pid:
+                    _deduct_product_stock_in_firestore(pid, it_unit_raw, it_qty_num, ts)
+                db.collection("sales").document(uuid.uuid4().hex).set(
+                    {
+                        "product_id": pid,
+                        "item_name": it_name_raw,
+                        "unit_type": it_unit_raw,
+                        "qty": it_qty_num,
+                        "unit_price": it_unit_price,
+                        "total": it_total,
+                        "customer_name": customer_raw,
+                        "customer_phone": phone_raw or "N/A",
+                        "payment_source": "Online Order",
+                        "worker": verified_by,
+                        "record_debt": False,
+                        "payment_ref": ref_code,
+                        "timestamp": ts,
+                    }
+                )
+
+            it_name = html.escape(it_name_raw)
+            it_unit = html.escape(it_unit_raw)
+            it_qty = html.escape(str(it.get("qty") or 1))
             lines_html += (
                 f"<p style='margin:2px 0;'>{it_qty} {it_unit}(s) of {it_name} &mdash; "
                 f"{currency}{it_total:,.2f}</p>"
             )
     elif order_data.get("notes"):
         lines_html += f"<p style='margin:2px 0;'>{html.escape(str(order_data.get('notes')))}</p>"
+
+    if items and not already_verified:
+        _cache_invalidate("products:")
 
     receipt_html = (
         f"<div style='background:#fdfcf7; color:#111; padding:16px; border-radius:6px; "
@@ -1329,35 +1543,7 @@ async def record_sale(request: Request):
     ts = now_str()
 
     if product_id:
-        prod_ref = db.collection("products").document(product_id)
-
-        @firestore.transactional
-        def _deduct_stock_tx(transaction: firestore.Transaction, ref: firestore.DocumentReference):
-            snap = ref.get(transaction=transaction)
-            if not snap.exists:
-                return
-            pdata = snap.to_dict() or {}
-            m_lbl = str(pdata.get("unit_main_label") or "Carton")
-            p_lbl = str(pdata.get("unit_pack_label") or "Pack")
-            packs_per_carton = max(1.0, float(pdata.get("packs_per_carton") or 1))
-            units_per_pack = max(1.0, float(pdata.get("units_per_pack") or 1))
-
-            if unit_type == m_lbl:
-                deduct_cartons = qty
-            elif unit_type == p_lbl:
-                deduct_cartons = qty / packs_per_carton
-            else:
-                deduct_cartons = qty / (packs_per_carton * units_per_pack)
-
-            current_stock = float(
-                pdata.get("qty_cartons")
-                if pdata.get("qty_cartons") is not None
-                else (pdata.get("stock") or 0)
-            )
-            new_stock = max(0.0, current_stock - deduct_cartons)
-            transaction.set(ref, {"qty_cartons": new_stock, "stock": new_stock, "updated_at": ts}, merge=True)
-
-        _deduct_stock_tx(db.transaction(), prod_ref)
+        _deduct_product_stock_in_firestore(product_id, unit_type, qty, ts)
         _cache_invalidate("products:")
 
     if record_debt:
@@ -1530,7 +1716,7 @@ def delete_worker(worker_id: str, request: Request):
 
 @app.get("/api/analytics")
 def get_analytics(request: Request):
-    require_admin_or_ceo(request)
+    require_staff(request)
     products_by_id: Dict[str, Dict[str, Any]] = {}
     products_by_name: Dict[str, Dict[str, Any]] = {}
     for doc in db.collection("products").stream():
@@ -1614,9 +1800,11 @@ async def save_settings(
     tagline: str = Form(""),
     active_notice: str = Form(""),
     broadcast_video_url: str = Form(""),
+    clear_broadcast_video: str = Form("false"),
     currency: str = Form("₦"),
     extra_settings: str = Form(""),
     broadcast_video_file: Optional[UploadFile] = File(None),
+    awareness_image_file: List[UploadFile] = File(default=[]),
 ):
     require_admin_or_ceo(request)
     ref = db.collection("settings").document("business")
@@ -1649,7 +1837,7 @@ async def save_settings(
             else (extract_cloudinary_public_id(clean_link) or "")
         )
     else:
-        if old_video:
+        if old_video and (clear_broadcast_video.strip().lower() == "true" or not clean_link):
             delete_from_cloudinary(
                 public_id=old_video_public_id, url=old_video, resource_type="video"
             )
@@ -1662,6 +1850,26 @@ async def save_settings(
             parsed_extra = json.loads(extra_settings)
         except json.JSONDecodeError:
             parsed_extra = extra_settings.strip()
+
+    uploaded_awareness_urls: List[str] = []
+    for af in awareness_image_file or []:
+        if af and af.filename:
+            img_u, _ = upload_to_cloudinary(
+                af, folder="sammyreks_awareness", resource_type="image", max_dim=900
+            )
+            if img_u:
+                uploaded_awareness_urls.append(img_u)
+
+    if uploaded_awareness_urls:
+        if not isinstance(parsed_extra, dict):
+            parsed_extra = {}
+        existing_raw = str(parsed_extra.get("awarenessImageUrl") or "")
+        existing_list = [
+            u.strip()
+            for u in re.split(r"\||\r?\n", existing_raw)
+            if u.strip() and not u.strip().startswith("data:image/")
+        ]
+        parsed_extra["awarenessImageUrl"] = "\n".join(existing_list + uploaded_awareness_urls)
 
     doc: Dict[str, Any] = {
         "business_name": business_name.strip() or "Sammyreks Business Center",

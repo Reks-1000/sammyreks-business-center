@@ -534,6 +534,66 @@
       padding: 8px 10px;
     }
 
+    .wa-composer-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      width: 100%;
+    }
+
+    .wa-composer-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      height: 38px;
+      font-size: 0.86rem;
+    }
+
+    .wa-add-img-btn {
+      height: 38px;
+      padding: 0 10px;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.55);
+      color: #7dd3fc;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      white-space: nowrap;
+      flex-shrink: 0;
+      cursor: pointer;
+      margin-bottom: 0;
+      transition: all 0.15s ease;
+    }
+
+    .wa-add-img-btn:hover {
+      background: rgba(56, 189, 248, 0.24);
+      color: #e0f2fe;
+    }
+
+    .wa-ig-send-btn {
+      height: 38px;
+      width: 44px;
+      border-radius: 11px;
+      border: none;
+      background: linear-gradient(135deg, #f58529 0%, #dd2a7b 55%, #8134af 100%);
+      color: #ffffff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+      box-shadow: 0 3px 12px rgba(221, 42, 123, 0.35);
+      transition: transform 0.12s ease, opacity 0.15s ease;
+    }
+
+    .wa-ig-send-btn:hover {
+      transform: scale(1.04);
+      opacity: 0.96;
+    }
+
     .wa-thread-item {
       background: var(--bg-surface-2);
       border: 1px solid var(--border-subtle);
@@ -1278,17 +1338,25 @@
                         <button type="button" class="btn-close" style="transform:scale(0.75);" onclick="clearStaffAttachment()"></button>
                       </span>
                     </div>
-                    <div class="row g-2 align-items-center">
-                      <div class="col-sm-4">
-                        <input id="staffReplyPhone" type="text" class="form-control form-control-sm dark-input" placeholder="Customer phone *" required />
-                      </div>
-                      <div class="col-sm-5">
-                        <input id="staffReplyText" type="text" class="form-control form-control-sm dark-input" placeholder="Type a message..." />
-                      </div>
-                      <div class="col-sm-3 d-flex gap-1">
-                        <label for="staffReplyProofFile" class="btn btn-sm btn-outline-info mb-0" title="Attach image or receipt">📎</label>
+                    <div class="d-flex flex-column gap-2">
+                      <input id="staffReplyPhone" type="text" class="form-control form-control-sm dark-input" placeholder="Customer phone number *" required />
+                      <div class="wa-composer-row">
+                        <input id="staffReplyText" type="text" class="form-control dark-input wa-composer-input" placeholder="Write a message..." />
+                        <label for="staffReplyProofFile" class="wa-add-img-btn" title="Add image to chat">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                            <polyline points="21 15 16 10 5 21"></polyline>
+                          </svg>
+                          <span class="d-none d-sm-inline">Add Image</span>
+                        </label>
                         <input id="staffReplyProofFile" type="file" accept="image/*" class="d-none" onchange="onStaffAttachmentSelected()" />
-                        <button type="submit" class="btn btn-warning btn-sm fw-bold flex-grow-1">Send</button>
+                        <button type="submit" class="wa-ig-send-btn" title="Send message" aria-label="Send message">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                          </svg>
+                        </button>
                       </div>
                     </div>
                   </form>
@@ -1934,15 +2002,23 @@
                   <button type="button" class="btn-close" style="transform:scale(0.75);" onclick="clearCustomerAttachment()"></button>
                 </span>
               </div>
-              <div class="row g-2 align-items-center">
-                <div class="col-9 col-md-10">
-                  <input id="custMsgText" type="text" class="form-control form-control-sm dark-input" placeholder="Write a message or payment note..." />
-                </div>
-                <div class="col-3 col-md-2 d-flex gap-1">
-                  <label for="custMsgProofFile" class="btn btn-sm btn-outline-info mb-0" title="Attach payment screenshot or photo">📎</label>
-                  <input id="custMsgProofFile" type="file" accept="image/*" class="d-none" onchange="onCustomerAttachmentSelected()" />
-                  <button type="submit" class="btn btn-warning btn-sm fw-bold flex-grow-1">Send</button>
-                </div>
+              <div class="wa-composer-row">
+                <input id="custMsgText" type="text" class="form-control dark-input wa-composer-input" placeholder="Write a message or payment note..." />
+                <label for="custMsgProofFile" class="wa-add-img-btn" title="Add image to chat">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                    <polyline points="21 15 16 10 5 21"></polyline>
+                  </svg>
+                  <span class="d-none d-sm-inline">Add Image</span>
+                </label>
+                <input id="custMsgProofFile" type="file" accept="image/*" class="d-none" onchange="onCustomerAttachmentSelected()" />
+                <button type="submit" class="wa-ig-send-btn" title="Send message" aria-label="Send message">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
               </div>
             </form>
           </div>
@@ -2285,7 +2361,7 @@
       const bar = document.getElementById("custAttachPreviewBar");
       const nameEl = document.getElementById("custAttachFileName");
       if (file && bar && nameEl) {
-        nameEl.textContent = `📎 ${file.name}`;
+        nameEl.textContent = `🖼 ${file.name}`;
         bar.classList.remove("d-none");
       } else if (bar) {
         bar.classList.add("d-none");
@@ -2304,7 +2380,7 @@
       const bar = document.getElementById("staffAttachPreviewBar");
       const nameEl = document.getElementById("staffAttachFileName");
       if (file && bar && nameEl) {
-        nameEl.textContent = `📎 ${file.name}`;
+        nameEl.textContent = `🖼 ${file.name}`;
         bar.classList.remove("d-none");
       } else if (bar) {
         bar.classList.add("d-none");
@@ -3466,7 +3542,7 @@
           box.innerHTML = `<div class="alert alert-success py-2 small mb-0">Sent! Ref: <strong>${escapeHtml(data.payment_ref)}</strong> • PIN: <strong>${escapeHtml(data.customer_pin)}</strong></div>`;
         }
       } catch (err) {
-        if (box) box.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${escapeHtml(err.message)}</div>`;
+        if (box) resBox.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${escapeHtml(err.message)}</div>`;
       }
     }
 
@@ -3546,7 +3622,7 @@
         return;
       }
       if (!state.customerChat.messages.length) {
-        box.innerHTML = `<div class="text-secondary small text-center py-5">No messages yet. Send a message or attach a payment receipt below.</div>`;
+        box.innerHTML = `<div class="text-secondary small text-center py-5">No messages yet. Send a message or add an image below.</div>`;
         return;
       }
       box.innerHTML = state.customerChat.messages
@@ -4308,7 +4384,7 @@
         const ph = String(m.customer_phone || m.phone || "").trim();
         if (!ph) continue;
         const txt = m.proof_url
-          ? "📷 Sent an image / receipt"
+          ? "🖼 Sent an image / receipt"
           : String(m.message || m.text || "").replace(/<[^>]*>/g, "").trim() || "Message";
         const existing = threadMap.get(ph);
         threadMap.set(ph, {

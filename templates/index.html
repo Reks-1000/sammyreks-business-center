@@ -186,7 +186,7 @@
       object-fit: cover;
     }
 
-    /* Product Cards */
+    /* Product Cards (Uncropped Media + Advert Action) */
     .product-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
@@ -199,19 +199,23 @@
 
     .product-media-wrap {
       position: relative;
-      height: 200px;
-      background: #090e1a;
+      min-height: 190px;
+      max-height: 250px;
+      background: #0b1324;
       display: flex;
       align-items: center;
       justify-content: center;
+      padding: 8px;
       overflow: hidden;
     }
 
     .product-media-wrap img,
     .product-media-wrap video {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
+      max-height: 225px;
+      height: auto;
+      object-fit: contain;
+      border-radius: 8px;
       display: block;
     }
 
@@ -219,27 +223,49 @@
       position: absolute;
       top: 9px;
       left: 9px;
-      background: rgba(15, 23, 42, 0.85);
+      background: rgba(15, 23, 42, 0.88);
       border: 1px solid var(--border-subtle);
       color: var(--gold);
       font-size: 0.7rem;
       font-weight: 700;
       padding: 2px 9px;
       border-radius: 999px;
+      z-index: 2;
     }
 
-    .media-switch-btn {
+    .media-video-indicator {
       position: absolute;
-      bottom: 9px;
+      top: 9px;
       right: 9px;
       background: rgba(15, 23, 42, 0.9);
       border: 1px solid var(--gold);
       color: var(--gold);
       font-size: 0.72rem;
       font-weight: 700;
-      padding: 3px 10px;
+      padding: 2px 8px;
       border-radius: 999px;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .media-switch-btn {
+      position: absolute;
+      bottom: 9px;
+      right: 9px;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-size: 0.74rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      z-index: 2;
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
     }
 
     .gold-price-tag {
@@ -286,6 +312,15 @@
       z-index: 1040;
       overflow: hidden;
       display: none;
+    }
+
+    #awarenessCardImg {
+      width: 100%;
+      max-height: 220px;
+      height: auto;
+      object-fit: contain;
+      background: #0b1324;
+      display: block;
     }
 
     /* Chat Box */
@@ -388,7 +423,7 @@
         </div>
       </div>
 
-      <!-- Action Pills Bar matching live layout -->
+      <!-- Action Pills Bar -->
       <div class="d-flex flex-wrap align-items-center gap-2">
         <button id="navStorefrontBtn" type="button" class="hdr-pill-btn hdr-btn-white active" onclick="showStorefrontView()">
           Storefront
@@ -398,11 +433,11 @@
           + Register Your Shop
         </button>
 
-        <button type="button" class="hdr-pill-btn hdr-btn-cyan" onclick="openCartModal()">
+        <button id="navCartBtn" type="button" class="hdr-pill-btn hdr-btn-cyan" onclick="openCartModal()">
           Cart <span id="topCartBadge" class="badge rounded-pill text-bg-warning text-dark ms-1">0</span>
         </button>
 
-        <button type="button" class="hdr-pill-btn hdr-btn-green" onclick="openCustomerChatModal()">
+        <button id="navChatBtn" type="button" class="hdr-pill-btn hdr-btn-green" onclick="openCustomerChatModal()">
           Order Chat / Receipt
         </button>
 
@@ -443,7 +478,7 @@
           </button>
         </div>
         <div id="broadcastVideoBody">
-          <video id="broadcastVideoPlayer" class="w-100 rounded" style="max-height:280px;object-fit:cover;background:#000;" controls playsinline></video>
+          <video id="broadcastVideoPlayer" class="w-100 rounded" style="max-height:280px;object-fit:contain;background:#000;" controls playsinline></video>
         </div>
       </div>
 
@@ -480,8 +515,8 @@
               <option value="All">All Categories</option>
             </select>
           </div>
-          <div class="col-md-3">
-            <button type="button" class="btn w-100 fw-bold" style="border:1px solid var(--gold);color:var(--gold);background:transparent;" onclick="openSpecialRequestModal()">
+          <div id="customRequestCol" class="col-md-3">
+            <button id="customRequestBtn" type="button" class="btn w-100 fw-bold" style="border:1px solid var(--gold);color:var(--gold);background:transparent;" onclick="openSpecialRequestModal()">
               Custom Request
             </button>
           </div>
@@ -517,7 +552,7 @@
           </div>
         </div>
 
-        <div class="row g-2">
+        <div id="analyticsKpiRow" class="row g-2">
           <div class="col-6 col-md-3">
             <div class="dark-subpanel">
               <div class="small text-secondary">Total Revenue</div>
@@ -777,7 +812,7 @@
                   </div>
 
                   <div id="productMediaPreviewBar" class="d-flex align-items-center gap-2 mt-2 d-none">
-                    <img id="productFormImagePreview" src="" alt="Preview" class="rounded border" style="width:46px;height:46px;object-fit:cover;" />
+                    <img id="productFormImagePreview" src="" alt="Preview" class="rounded border" style="width:46px;height:46px;object-fit:contain;background:#0b1324;" />
                     <span id="productFormMediaText" class="small text-secondary text-truncate"></span>
                   </div>
 
@@ -1031,10 +1066,20 @@
         <!-- TAB 5: OVERALL APP SETTINGS -->
         <div class="tab-pane fade" id="settingsTab" role="tabpanel">
           <div class="dark-panel">
-            <h6 class="fw-bold mb-3" style="color:var(--gold);">Overall App Settings</h6>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div>
+                <h6 class="fw-bold mb-0" style="color:var(--gold);">Business &amp; Storefront App Settings</h6>
+                <div class="small text-secondary">Control storefront identity, notice banner, broadcast video, tabs, toggles, tips, and floating awareness cards[cite: 4, 5].</div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-warning" onclick="resetAllAppToggles()">
+                Reset All Toggles
+              </button>
+            </div>
+
             <form id="appSettingsForm" onsubmit="saveAppSettings(event)" enctype="multipart/form-data">
+              <!-- 1. Business Identity, Notice & Broadcast -->
               <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">Branding &amp; Notice Banner</div>
+                <div class="fw-bold small text-warning mb-2">1. Business Identity, Notice &amp; Broadcast</div>
                 <div class="row g-2">
                   <div class="col-md-5">
                     <label for="setBusinessName" class="form-label small mb-1">Business Name</label>
@@ -1045,58 +1090,234 @@
                     <input id="setTagline" name="tagline" type="text" class="form-control form-control-sm dark-input" />
                   </div>
                   <div class="col-md-2">
-                    <label for="setCurrency" class="form-label small mb-1">Currency</label>
+                    <label for="setCurrency" class="form-label small mb-1">Currency Symbol</label>
                     <input id="setCurrency" name="currency" type="text" class="form-control form-control-sm dark-input" value="₦" />
                   </div>
-                  <div class="col-md-6">
-                    <label for="setLogoUrl" class="form-label small mb-1">Logo URL</label>
-                    <input id="setLogoUrl" type="text" class="form-control form-control-sm dark-input" />
-                  </div>
-                  <div class="col-md-6">
-                    <label for="setActiveNotice" class="form-label small mb-1">Gold Banner Announcement</label>
+
+                  <div class="col-12">
+                    <label for="setActiveNotice" class="form-label small mb-1">Active Notice Banner (Shown at top of Customer Storefront)</label>
                     <input id="setActiveNotice" name="active_notice" type="text" class="form-control form-control-sm dark-input" />
                   </div>
-                </div>
-              </div>
 
-              <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">Featured Promo Broadcast Video &amp; Tips</div>
-                <div class="row g-2">
                   <div class="col-md-6">
-                    <label for="setBroadcastVideoUrl" class="form-label small mb-1">Broadcast Video URL (existing preserved if blank)</label>
-                    <input id="setBroadcastVideoUrl" name="broadcast_video_url" type="text" class="form-control form-control-sm dark-input" />
-                  </div>
-                  <div class="col-md-6">
-                    <label for="setBroadcastVideoFile" class="form-label small mb-1">Upload New Broadcast Video</label>
+                    <label for="setBroadcastVideoFile" class="form-label small mb-1">Upload Broadcast Video File</label>
                     <input id="setBroadcastVideoFile" name="broadcast_video_file" type="file" accept="video/*" class="form-control form-control-sm dark-input" />
                   </div>
-                  <div class="col-12">
-                    <label for="setRotatingTips" class="form-label small mb-1">Rotating Tips (One per line)</label>
-                    <textarea id="setRotatingTips" rows="3" class="form-control form-control-sm dark-input"></textarea>
+                  <div class="col-md-6">
+                    <label for="setBroadcastVideoUrl" class="form-label small mb-1">OR Broadcast Video Link</label>
+                    <div class="input-group input-group-sm">
+                      <input id="setBroadcastVideoUrl" name="broadcast_video_url" type="text" class="form-control dark-input" placeholder="https://..." />
+                      <button type="button" class="btn btn-outline-secondary text-light" onclick="clearBroadcastVideoField()">Clear</button>
+                    </div>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label for="setFooterCopyright" class="form-label small mb-1">Footer Copyright Text (Optional override)</label>
+                    <input id="setFooterCopyright" type="text" class="form-control form-control-sm dark-input" placeholder="Leave blank to use default business copyright" />
+                  </div>
+                  <div class="col-md-6">
+                    <label for="setReceiptFooter" class="form-label small mb-1">Thermal Receipt Footer Message</label>
+                    <input id="setReceiptFooter" type="text" class="form-control form-control-sm dark-input" placeholder="Thank you for your patronage!" />
                   </div>
                 </div>
               </div>
 
+              <!-- 2. Bottom Navigation Tabs, Cash Flow Analytics & Alerts -->
               <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">Floating Awareness Card</div>
+                <div class="fw-bold small text-warning mb-2">2. Bottom Navigation Tabs, Cash Flow Analytics &amp; Alerts</div>
+                <div class="row g-2 mb-2">
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check form-switch">
+                      <input id="togShowAnalytics" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowAnalytics" class="form-check-label small">Show Business Analytics (Cash Flow)</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check form-switch">
+                      <input id="togShowStockAlerts" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowStockAlerts" class="form-check-label small">Show Low Stock &amp; Expiry Alerts</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check form-switch">
+                      <input id="togShowShopTab" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowShopTab" class="form-check-label small">Show Shop Tab</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check form-switch">
+                      <input id="togShowRequestTab" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowRequestTab" class="form-check-label small">Show Request Tab</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check form-switch">
+                      <input id="togShowLiveCartBadge" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowLiveCartBadge" class="form-check-label small">Show Live Cart Count Badge</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check form-switch">
+                      <input id="togShowChatReceiptsTab" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowChatReceiptsTab" class="form-check-label small">Show Chat &amp; Receipts</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check form-switch">
+                      <input id="togShowHeaderCartBtn" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowHeaderCartBtn" class="form-check-label small">Show Top Header Cart Button</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row g-2">
+                  <div class="col-md-4">
+                    <label for="setLowStockThreshold" class="form-label small mb-1">Low Stock Alert Threshold (Cartons)</label>
+                    <input id="setLowStockThreshold" type="number" min="0" step="0.5" value="2" class="form-control form-control-sm dark-input" />
+                  </div>
+                  <div class="col-md-8">
+                    <label for="setCustomTabNames" class="form-label small mb-1">Custom Mobile Tab Names (Shop | Request | Chat | Checkout)</label>
+                    <input id="setCustomTabNames" type="text" class="form-control form-control-sm dark-input" placeholder="Shop | Request | Chat & Receipts | Checkout" />
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Shop Display & Product Cards -->
+              <div class="dark-subpanel mb-3">
+                <div class="fw-bold small text-warning mb-2">3. Shop Display &amp; Product Cards</div>
+                <div class="row g-2 mb-2">
+                  <div class="col-sm-6 col-md-3">
+                    <div class="form-check form-switch">
+                      <input id="togShowWatchAd" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowWatchAd" class="form-check-label small">Show Watch Ad Buttons</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-3">
+                    <div class="form-check form-switch">
+                      <input id="togShowVendorTags" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowVendorTags" class="form-check-label small">Show Vendor / Sponsor Tags</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-3">
+                    <div class="form-check form-switch">
+                      <input id="togShowAvailability" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowAvailability" class="form-check-label small">Show Availability on Cards</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-3">
+                    <div class="form-check form-switch">
+                      <input id="togHideOutOfStock" type="checkbox" class="form-check-input" />
+                      <label for="togHideOutOfStock" class="form-check-label small">Hide Out-of-Stock Items</label>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label for="setSearchPlaceholder" class="form-label small mb-1">Search Box Placeholder</label>
+                  <input id="setSearchPlaceholder" type="text" class="form-control form-control-sm dark-input" value="Search products, brands, or locations..." />
+                </div>
+              </div>
+
+              <!-- 4. Checkout, Bank Details & Automatic PIN Help -->
+              <div class="dark-subpanel mb-3">
+                <div class="fw-bold small text-warning mb-2">4. Checkout, Bank Details &amp; Automatic PIN Help</div>
+                <div class="form-check form-switch mb-2">
+                  <input id="togAutoGeneratePin" type="checkbox" class="form-check-input" checked />
+                  <label for="togAutoGeneratePin" class="form-check-label small">Auto-Generate PIN</label>
+                </div>
                 <div class="row g-2">
                   <div class="col-md-6">
-                    <label for="setAwarenessTitle" class="form-label small mb-1">Awareness Title</label>
-                    <input id="setAwarenessTitle" type="text" class="form-control form-control-sm dark-input" />
+                    <label for="setBankDetails" class="form-label small mb-1">Bank Account / Transfer Details (Shown in Checkout &amp; Chat)</label>
+                    <textarea id="setBankDetails" rows="2" class="form-control form-control-sm dark-input" placeholder="e.g. Moniepoint / 1234567890 / Sammyreks Business Center"></textarea>
                   </div>
                   <div class="col-md-6">
-                    <label for="setAwarenessImageFile" class="form-label small mb-1">Awareness Image Upload</label>
-                    <input id="setAwarenessImageFile" name="awareness_image_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
+                    <label for="setPinHelperMsg" class="form-label small mb-1">Customer PIN Helper Message (Shown on Chat Tab)</label>
+                    <textarea id="setPinHelperMsg" rows="2" class="form-control form-control-sm dark-input" placeholder="First time here? Place an order in Checkout or Request first—your private chat unlocks..."></textarea>
                   </div>
-                  <div class="col-12">
-                    <label for="setAwarenessBody" class="form-label small mb-1">Awareness Message</label>
-                    <textarea id="setAwarenessBody" rows="2" class="form-control form-control-sm dark-input"></textarea>
+                  <div class="col-md-6">
+                    <label for="setPinFieldLabel" class="form-label small mb-1">PIN Field Label (When Manual PIN is Shown)</label>
+                    <input id="setPinFieldLabel" type="text" class="form-control form-control-sm dark-input" value="4-Digit Chat PIN (leave blank — auto)" />
+                  </div>
+                  <div class="col-md-6">
+                    <label for="setOrderNotePlaceholder" class="form-label small mb-1">Order Note Placeholder</label>
+                    <input id="setOrderNotePlaceholder" type="text" class="form-control form-control-sm dark-input" placeholder="Optional delivery address or note..." />
                   </div>
                 </div>
               </div>
 
-              <button id="saveSettingsSubmitBtn" type="submit" class="btn btn-warning btn-sm fw-bold px-4">Save App Settings</button>
-              <span id="settingsFeedbackText" class="small ms-2"></span>
+              <!-- 5. Rotating Storefront Tips -->
+              <div class="dark-subpanel mb-3">
+                <div class="fw-bold small text-warning mb-2">5. Rotating Storefront Tips</div>
+                <div class="row g-2 align-items-center mb-2">
+                  <div class="col-sm-6">
+                    <div class="form-check form-switch">
+                      <input id="togShowRotatingTips" type="checkbox" class="form-check-input" checked />
+                      <label for="togShowRotatingTips" class="form-check-label small">Show Rotating Tips Strip</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6">
+                    <label for="setSecondsPerTip" class="form-label small mb-1">Seconds Per Tip</label>
+                    <input id="setSecondsPerTip" type="number" min="2" max="60" value="10" class="form-control form-control-sm dark-input" />
+                  </div>
+                </div>
+                <div>
+                  <label for="setRotatingTips" class="form-label small mb-1">Rotate Tips (One per line or separate with |)</label>
+                  <textarea id="setRotatingTips" rows="2" class="form-control form-control-sm dark-input" placeholder="Tip 1 | Tip 2 | Tip 3"></textarea>
+                </div>
+              </div>
+
+              <!-- 6. Floating Awareness Photos (Slideshow) & Bottom Caption -->
+              <div class="dark-subpanel mb-3">
+                <div class="fw-bold small text-warning mb-2">6. Floating Awareness Photos (Slideshow) &amp; Bottom Caption</div>
+                <div class="row g-2 mb-2">
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check form-switch">
+                      <input id="togShowFloatingAwareness" type="checkbox" class="form-check-input" />
+                      <label for="togShowFloatingAwareness" class="form-check-label small">Show Floating Awareness Card</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check form-switch">
+                      <input id="togShowFloatingAwarenessBottom" type="checkbox" class="form-check-input" />
+                      <label for="togShowFloatingAwarenessBottom" class="form-check-label small">Show Floating Awareness Card</label>
+                    </div>
+                  </div>
+                  <div class="col-sm-6 col-md-4">
+                    <div class="form-check form-switch">
+                      <input id="togAutoSlidePhotos" type="checkbox" class="form-check-input" checked />
+                      <label for="togAutoSlidePhotos" class="form-check-label small">Auto-Slide Photos Every 3s</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="row g-2 mb-2">
+                  <div class="col-md-8">
+                    <label for="setAwarenessSlides" class="form-label small mb-1">Image Links / Upload Slides (One per line or separate with |)</label>
+                    <textarea id="setAwarenessSlides" rows="2" class="form-control form-control-sm dark-input" placeholder="https://.../slide1.jpg | https://.../slide2.jpg"></textarea>
+                  </div>
+                  <div class="col-md-4">
+                    <label for="setAwarenessImageFile" class="form-label small mb-1">Upload Awareness Photo(s)</label>
+                    <input id="setAwarenessImageFile" name="awareness_image_file" type="file" accept="image/*" multiple class="form-control form-control-sm dark-input" />
+                  </div>
+                </div>
+
+                <div class="row g-2">
+                  <div class="col-md-7">
+                    <label for="setAwarenessDescriptions" class="form-label small mb-1">Button Descriptions (One per line or separate with |)</label>
+                    <input id="setAwarenessDescriptions" type="text" class="form-control form-control-sm dark-input" placeholder="Description for slide 1 | Description for slide 2" />
+                  </div>
+                  <div class="col-md-5">
+                    <label for="setAwarenessBottomCaption" class="form-label small mb-1">Bottom Caption / Awareness Message</label>
+                    <input id="setAwarenessBottomCaption" type="text" class="form-control form-control-sm dark-input" placeholder="Shown at the bottom of the floating awareness card" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="d-flex flex-wrap align-items-center gap-2">
+                <button id="saveSettingsSubmitBtn" type="submit" class="btn btn-warning btn-sm fw-bold px-4">
+                  Save All App Settings
+                </button>
+                <span id="settingsFeedbackText" class="small"></span>
+              </div>
             </form>
           </div>
         </div>
@@ -1111,7 +1332,7 @@
       <span id="awarenessCardTitle" class="fw-bold small text-warning">Store Update</span>
       <button type="button" class="btn-close small" onclick="toggleAwarenessCard(false)"></button>
     </div>
-    <img id="awarenessCardImg" src="" alt="Awareness" class="w-100 d-none" style="max-height:150px;object-fit:cover;" />
+    <img id="awarenessCardImg" src="" alt="Awareness" style="display:none;" />
     <div class="p-3 small">
       <p id="awarenessCardBody" class="mb-0"></p>
     </div>
@@ -1221,6 +1442,7 @@
         </div>
         <div class="modal-body">
           <div id="cartItemsContainer" class="mb-3"></div>
+          <div id="checkoutBankDetailsBox" class="dark-subpanel small mb-3 d-none"></div>
           <hr class="border-secondary" />
           <h6 class="fw-bold mb-2 text-warning">Submit Order</h6>
           <form id="cartCheckoutForm" onsubmit="submitCartOrder(event)">
@@ -1233,8 +1455,8 @@
                 <label for="checkoutPhone" class="form-label small">Phone Number *</label>
                 <input id="checkoutPhone" type="tel" class="form-control form-control-sm dark-input" required />
               </div>
-              <div class="col-md-6">
-                <label for="checkoutPin" class="form-label small">4-Digit Chat PIN (auto-generated if blank)</label>
+              <div id="checkoutPinFieldWrap" class="col-md-6">
+                <label id="checkoutPinLabel" for="checkoutPin" class="form-label small">4-Digit Chat PIN (leave blank — auto)</label>
                 <input id="checkoutPin" type="text" maxlength="8" class="form-control form-control-sm dark-input" />
               </div>
               <div class="col-md-6">
@@ -1298,6 +1520,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
+          <div id="chatBankDetailsBox" class="dark-subpanel small mb-2 d-none"></div>
           <form id="customerChatUnlockForm" onsubmit="unlockCustomerChat(event)" class="row g-2 mb-2">
             <div class="col-md-5">
               <input id="custChatPhone" type="tel" class="form-control form-control-sm dark-input" placeholder="Your Phone Number *" required />
@@ -1345,6 +1568,47 @@
         <div class="modal-footer py-2">
           <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
           <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="window.print()">Print</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 7: PRODUCT ADVERT MODAL -->
+  <div class="modal fade" id="productAdvertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h6 id="advertModalTitle" class="modal-title fw-bold text-uppercase" style="color:var(--gold);">Product Advert</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopAdvertVideo()"></button>
+        </div>
+        <div class="modal-body">
+          <div id="advertNoVideoBanner" class="dark-subpanel text-center text-secondary small py-2 mb-3 d-none">
+            No video advert attached for this product yet[cite: 3].
+          </div>
+
+          <div id="advertVideoPlayerWrap" class="mb-3 d-none">
+            <video id="advertModalVideo" class="w-100 rounded" style="max-height:320px;background:#000;object-fit:contain;" controls playsinline></video>
+          </div>
+
+          <div class="row g-3 align-items-center">
+            <div class="col-md-5">
+              <div class="dark-subpanel text-center p-2">
+                <img id="advertModalImg" src="" alt="Product" class="img-fluid rounded d-none" style="max-height:220px;object-fit:contain;" />
+                <div id="advertModalNoImg" class="text-secondary small py-4 d-none">No product image</div>
+              </div>
+            </div>
+            <div class="col-md-7">
+              <h5 id="advertModalName" class="fw-bold text-uppercase mb-1"></h5>
+              <div id="advertModalVendor" class="small text-secondary mb-1"></div>
+              <div id="advertModalMeta" class="small text-secondary mb-2"></div>
+              <p id="advertModalDesc" class="small mb-2"></p>
+              <div id="advertModalPrice" class="fw-bold" style="color:var(--gold);"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="addFromAdvertModal()">Add to Cart</button>
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" onclick="stopAdvertVideo()">Close</button>
         </div>
       </div>
     </div>
@@ -1442,13 +1706,23 @@
       }
     }
 
+    function getExtraSettings() {
+      const s = state.settings || {};
+      return (typeof s.extra_settings === "object" && s.extra_settings) ? s.extra_settings : {};
+    }
+
     // ========================================================================
     // INITIALIZATION & SETTINGS
     // ========================================================================
+    let tipTimerHandle = null;
+    let slideTimerHandle = null;
+    let awarenessSlidesList = [];
+    let awarenessSlideIdx = 0;
+
     document.addEventListener("DOMContentLoaded", async () => {
       addSpecialRequestRow();
       updateTipDisplay();
-      setInterval(() => cycleTip(1), 7000);
+      restartTipRotation(10);
 
       await loadSettings();
       await loadShops();
@@ -1456,6 +1730,86 @@
       updateCartBadge();
       syncHeaderState(false);
     });
+
+    function parsePipeOrLineList(raw) {
+      if (!raw) return [];
+      return String(raw)
+        .split(/\r?\n|\|/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    function clearBroadcastVideoField() {
+      const inp = document.getElementById("setBroadcastVideoUrl");
+      const fileInp = document.getElementById("setBroadcastVideoFile");
+      if (inp) inp.value = "";
+      if (fileInp) fileInp.value = "";
+    }
+
+    function resetAllAppToggles() {
+      const defaults = {
+        togShowAnalytics: true,
+        togShowStockAlerts: true,
+        togShowShopTab: true,
+        togShowRequestTab: true,
+        togShowLiveCartBadge: true,
+        togShowChatReceiptsTab: true,
+        togShowHeaderCartBtn: true,
+        togShowWatchAd: true,
+        togShowVendorTags: true,
+        togShowAvailability: true,
+        togHideOutOfStock: false,
+        togAutoGeneratePin: true,
+        togShowRotatingTips: true,
+        togShowFloatingAwareness: false,
+        togShowFloatingAwarenessBottom: false,
+        togAutoSlidePhotos: true
+      };
+      for (const [id, checked] of Object.entries(defaults)) {
+        const el = document.getElementById(id);
+        if (el) el.checked = checked;
+      }
+      const fb = document.getElementById("settingsFeedbackText");
+      if (fb) {
+        fb.className = "small text-warning";
+        fb.textContent = "Toggles reset to defaults — click Save All App Settings to apply.";
+      }
+    }
+
+    function restartTipRotation(seconds) {
+      if (tipTimerHandle) clearInterval(tipTimerHandle);
+      const ms = Math.max(2000, (parseInt(seconds, 10) || 10) * 1000);
+      tipTimerHandle = setInterval(() => cycleTip(1), ms);
+    }
+
+    function startAwarenessSlideshow(autoSlide) {
+      if (slideTimerHandle) {
+        clearInterval(slideTimerHandle);
+        slideTimerHandle = null;
+      }
+      const imgEl = document.getElementById("awarenessCardImg");
+      const bodyEl = document.getElementById("awarenessCardBody");
+      if (!imgEl || !bodyEl) return;
+
+      const renderSlide = () => {
+        if (!awarenessSlidesList.length) return;
+        const idx = awarenessSlideIdx % awarenessSlidesList.length;
+        const slide = awarenessSlidesList[idx];
+        imgEl.src = slide.url;
+        imgEl.style.display = "block";
+        if (slide.caption) bodyEl.textContent = slide.caption;
+      };
+
+      if (awarenessSlidesList.length) {
+        renderSlide();
+        if (autoSlide && awarenessSlidesList.length > 1) {
+          slideTimerHandle = setInterval(() => {
+            awarenessSlideIdx = (awarenessSlideIdx + 1) % awarenessSlidesList.length;
+            renderSlide();
+          }, 3000);
+        }
+      }
+    }
 
     async function loadSettings() {
       try {
@@ -1472,7 +1826,7 @@
 
     function applySettingsToUI() {
       const s = state.settings || {};
-      const extra = typeof s.extra_settings === "object" && s.extra_settings ? s.extra_settings : {};
+      const extra = getExtraSettings();
 
       const bizName = s.business_name || "Sammyreks Business Center";
       document.title = bizName;
@@ -1487,17 +1841,6 @@
           tagEl.classList.remove("d-none");
         } else {
           tagEl.classList.add("d-none");
-        }
-      }
-
-      const logoUrl = String(extra.logoUrl || "").trim();
-      const logoImg = document.getElementById("headerLogoImg");
-      if (logoImg) {
-        if (logoUrl) {
-          logoImg.src = logoUrl;
-          logoImg.classList.remove("d-none");
-        } else {
-          logoImg.classList.add("d-none");
         }
       }
 
@@ -1523,52 +1866,143 @@
         }
       }
 
-      if (typeof extra.rotatingTips === "string" && extra.rotatingTips.trim()) {
-        const parsedTips = extra.rotatingTips.split(/\r?\n/).map(t => t.trim()).filter(Boolean);
-        if (parsedTips.length) {
-          state.tips = parsedTips;
-          state.tipIndex = 0;
-          updateTipDisplay();
+      const toggles = {
+        togShowAnalytics: extra.showAnalytics !== false,
+        togShowStockAlerts: extra.showStockAlerts !== false,
+        togShowShopTab: extra.showShopTab !== false,
+        togShowRequestTab: extra.showRequestTab !== false,
+        togShowLiveCartBadge: extra.showLiveCartBadge !== false,
+        togShowChatReceiptsTab: extra.showChatReceiptsTab !== false,
+        togShowHeaderCartBtn: extra.showHeaderCartBtn !== false,
+        togShowWatchAd: extra.showWatchAd !== false,
+        togShowVendorTags: extra.showVendorTags !== false,
+        togShowAvailability: extra.showAvailability !== false,
+        togHideOutOfStock: Boolean(extra.hideOutOfStock),
+        togAutoGeneratePin: extra.autoGeneratePin !== false,
+        togShowRotatingTips: extra.showRotatingTips !== false,
+        togShowFloatingAwareness: Boolean(extra.showFloatingAwareness),
+        togShowFloatingAwarenessBottom: Boolean(extra.showFloatingAwarenessBottom),
+        togAutoSlidePhotos: extra.autoSlidePhotos !== false
+      };
+
+      for (const [id, val] of Object.entries(toggles)) {
+        const el = document.getElementById(id);
+        if (el) el.checked = val;
+      }
+
+      // Apply storefront visibility toggles
+      const headerCartBtn = document.getElementById("navCartBtn");
+      if (headerCartBtn) headerCartBtn.classList.toggle("d-none", !toggles.togShowHeaderCartBtn);
+
+      const chatBtn = document.getElementById("navChatBtn");
+      if (chatBtn) chatBtn.classList.toggle("d-none", !toggles.togShowChatReceiptsTab);
+
+      const customReqCol = document.getElementById("customRequestCol");
+      if (customReqCol) customReqCol.classList.toggle("d-none", !toggles.togShowRequestTab);
+
+      const analyticsRow = document.getElementById("analyticsKpiRow");
+      if (analyticsRow) analyticsRow.classList.toggle("d-none", !toggles.togShowAnalytics);
+
+      const alertsLine = document.getElementById("stockAlertsLine");
+      if (alertsLine) alertsLine.classList.toggle("d-none", !toggles.togShowStockAlerts);
+
+      const tipStrip = document.getElementById("rotatingTipStrip");
+      if (tipStrip) tipStrip.classList.toggle("d-none", !toggles.togShowRotatingTips);
+
+      const tipsRaw = extra.rotatingTips || "";
+      const parsedTips = parsePipeOrLineList(tipsRaw);
+      if (parsedTips.length) {
+        state.tips = parsedTips;
+        state.tipIndex = 0;
+        updateTipDisplay();
+      }
+      restartTipRotation(extra.secondsPerTip || 10);
+
+      // Bank details & PIN helper text
+      const bankText = String(extra.bankDetails || "").trim();
+      for (const boxId of ["checkoutBankDetailsBox", "chatBankDetailsBox"]) {
+        const box = document.getElementById(boxId);
+        if (box) {
+          if (bankText) {
+            box.innerHTML = `<div class="fw-bold text-warning mb-1">Bank / Transfer Details</div><div style="white-space:pre-line;">${escapeHtml(bankText)}</div>`;
+            box.classList.remove("d-none");
+          } else {
+            box.classList.add("d-none");
+          }
         }
       }
 
-      const awarenessTitle = String(extra.awarenessTitle || "").trim();
-      const awarenessBody = String(extra.awarenessBody || "").trim();
-      const awarenessImgUrl = String(s.awareness_image_url || extra.awarenessImageUrl || "").trim().split(/\r?\n/)[0].trim();
+      const pinHelper = String(extra.pinHelperMsg || "").trim();
+      const chatStatusEl = document.getElementById("custChatAuthStatus");
+      if (chatStatusEl && !state.customerChat.unlocked) {
+        chatStatusEl.textContent = pinHelper || "Enter your phone number and PIN or Order Reference Code.";
+      }
+
+      const pinWrap = document.getElementById("checkoutPinFieldWrap");
+      const pinLabel = document.getElementById("checkoutPinLabel");
+      if (pinLabel && extra.pinFieldLabel) pinLabel.textContent = extra.pinFieldLabel;
+      if (pinWrap) pinWrap.classList.toggle("d-none", toggles.togAutoGeneratePin && !extra.pinFieldLabel);
+
+      const notesInp = document.getElementById("checkoutNotes");
+      if (notesInp && extra.orderNotePlaceholder) notesInp.placeholder = extra.orderNotePlaceholder;
+
+      // Floating awareness slideshow
+      const slideUrls = parsePipeOrLineList(extra.awarenessSlides || s.awareness_image_url || "");
+      const slideDescs = parsePipeOrLineList(extra.awarenessDescriptions || "");
+      awarenessSlidesList = slideUrls.map((url, i) => ({
+        url,
+        caption: slideDescs[i] || extra.awarenessBottomCaption || extra.awarenessBody || ""
+      }));
+      awarenessSlideIdx = 0;
+
+      const bottomCaption = extra.awarenessBottomCaption || extra.awarenessBody || "";
+      const bodyEl = document.getElementById("awarenessCardBody");
+      if (bodyEl) bodyEl.textContent = bottomCaption;
+
       const toggleBtn = document.getElementById("toggleAwarenessBtn");
-      const cardTitle = document.getElementById("awarenessCardTitle");
-      const cardBody = document.getElementById("awarenessCardBody");
-      const cardImg = document.getElementById("awarenessCardImg");
-
-      const hasAwareness = Boolean(awarenessTitle || awarenessBody || awarenessImgUrl);
-      if (toggleBtn) toggleBtn.classList.toggle("d-none", !hasAwareness);
-      if (cardTitle) cardTitle.textContent = awarenessTitle || "Store Update";
-      if (cardBody) cardBody.textContent = awarenessBody || "";
-      if (cardImg) {
-        if (awarenessImgUrl) {
-          cardImg.src = awarenessImgUrl;
-          cardImg.classList.remove("d-none");
-        } else {
-          cardImg.classList.add("d-none");
-        }
+      const hasAwareness = Boolean(awarenessSlidesList.length || bottomCaption || extra.awarenessTitle);
+      if (toggleBtn) {
+        toggleBtn.classList.toggle("d-none", !hasAwareness);
+        toggleBtn.textContent = extra.awarenessTitle || "Updates";
       }
 
-      // Sync Settings inputs
-      const map = {
+      startAwarenessSlideshow(toggles.togAutoSlidePhotos);
+      toggleAwarenessCard(toggles.togShowFloatingAwareness || toggles.togShowFloatingAwarenessBottom);
+
+      // Sync form fields
+      const inputs = {
         setBusinessName: bizName,
         setTagline: s.tagline || "",
         setCurrency: s.currency || "₦",
-        setLogoUrl: logoUrl,
         setActiveNotice: s.active_notice || "",
         setBroadcastVideoUrl: s.broadcast_video_url || "",
-        setRotatingTips: typeof extra.rotatingTips === "string" ? extra.rotatingTips : "",
-        setAwarenessTitle: awarenessTitle,
-        setAwarenessBody: awarenessBody
+        setFooterCopyright: extra.footerCopyright || "",
+        setReceiptFooter: extra.receiptFooter || "",
+        setLowStockThreshold: extra.lowStockThreshold ?? 2,
+        setCustomTabNames: extra.customTabNames || "",
+        setSearchPlaceholder: extra.searchPlaceholder || "Search products, brands, or locations...",
+        setBankDetails: bankText,
+        setPinHelperMsg: pinHelper,
+        setPinFieldLabel: extra.pinFieldLabel || "4-Digit Chat PIN (leave blank — auto)",
+        setOrderNotePlaceholder: extra.orderNotePlaceholder || "",
+        setSecondsPerTip: extra.secondsPerTip ?? 10,
+        setRotatingTips: tipsRaw,
+        setAwarenessSlides: extra.awarenessSlides || (s.awareness_image_url || ""),
+        setAwarenessDescriptions: extra.awarenessDescriptions || "",
+        setAwarenessBottomCaption: bottomCaption
       };
-      for (const [id, val] of Object.entries(map)) {
+      for (const [id, val] of Object.entries(inputs)) {
         const el = document.getElementById(id);
         if (el) el.value = val;
       }
+
+      const searchInp = document.getElementById("storeSearchInput");
+      if (searchInp && inputs.setSearchPlaceholder) {
+        searchInp.placeholder = inputs.setSearchPlaceholder;
+      }
+
+      updateCartBadge();
+      renderProductsGrid();
     }
 
     function toggleBroadcastBody() {
@@ -1758,8 +2192,10 @@
     }
 
     // ========================================================================
-    // STOREFRONT PRODUCTS (IMAGES + ADVERT VIDEOS) & CART
+    // STOREFRONT PRODUCTS (UN-CROPPED IMAGES + ADVERT MODAL ON EVERY CARD)
     // ========================================================================
+    let activeAdvertProductId = null;
+
     async function loadProducts(shopId = "main") {
       try {
         const res = await fetch(`/api/products?shop_id=${encodeURIComponent(shopId)}`);
@@ -1795,10 +2231,18 @@
       const grid = document.getElementById("productsGrid");
       if (!grid) return;
 
+      const extra = getExtraSettings();
+      const showWatchAd = extra.showWatchAd !== false;
+      const showVendorTags = extra.showVendorTags !== false;
+      const showAvailability = extra.showAvailability !== false;
+      const hideOutOfStock = Boolean(extra.hideOutOfStock);
+
       const q = (document.getElementById("storeSearchInput")?.value || "").trim().toLowerCase();
       const cat = document.getElementById("storeCategoryFilter")?.value || "All";
 
       const filtered = state.products.filter(p => {
+        const stockNum = Number(p.qty_cartons ?? p.stock ?? 0);
+        if (hideOutOfStock && stockNum <= 0) return false;
         if (cat !== "All" && p.category !== cat) return false;
         if (!q) return true;
         return `${p.name} ${p.category} ${p.location} ${p.vendor_name} ${p.description}`.toLowerCase().includes(q);
@@ -1819,19 +2263,20 @@
         const inStock = stockNum > 0;
         const hasImage = Boolean(p.image_url);
         const hasVideo = Boolean(p.video_url);
-        const mode = state.mediaModeByProduct[p.id] || (hasImage ? "image" : "video");
 
-        let mediaHtml = `<div class="text-secondary small">No media</div>`;
-        if (mode === "video" && hasVideo) {
-          mediaHtml = `<video src="${escapeHtml(p.video_url)}" controls playsinline muted loop></video>`;
-        } else if (hasImage) {
+        let mediaHtml = `<div class="text-secondary small py-4">No image</div>`;
+        if (hasImage) {
           mediaHtml = `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}" loading="lazy" />`;
         } else if (hasVideo) {
-          mediaHtml = `<video src="${escapeHtml(p.video_url)}" controls playsinline muted loop></video>`;
+          mediaHtml = `<video src="${escapeHtml(p.video_url)}" playsinline muted preload="metadata"></video>`;
         }
 
-        const mediaSwitchHtml = (hasImage && hasVideo)
-          ? `<button type="button" class="media-switch-btn" onclick="toggleProductMedia('${escapeHtml(p.id)}')">${mode === "video" ? "View Photo" : "Watch Ad"}</button>`
+        const videoBadgeHtml = hasVideo
+          ? `<span class="media-video-indicator" title="Video Advert Attached">▶ Video Ad</span>`
+          : "";
+
+        const mediaSwitchHtml = showWatchAd
+          ? `<button type="button" class="media-switch-btn" onclick="openProductAdvertModal('${escapeHtml(p.id)}')">▶ Watch Ad</button>`
           : "";
 
         const mainLbl = escapeHtml(p.unit_main_label || "Carton");
@@ -1844,20 +2289,26 @@
         if (packPrice > 0) unitOpts.push(`<option value="${packLbl}">${packLbl} (${formatMoney(packPrice)})</option>`);
         if (retailPrice > 0) unitOpts.push(`<option value="${retailLbl}">${retailLbl} (${formatMoney(retailPrice)})</option>`);
 
+        const vendorText = (showVendorTags && p.vendor_name) ? ` • ${escapeHtml(p.vendor_name)}` : "";
+        const availBadge = showAvailability
+          ? `<span class="badge ${inStock ? "text-bg-success" : "text-bg-danger"}">${inStock ? `${stockNum} ${mainLbl}` : "Out"}</span>`
+          : "";
+
         return `
           <div class="col-sm-6 col-md-4 col-xl-3">
             <div class="product-card">
               <div class="product-media-wrap">
                 <span class="media-cat-tag">${escapeHtml(p.category || "General")}</span>
                 ${mediaHtml}
+                ${videoBadgeHtml}
                 ${mediaSwitchHtml}
               </div>
               <div class="p-3 d-flex flex-column flex-grow-1">
                 <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
                   <h6 class="fw-bold mb-0 text-light">${escapeHtml(p.name)}</h6>
-                  <span class="badge ${inStock ? "text-bg-success" : "text-bg-danger"}">${inStock ? `${stockNum} ${mainLbl}` : "Out"}</span>
+                  ${availBadge}
                 </div>
-                <div class="small text-secondary mb-2">${escapeHtml(p.location || "")}${p.vendor_name ? ` • ${escapeHtml(p.vendor_name)}` : ""}</div>
+                <div class="small text-secondary mb-2">${escapeHtml(p.location || "")}${vendorText}</div>
 
                 <div class="d-flex flex-wrap gap-1 mb-2">
                   <span class="gold-price-tag">${mainLbl}: ${formatMoney(p.price_carton)}</span>
@@ -1891,12 +2342,101 @@
       }).join("");
     }
 
-    function toggleProductMedia(productId) {
-      const prod = state.products.find(p => p.id === productId);
-      const fallback = prod && prod.image_url ? "image" : "video";
-      const curr = state.mediaModeByProduct[productId] || fallback;
-      state.mediaModeByProduct[productId] = curr === "image" ? "video" : "image";
-      renderProductsGrid();
+    function openProductAdvertModal(productId) {
+      const p = state.products.find(item => item.id === productId);
+      if (!p) return;
+      activeAdvertProductId = p.id;
+
+      document.getElementById("advertModalTitle").textContent = `${p.name || "Product"} — Product Advert`;
+      document.getElementById("advertModalName").textContent = p.name || "";
+
+      const vendorText = p.vendor_name ? `Vendor / Sponsor: ${p.vendor_name}` : "";
+      const vendorEl = document.getElementById("advertModalVendor");
+      vendorEl.textContent = vendorText;
+      vendorEl.classList.toggle("d-none", !vendorText);
+
+      const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
+      const unitLbl = p.unit_main_label || "Carton";
+      document.getElementById("advertModalMeta").textContent =
+        `Category: ${p.category || "General"} | Stock: ${stockVal} ${unitLbl}`;
+
+      const descEl = document.getElementById("advertModalDesc");
+      descEl.textContent = p.description || "";
+      descEl.classList.toggle("d-none", !p.description);
+
+      const priceLines = [`${unitLbl.toUpperCase()}: ${formatMoney(p.price_carton)}`];
+      if (Number(p.price_pack || 0) > 0) {
+        priceLines.push(`${(p.unit_pack_label || "Pack").toUpperCase()}: ${formatMoney(p.price_pack)}`);
+      }
+      if (Number(p.price_retail || 0) > 0) {
+        priceLines.push(`${(p.unit_retail_label || "Retail Unit").toUpperCase()}: ${formatMoney(p.price_retail)}`);
+      }
+      document.getElementById("advertModalPrice").textContent = priceLines.join(" • ");
+
+      const noVidBanner = document.getElementById("advertNoVideoBanner");
+      const vidWrap = document.getElementById("advertVideoPlayerWrap");
+      const vidEl = document.getElementById("advertModalVideo");
+
+      if (p.video_url) {
+        noVidBanner.classList.add("d-none");
+        vidWrap.classList.remove("d-none");
+        vidEl.src = p.video_url;
+      } else {
+        noVidBanner.classList.remove("d-none");
+        vidWrap.classList.add("d-none");
+        vidEl.removeAttribute("src");
+        vidEl.load();
+      }
+
+      const imgEl = document.getElementById("advertModalImg");
+      const noImgEl = document.getElementById("advertModalNoImg");
+      if (p.image_url) {
+        imgEl.src = p.image_url;
+        imgEl.classList.remove("d-none");
+        noImgEl.classList.add("d-none");
+      } else {
+        imgEl.removeAttribute("src");
+        imgEl.classList.add("d-none");
+        noImgEl.classList.remove("d-none");
+      }
+
+      getModal("productAdvertModal")?.show();
+    }
+
+    function stopAdvertVideo() {
+      const vidEl = document.getElementById("advertModalVideo");
+      if (vidEl) {
+        vidEl.pause();
+        vidEl.removeAttribute("src");
+        vidEl.load();
+      }
+    }
+
+    function addFromAdvertModal() {
+      if (!activeAdvertProductId) return;
+      const p = state.products.find(item => item.id === activeAdvertProductId);
+      if (!p) return;
+      const unit = p.unit_main_label || "Carton";
+      const unitPrice = getUnitPrice(p, unit);
+      const existing = state.cart.find(it => it.product_id === p.id && it.unit === unit);
+      if (existing) {
+        existing.qty += 1;
+        existing.total_price = existing.qty * existing.unit_price;
+      } else {
+        state.cart.push({
+          product_id: p.id,
+          shop_id: p.shop_id || state.selectedShopId || "main",
+          name: p.name,
+          unit,
+          qty: 1,
+          unit_price: unitPrice,
+          total_price: unitPrice
+        });
+      }
+      updateCartBadge();
+      stopAdvertVideo();
+      getModal("productAdvertModal")?.hide();
+      openCartModal();
     }
 
     function getUnitPrice(prod, unitLabel) {
@@ -1936,8 +2476,13 @@
 
     function updateCartBadge() {
       const badge = document.getElementById("topCartBadge");
+      const extra = getExtraSettings();
+      const showBadge = extra.showLiveCartBadge !== false;
       const count = state.cart.reduce((sum, it) => sum + Number(it.qty || 1), 0);
-      if (badge) badge.textContent = String(count);
+      if (badge) {
+        badge.textContent = String(count);
+        badge.classList.toggle("d-none", !showBadge);
+      }
     }
 
     function openCartModal() {
@@ -2144,7 +2689,8 @@
       const box = document.getElementById("customerChatBox");
       if (!box) return;
       if (!state.customerChat.unlocked) {
-        box.innerHTML = `<div class="text-secondary small text-center py-4">Unlock with your phone number and PIN or Reference Code.</div>`;
+        const helper = String(getExtraSettings().pinHelperMsg || "").trim();
+        box.innerHTML = `<div class="text-secondary small text-center py-4">${escapeHtml(helper || "Unlock with your phone number and PIN or Reference Code.")}</div>`;
         return;
       }
       if (!state.customerChat.messages.length) {
@@ -2158,7 +2704,7 @@
         const cls = isSys ? "chat-msg-system" : (isStaff ? "chat-msg-staff" : "chat-msg-customer");
         const body = isSys ? (m.message || "") : escapeHtml(m.message || m.text || "");
         const imgHtml = m.proof_url
-          ? `<div class="mt-1"><a href="${escapeHtml(m.proof_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(m.proof_url)}" alt="Receipt" class="rounded" style="max-width:150px;max-height:120px;object-fit:cover;" /></a></div>`
+          ? `<div class="mt-1"><a href="${escapeHtml(m.proof_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(m.proof_url)}" alt="Receipt" class="rounded" style="max-width:150px;max-height:120px;object-fit:contain;" /></a></div>`
           : "";
         return `
           <div class="chat-msg ${cls}">
@@ -2465,7 +3011,7 @@
       setV("prodImageUrl", item.image_url || "");
       setV("prodVideoLink", item.video_url || "");
       setV("prodDescription", item.description || "");
-      updateProductFormMediaPreview(item.image_url || "", item.video_url || "");
+      updateProductFormMediaPreview(item.image_url || "", item.video_url ? `Video: ${item.video_url}` : item.name);
     }
 
     async function saveStagedBatchItems() {
@@ -2640,6 +3186,7 @@
 
       tbody.innerHTML = rows.map(p => {
         const stock = Number(p.qty_cartons ?? p.stock ?? 0);
+        const threshold = Number(getExtraSettings().lowStockThreshold ?? 2);
         const mediaTags = [
           p.image_url ? `<span class="badge text-bg-info text-dark">Photo</span>` : "",
           p.video_url ? `<span class="badge text-bg-warning text-dark">Video</span>` : ""
@@ -2653,7 +3200,7 @@
             </td>
             <td>${escapeHtml(p.category || "General")}</td>
             <td><span class="badge text-bg-secondary">${escapeHtml(p.shop_id || "main")}</span></td>
-            <td><span class="badge ${stock <= 2 ? "text-bg-danger" : "text-bg-success"}">${stock} ${escapeHtml(p.unit_main_label || "Carton")}</span></td>
+            <td><span class="badge ${stock <= threshold ? "text-bg-danger" : "text-bg-success"}">${stock} ${escapeHtml(p.unit_main_label || "Carton")}</span></td>
             <td>${formatMoney(p.price_carton)}</td>
             <td>${Number(p.price_pack || 0) > 0 ? formatMoney(p.price_pack) : "-"}</td>
             <td>${Number(p.price_retail || 0) > 0 ? formatMoney(p.price_retail) : "-"}</td>
@@ -2672,10 +3219,11 @@
       const line = document.getElementById("stockAlertsLine");
       if (!badge || !line) return;
 
+      const threshold = Number(getExtraSettings().lowStockThreshold ?? 2);
       const alerts = [];
       for (const p of state.products) {
         const stock = Number(p.qty_cartons ?? p.stock ?? 0);
-        if (stock <= 2) alerts.push(`Low stock: ${p.name} (${stock})`);
+        if (stock <= threshold) alerts.push(`Low stock: ${p.name} (${stock})`);
       }
       badge.textContent = `${alerts.length} alert${alerts.length === 1 ? "" : "s"}`;
       badge.className = alerts.length ? "badge text-bg-danger" : "badge text-bg-success";
@@ -2683,7 +3231,7 @@
     }
 
     // ========================================================================
-    // POS, ORDERS, CHAT, RECORDS & ANALYTICS
+    // POS, ORDERS, CHAT, RECORDS, ANALYTICS & SETTINGS SAVE
     // ========================================================================
     function populatePosProductSelect() {
       const sel = document.getElementById("posProductSelect");
@@ -2763,6 +3311,7 @@
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Sale failed");
 
+        const footerMsg = String(getExtraSettings().receiptFooter || "Thank you for your patronage!").trim();
         const rcpt = data.receipt || { item_name: itemName, unit_type: unit, qty, unit_price: unitPrice, total, customer_name: customerName, payment_source: paymentSource };
         document.getElementById("receiptPaperContent").innerHTML = `
           <div class="text-center border-bottom pb-2 mb-2">
@@ -2776,6 +3325,7 @@
           <div>${escapeHtml(rcpt.item_name)} (${rcpt.qty} ${escapeHtml(rcpt.unit_type)})</div>
           <hr class="my-2" />
           <div class="fw-bold d-flex justify-content-between"><span>TOTAL</span><span>${formatMoney(rcpt.total)}</span></div>
+          <div class="text-center mt-2 pt-2 border-top" style="font-size:0.75rem;">${escapeHtml(footerMsg)}</div>
         `;
         getModal("receiptModal")?.show();
         await refreshStaffWorkspace();
@@ -2910,7 +3460,7 @@
             const cls = isSys ? "chat-msg-system" : (isStaff ? "chat-msg-staff" : "chat-msg-customer");
             const body = isSys ? (m.message || "") : escapeHtml(m.message || m.text || "");
             const proof = m.proof_url
-              ? `<div class="mt-1 d-flex align-items-center gap-2"><a href="${escapeHtml(m.proof_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(m.proof_url)}" alt="Proof" class="rounded" style="max-width:120px;max-height:95px;object-fit:cover;" /></a><button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="deleteSingleChatPhoto('${escapeHtml(m.id)}')">Remove</button></div>`
+              ? `<div class="mt-1 d-flex align-items-center gap-2"><a href="${escapeHtml(m.proof_url)}" target="_blank" rel="noopener"><img src="${escapeHtml(m.proof_url)}" alt="Proof" class="rounded" style="max-width:120px;max-height:95px;object-fit:contain;" /></a><button type="button" class="btn btn-sm btn-outline-danger py-0 px-1" onclick="deleteSingleChatPhoto('${escapeHtml(m.id)}')">Remove</button></div>`
               : "";
             return `
               <div class="chat-msg ${cls}">
@@ -3164,30 +3714,44 @@
       const btn = document.getElementById("saveSettingsSubmitBtn");
       if (btn) btn.disabled = true;
       if (fb) {
-        fb.className = "small ms-2 text-secondary";
-        fb.textContent = "Saving...";
+        fb.className = "small text-secondary";
+        fb.textContent = "Saving all settings...";
       }
 
-      const existingExtra = (typeof state.settings.extra_settings === "object" && state.settings.extra_settings)
-        ? { ...state.settings.extra_settings }
-        : {};
-
-      const logoUrl = (document.getElementById("setLogoUrl")?.value || "").trim();
-      const rotatingTips = document.getElementById("setRotatingTips")?.value || "";
-      const awarenessTitle = (document.getElementById("setAwarenessTitle")?.value || "").trim();
-      const awarenessBody = (document.getElementById("setAwarenessBody")?.value || "").trim();
-
-      if (logoUrl) existingExtra.logoUrl = logoUrl;
-      else delete existingExtra.logoUrl;
-
-      if (rotatingTips.trim()) existingExtra.rotatingTips = rotatingTips;
-      else delete existingExtra.rotatingTips;
-
-      if (awarenessTitle) existingExtra.awarenessTitle = awarenessTitle;
-      else delete existingExtra.awarenessTitle;
-
-      if (awarenessBody) existingExtra.awarenessBody = awarenessBody;
-      else delete existingExtra.awarenessBody;
+      const existingExtra = getExtraSettings();
+      const updatedExtra = {
+        ...existingExtra,
+        footerCopyright: (document.getElementById("setFooterCopyright")?.value || "").trim(),
+        receiptFooter: (document.getElementById("setReceiptFooter")?.value || "").trim(),
+        showAnalytics: Boolean(document.getElementById("togShowAnalytics")?.checked),
+        showStockAlerts: Boolean(document.getElementById("togShowStockAlerts")?.checked),
+        showShopTab: Boolean(document.getElementById("togShowShopTab")?.checked),
+        showRequestTab: Boolean(document.getElementById("togShowRequestTab")?.checked),
+        showLiveCartBadge: Boolean(document.getElementById("togShowLiveCartBadge")?.checked),
+        showChatReceiptsTab: Boolean(document.getElementById("togShowChatReceiptsTab")?.checked),
+        showHeaderCartBtn: Boolean(document.getElementById("togShowHeaderCartBtn")?.checked),
+        lowStockThreshold: parseFloat(document.getElementById("setLowStockThreshold")?.value || "2") || 2,
+        customTabNames: (document.getElementById("setCustomTabNames")?.value || "").trim(),
+        showWatchAd: Boolean(document.getElementById("togShowWatchAd")?.checked),
+        showVendorTags: Boolean(document.getElementById("togShowVendorTags")?.checked),
+        showAvailability: Boolean(document.getElementById("togShowAvailability")?.checked),
+        hideOutOfStock: Boolean(document.getElementById("togHideOutOfStock")?.checked),
+        searchPlaceholder: (document.getElementById("setSearchPlaceholder")?.value || "").trim(),
+        autoGeneratePin: Boolean(document.getElementById("togAutoGeneratePin")?.checked),
+        bankDetails: (document.getElementById("setBankDetails")?.value || "").trim(),
+        pinHelperMsg: (document.getElementById("setPinHelperMsg")?.value || "").trim(),
+        pinFieldLabel: (document.getElementById("setPinFieldLabel")?.value || "").trim(),
+        orderNotePlaceholder: (document.getElementById("setOrderNotePlaceholder")?.value || "").trim(),
+        showRotatingTips: Boolean(document.getElementById("togShowRotatingTips")?.checked),
+        secondsPerTip: parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10,
+        rotatingTips: document.getElementById("setRotatingTips")?.value || "",
+        showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
+        showFloatingAwarenessBottom: Boolean(document.getElementById("togShowFloatingAwarenessBottom")?.checked),
+        autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
+        awarenessSlides: document.getElementById("setAwarenessSlides")?.value || "",
+        awarenessDescriptions: document.getElementById("setAwarenessDescriptions")?.value || "",
+        awarenessBottomCaption: (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
+      };
 
       const fd = new FormData();
       fd.append("business_name", (document.getElementById("setBusinessName")?.value || "Sammyreks Business Center").trim());
@@ -3195,7 +3759,7 @@
       fd.append("active_notice", (document.getElementById("setActiveNotice")?.value || "").trim());
       fd.append("broadcast_video_url", (document.getElementById("setBroadcastVideoUrl")?.value || "").trim());
       fd.append("currency", (document.getElementById("setCurrency")?.value || "₦").trim() || "₦");
-      fd.append("extra_settings", JSON.stringify(existingExtra));
+      fd.append("extra_settings", JSON.stringify(updatedExtra));
 
       const vidFile = document.getElementById("setBroadcastVideoFile")?.files?.[0];
       if (vidFile) fd.append("broadcast_video_file", vidFile);
@@ -3217,12 +3781,12 @@
           applySettingsToUI();
         }
         if (fb) {
-          fb.className = "small ms-2 text-success fw-semibold";
-          fb.textContent = "Settings saved.";
+          fb.className = "small text-success fw-semibold";
+          fb.textContent = "All app settings saved.";
         }
       } catch (err) {
         if (fb) {
-          fb.className = "small ms-2 text-danger";
+          fb.className = "small text-danger";
           fb.textContent = err.message;
         }
       } finally {

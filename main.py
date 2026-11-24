@@ -9,6 +9,7 @@ import secrets
 import tempfile
 import time
 import uuid
+from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import quote, unquote, urlparse
@@ -43,7 +44,7 @@ MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_VIDEO_BYTES = 50 * 1024 * 1024
 MAX_BATCH_ITEMS = 15
 CACHE_TTL_SECONDS = 8.0
-TOKEN_TTL_SECONDS = 60 * 60 * 24  # 24 hours
+TOKEN_TTL_SECONDS = 60 * 60 * 12  # 12 hours
 MAIN_SHOP_ID = "main"
 
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
@@ -125,13 +126,22 @@ def init_cloudinary() -> bool:
 db = init_firestore()
 cloudinary_ready = init_cloudinary()
 
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin").strip() or "admin"
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-SESSION_SECRET = (
-    os.getenv("SESSION_SECRET")
-    or hashlib.sha256(f"{ADMIN_USERNAME}:{ADMIN_PASSWORD}:sammyreks-v2".encode("utf-8")).hexdigest()
-)
+_ENV_SESSION_SECRET = os.getenv("SESSION_SECRET", "").strip()
 
+if ADMIN_PASSWORD == "admin123" or len(ADMIN_PASSWORD) < 8:
+    print("[SECURITY WARN] Set a strong ADMIN_PASSWORD environment variable before launching publicly.")
+
+if _ENV_SESSION_SECRET:
+    SESSION_SECRET = _ENV_SESSION_SECRET
+else:
+    SESSION_SECRET = hashlib.sha256(
+        f"{ADMIN_USERNAME}:{ADMIN_PASSWORD}:sammyreks-v2".encode("utf-8")
+    ).hexdigest()
+    print("[SECURITY WARN] SESSION_SECRET is not set; using derived secret. Set SESSION_SECRET in env.")
+
+_failed_pin_buckets: Dict[str, List[float]] = defaultdict(list)
 _local_cache: Dict[str, Tuple[float, Any]] = {}
 _fallback_store: Dict[str, Any] = {
     "products": [],
@@ -169,6 +179,36 @@ def make_slug(text: str) -> str:
 def normalize_shop_id(raw_shop_id: Optional[str]) -> str:
     clean = (raw_shop_id or "").strip().lower()
     return clean if clean else MAIN_SHOP_ID
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    if forwarded:
+        return forwarded
+    return request.client.host if request.client else "unknown"
+
+
+def _check_failed_pin_burst(key: str, max_failures: int = 30, window_seconds: int = 60) -> None:
+    """Gentle burst guard against automated brute-force PIN guessing without blocking normal use."""
+    now = time.time()
+    recent = [t for t in _failed_pin_buckets[key] if now - t < window_seconds]
+    _failed_pin_buckets[key] = recent
+    if len(recent) >= max_failures:
+        raise HTTPException(
+            status_code=429,
+            detail="Too many failed unlock attempts in a short time. Please pause briefly and try again.",
+        )
+
+
+def _record_failed_pin(key: str, window_seconds: int = 60) -> None:
+    now = time.time()
+    recent = [t for t in _failed_pin_buckets[key] if now - t < window_seconds]
+    recent.append(now)
+    _failed_pin_buckets[key] = recent
+
+
+def _clear_failed_pins(key: str) -> None:
+    _failed_pin_buckets.pop(key, None)
 
 
 def validate_multi_tier_pricing(
@@ -731,6 +771,9 @@ async def update_shop(
 # ==============================================================================
 
 def _http_get_json(url: str, headers: Optional[Dict[str, str]] = None, timeout: int = 12) -> Dict[str, Any]:
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError("Invalid outbound URL")
     req_headers = {
         "User-Agent": "SammyreksBusinessCenter/2.0 (Calabar, Nigeria; contact@sammyreks.local)",
         "Accept": "application/json",
@@ -1026,6 +1069,9 @@ async def login(request: Request):
     password = str(payload.get("password", ""))
     mode = str(payload.get("mode", "admin")).strip().lower()
 
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="Username and password are required")
+
     if hmac.compare_digest(username, ADMIN_USERNAME) and hmac.compare_digest(password, ADMIN_PASSWORD):
         role = "CEO" if mode == "admin" else "Staff"
         token = issue_staff_token(username, role, shop_id=MAIN_SHOP_ID)
@@ -1184,7 +1230,7 @@ async def save_product(
     uploaded_video_url, uploaded_video_public_id = upload_to_cloudinary(
         video_file, folder="sammyreks_videos", resource_type="video"
     )
-    clean_video_link = video_link.strip()
+    clean_video_link = sanitize_url(video_link)
 
     if uploaded_video_url:
         if old_video_url and old_video_url != uploaded_video_url:
@@ -1219,9 +1265,9 @@ async def save_product(
         "unit_retail_label": retail_unit.strip() or "Retail Unit",
         "price_carton": float(price_carton),
         "price": float(price_carton),
-        "qty_cartons": float(stock_cartons),
-        "stock": float(stock_cartons),
-        "cost": float(cost_price_carton),
+        "qty_cartons": max(0.0, float(stock_cartons)),
+        "stock": max(0.0, float(stock_cartons)),
+        "cost": max(0.0, float(cost_price_carton)),
         "price_pack": float(price_pack),
         "packs_per_carton": clean_packs_per_carton,
         "shelf": shelf_location.strip(),
@@ -1314,6 +1360,7 @@ async def create_order(request: Request):
             detail=f"Batch size cannot exceed {MAX_BATCH_ITEMS} items per submission.",
         )
 
+    sanitized_items: List[Dict[str, Any]] = []
     if special_items:
         req_summary = "; ".join(str(sp.get("item") or sp.get("name") or "") for sp in special_items if sp)
         order_type = "Multi-Item Request"
@@ -1322,12 +1369,15 @@ async def create_order(request: Request):
         item_parts = []
         total_sum = 0.0
         for it in items:
-            it_name = str(it.get("name") or "Item")
-            it_unit = str(it.get("unit") or "Unit")
-            it_qty = it.get("qty") or 1
-            it_total = float(it.get("total_price") or 0.0)
+            if not isinstance(it, dict):
+                continue
+            it_name = str(it.get("name") or "Item").strip()
+            it_unit = str(it.get("unit") or "Unit").strip()
+            it_qty = max(0.01, float(it.get("qty") or 1))
+            it_total = max(0.0, float(it.get("total_price") or 0.0))
             total_sum += it_total
             item_parts.append(f"{it_qty} {it_unit}(s) of {it_name}")
+            sanitized_items.append({**it, "name": it_name, "unit": it_unit, "qty": it_qty, "total_price": it_total})
         items_str = ", ".join(item_parts) if item_parts else "Cart Order"
         note_str = f" Note: {notes}" if notes else ""
         order_type = "Cart Order"
@@ -1348,7 +1398,7 @@ async def create_order(request: Request):
         "customer_pin_hash": pin_hash,
         "payment_ref_hash": ref_hash,
         "notes": notes,
-        "items": items,
+        "items": sanitized_items if not special_items else items,
         "special_items": special_items,
         "payment_ref": payment_ref,
         "status": "Pending",
@@ -1552,10 +1602,15 @@ def get_messages(
 
     if not staff:
         target_shop = normalize_shop_id(shop_id)
+        burst_key = f"pin:{_client_ip(request)}:{target_shop}:{clean_phone}"
+        _check_failed_pin_burst(burst_key)
         if not clean_phone or not clean_pin:
+            _record_failed_pin(burst_key)
             raise HTTPException(status_code=401, detail="Enter your phone number and PIN or Order Ref to view chat")
         if not _customer_pin_authorized(clean_phone, clean_pin, shop_id=target_shop):
+            _record_failed_pin(burst_key)
             raise HTTPException(status_code=401, detail="Invalid phone number, PIN, or Order Reference Code")
+        _clear_failed_pins(burst_key)
     else:
         target_shop = resolve_effective_shop_id(staff, shop_id)
 
@@ -1595,8 +1650,12 @@ async def post_message(
 
     if not staff:
         target_shop = normalize_shop_id(shop_id)
+        burst_key = f"msg:{_client_ip(request)}:{target_shop}:{clean_phone}"
+        _check_failed_pin_burst(burst_key)
         if not _customer_pin_authorized(clean_phone, pin, shop_id=target_shop):
+            _record_failed_pin(burst_key)
             raise HTTPException(status_code=401, detail="Unlock your chat with your phone number and PIN or Order Ref first")
+        _clear_failed_pins(burst_key)
     else:
         target_shop = resolve_effective_shop_id(staff, shop_id)
         if target_shop == "all":
@@ -1697,15 +1756,15 @@ async def record_sale(request: Request):
     product_id = str(payload.get("product_id") or "").strip()
     item_name = str(payload.get("item_name") or "Item").strip()
     unit_type = str(payload.get("unit_type") or "Carton").strip()
-    qty = max(1.0, float(payload.get("qty") or 1))
+    qty = max(0.01, float(payload.get("qty") or 1))
     customer_name = str(payload.get("customer_name") or "Walk-in Customer").strip()
     customer_phone = str(payload.get("customer_phone") or "N/A").strip()
     payment_source = str(payload.get("payment_source") or "Cash").strip()
     worker = staff.get("username") or "admin"
     record_debt = bool(payload.get("record_debt", False))
 
-    unit_price = float(payload.get("unit_price") or 0.0)
-    total = float(payload.get("total") or (unit_price * qty))
+    unit_price = max(0.0, float(payload.get("unit_price") or 0.0))
+    total = max(0.0, float(payload.get("total") if payload.get("total") is not None else (unit_price * qty)))
     payment_ref = make_ref()
     ts = now_str()
 
@@ -1799,11 +1858,12 @@ async def add_debtor(request: Request):
     effective_shop = resolve_effective_shop_id(staff, str(payload.get("shop_id") or MAIN_SHOP_ID))
     if effective_shop == "all":
         effective_shop = MAIN_SHOP_ID
+    amount = max(0.0, float(payload.get("amount") or 0.0))
     doc = {
         "shop_id": effective_shop,
         "customer": str(payload.get("customer") or "").strip(),
         "phone": str(payload.get("phone") or "").strip(),
-        "amount": float(payload.get("amount") or 0.0),
+        "amount": amount,
         "items_bought": str(payload.get("items_bought") or "").strip(),
         "status": "unpaid",
         "timestamp": now_str(),
@@ -1817,20 +1877,30 @@ async def add_debtor(request: Request):
 
 @app.post("/api/debtors/{debtor_id}/pay")
 def mark_debtor_paid(debtor_id: str, request: Request):
-    require_staff(request)
+    staff = require_staff(request)
     doc_ref = db.collection("debtors").document(debtor_id)
-    if not doc_ref.get().exists:
+    snap = doc_ref.get()
+    if not snap.exists:
         raise HTTPException(status_code=404, detail="Debtor not found")
+    ddata = snap.to_dict() or {}
+    d_shop = normalize_shop_id(str(ddata.get("shop_id") or MAIN_SHOP_ID))
+    if not is_super_admin(staff) and d_shop != staff["shop_id"]:
+        raise HTTPException(status_code=403, detail="You cannot modify another shop's debtor record")
     doc_ref.set({"status": "paid", "paid_at": now_str()}, merge=True)
     return {"ok": True, "id": debtor_id, "status": "paid"}
 
 
 @app.delete("/api/debtors/{debtor_id}")
 def delete_debtor(debtor_id: str, request: Request):
-    require_staff(request)
+    staff = require_staff(request)
     doc_ref = db.collection("debtors").document(debtor_id)
-    if not doc_ref.get().exists:
+    snap = doc_ref.get()
+    if not snap.exists:
         raise HTTPException(status_code=404, detail="Debtor not found")
+    ddata = snap.to_dict() or {}
+    d_shop = normalize_shop_id(str(ddata.get("shop_id") or MAIN_SHOP_ID))
+    if not is_super_admin(staff) and d_shop != staff["shop_id"]:
+        raise HTTPException(status_code=403, detail="You cannot delete another shop's debtor record")
     doc_ref.delete()
     return {"ok": True, "id": debtor_id}
 
@@ -1858,10 +1928,11 @@ async def add_expense(request: Request):
     effective_shop = resolve_effective_shop_id(staff, str(payload.get("shop_id") or MAIN_SHOP_ID))
     if effective_shop == "all":
         effective_shop = MAIN_SHOP_ID
+    amount = max(0.0, float(payload.get("amount") or 0.0))
     doc = {
         "shop_id": effective_shop,
         "category": str(payload.get("category") or "Operations").strip(),
-        "amount": float(payload.get("amount") or 0.0),
+        "amount": amount,
         "note": str(payload.get("note") or "").strip(),
         "timestamp": now_str(),
     }
@@ -1872,10 +1943,15 @@ async def add_expense(request: Request):
 
 @app.delete("/api/expenses/{expense_id}")
 def delete_expense(expense_id: str, request: Request):
-    require_staff(request)
+    staff = require_staff(request)
     doc_ref = db.collection("expenses").document(expense_id)
-    if not doc_ref.get().exists:
+    snap = doc_ref.get()
+    if not snap.exists:
         raise HTTPException(status_code=404, detail="Expense not found")
+    exdata = snap.to_dict() or {}
+    ex_shop = normalize_shop_id(str(exdata.get("shop_id") or MAIN_SHOP_ID))
+    if not is_super_admin(staff) and ex_shop != staff["shop_id"]:
+        raise HTTPException(status_code=403, detail="You cannot delete another shop's expense record")
     doc_ref.delete()
     return {"ok": True, "id": expense_id}
 
@@ -2039,7 +2115,7 @@ async def save_settings(
     uploaded_video, uploaded_video_public_id = upload_to_cloudinary(
         broadcast_video_file, folder="sammyreks_videos", resource_type="video"
     )
-    clean_link = broadcast_video_url.strip()
+    clean_link = sanitize_url(broadcast_video_url)
 
     if uploaded_video:
         if old_video and old_video != uploaded_video:

@@ -45,6 +45,7 @@ MAX_VIDEO_BYTES = 50 * 1024 * 1024
 MAX_BATCH_ITEMS = 15
 CACHE_TTL_SECONDS = 8.0
 TOKEN_TTL_SECONDS = 60 * 60 * 24  # 24 hours
+MAIN_SHOP_ID = "main"
 
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
@@ -134,7 +135,6 @@ SESSION_SECRET = (
 
 _attempt_buckets: Dict[str, List[float]] = defaultdict(list)
 
-# Local short-TTL cache & fallback dictionary for slow network / transient errors
 _local_cache: Dict[str, Tuple[float, Any]] = {}
 _fallback_store: Dict[str, Any] = {
     "products": [],
@@ -164,6 +164,16 @@ def _cache_invalidate(prefix: str = "") -> None:
         _local_cache.pop(k, None)
 
 
+def make_slug(text: str) -> str:
+    clean = re.sub(r"[^a-z0-9]+", "-", (text or "").strip().lower()).strip("-")
+    return clean or f"shop-{uuid.uuid4().hex[:6]}"
+
+
+def normalize_shop_id(raw_shop_id: Optional[str]) -> str:
+    clean = (raw_shop_id or "").strip().lower()
+    return clean if clean else MAIN_SHOP_ID
+
+
 def validate_multi_tier_pricing(
     price_carton: float,
     price_pack: float,
@@ -171,7 +181,6 @@ def validate_multi_tier_pricing(
     packs_per_carton: int,
     units_per_pack: int,
 ) -> List[str]:
-    """Validate multi-tier pricing and return human-readable warnings without breaking valid edge cases."""
     if price_carton < 0 or price_pack < 0 or price_retail < 0:
         raise HTTPException(status_code=400, detail="Prices cannot be negative.")
     if packs_per_carton < 1 or units_per_pack < 1:
@@ -266,10 +275,11 @@ def verify_password(plain_password: str, stored_password: str) -> bool:
     return hmac.compare_digest(plain_password, stored_password)
 
 
-def issue_staff_token(username: str, role: str) -> str:
+def issue_staff_token(username: str, role: str, shop_id: str = MAIN_SHOP_ID) -> str:
     payload = {
         "u": username,
         "r": role,
+        "s": normalize_shop_id(shop_id),
         "exp": int(time.time()) + TOKEN_TTL_SECONDS,
     }
     payload_b64 = base64.urlsafe_b64encode(
@@ -303,9 +313,24 @@ def parse_staff_token(request: Request) -> Optional[Dict[str, str]]:
         exp = data.get("exp")
         if exp is not None and int(time.time()) > int(exp):
             return None
-        return {"username": str(data["u"]), "role": str(data.get("r") or "Staff")}
+        return {
+            "username": str(data["u"]),
+            "role": str(data.get("r") or "Staff"),
+            "shop_id": normalize_shop_id(str(data.get("s") or MAIN_SHOP_ID)),
+        }
     except Exception:
         return None
+
+
+def is_super_admin(staff: Dict[str, str]) -> bool:
+    return staff.get("role", "").strip().upper() == "CEO"
+
+
+def resolve_effective_shop_id(staff: Dict[str, str], requested_shop_id: Optional[str] = None) -> str:
+    if is_super_admin(staff):
+        clean_req = (requested_shop_id or "").strip().lower()
+        return clean_req if clean_req else MAIN_SHOP_ID
+    return normalize_shop_id(staff.get("shop_id"))
 
 
 def require_staff(request: Request) -> Dict[str, str]:
@@ -315,12 +340,38 @@ def require_staff(request: Request) -> Dict[str, str]:
     return staff
 
 
+def require_super_admin(request: Request) -> Dict[str, str]:
+    staff = require_staff(request)
+    if not is_super_admin(staff):
+        raise HTTPException(status_code=403, detail="Super Admin (CEO) permission required")
+    return staff
+
+
 def require_admin_or_ceo(request: Request) -> Dict[str, str]:
     staff = require_staff(request)
     role_upper = staff.get("role", "").strip().upper()
-    if role_upper not in {"CEO", "ADMIN"}:
-        raise HTTPException(status_code=403, detail="Admin or CEO permission required")
+    if role_upper not in {"CEO", "ADMIN", "SHOPOWNER"}:
+        raise HTTPException(status_code=403, detail="Admin, CEO, or Shop Owner permission required")
     return staff
+
+
+def normalize_shop(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    data = dict(raw or {})
+    slug = normalize_shop_id(str(data.get("slug") or doc_id))
+    return {
+        "id": doc_id,
+        "slug": slug,
+        "name": str(data.get("name") or "Partner Shop").strip(),
+        "owner_name": str(data.get("owner_name") or "").strip(),
+        "owner_username": str(data.get("owner_username") or "").strip(),
+        "location": str(data.get("location") or "Calabar").strip(),
+        "phone": str(data.get("phone") or "").strip(),
+        "bank_details": str(data.get("bank_details") or "").strip(),
+        "tagline": str(data.get("tagline") or "").strip(),
+        "avatar_url": str(data.get("avatar_url") or "").strip(),
+        "active": bool(data.get("active", True)),
+        "created_at": str(data.get("created_at") or "").strip(),
+    }
 
 
 def normalize_product(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -334,6 +385,7 @@ def normalize_product(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, A
     image_url = str(data.get("image_url") or data.get("img_data") or "").strip()
     vendor_name = str(data.get("vendor_name") or data.get("vendor") or data.get("sponsor") or "").strip()
     data["id"] = doc_id
+    data["shop_id"] = normalize_shop_id(str(data.get("shop_id") or MAIN_SHOP_ID))
     data["name"] = str(data.get("name") or "Unnamed Product").strip()
     data["category"] = str(data.get("category") or "General").strip()
     data["location"] = str(data.get("location") or "Watt Market, Calabar").strip()
@@ -370,6 +422,7 @@ def normalize_order(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, Any
     items = data.get("items") if isinstance(data.get("items"), list) else []
     special_items = data.get("special_items") if isinstance(data.get("special_items"), list) else []
     data["id"] = doc_id
+    data["shop_id"] = normalize_shop_id(str(data.get("shop_id") or MAIN_SHOP_ID))
     data["customer"] = customer
     data["customer_name"] = customer
     data["contact_phone"] = phone
@@ -394,6 +447,7 @@ def normalize_message(doc_id: str, raw: Optional[Dict[str, Any]]) -> Dict[str, A
     phone = str(data.get("customer_phone") or data.get("phone") or "").strip()
     body = str(data.get("message") if data.get("message") is not None else (data.get("text") or "")).strip()
     data["id"] = doc_id
+    data["shop_id"] = normalize_shop_id(str(data.get("shop_id") or MAIN_SHOP_ID))
     data["sender"] = str(data.get("sender") or "Customer").strip()
     data["customer_phone"] = phone
     data["phone"] = phone
@@ -429,7 +483,6 @@ def _looks_like_valid_media(header: bytes, resource_type: str) -> bool:
 
 
 def extract_cloudinary_public_id(url: str) -> Optional[str]:
-    """Extract Cloudinary public_id from a standard Cloudinary delivery URL."""
     clean = (url or "").strip()
     if not clean or "res.cloudinary.com" not in clean:
         return None
@@ -453,7 +506,6 @@ def delete_from_cloudinary(
     url: Optional[str] = None,
     resource_type: str = "image",
 ) -> bool:
-    """Safely destroy an old or deleted asset in Cloudinary to free storage."""
     if not cloudinary_ready:
         return False
     target_id = (public_id or "").strip() or extract_cloudinary_public_id(url or "")
@@ -473,7 +525,6 @@ def upload_to_cloudinary(
     resource_type: str = "image",
     max_dim: Optional[int] = None,
 ) -> Tuple[Optional[str], Optional[str]]:
-    """Uploads file to Cloudinary and returns (secure_url, public_id)."""
     if not file or not file.filename:
         return None, None
     if not cloudinary_ready:
@@ -522,48 +573,116 @@ def upload_to_cloudinary(
     return (result.get("secure_url") or result.get("url")), result.get("public_id")
 
 
-def _deduct_product_stock_in_firestore(
-    product_id: str,
-    unit_type: str,
-    qty: float,
-    ts: str,
-) -> None:
-    """Transactionally deduct cartons/packs/retail units from a Firestore product."""
-    if not product_id or qty <= 0:
-        return
-    prod_ref = db.collection("products").document(product_id)
+# ==============================================================================
+# REGISTERED PARTNER SHOPS
+# ==============================================================================
 
-    @firestore.transactional
-    def _deduct_stock_tx(transaction: firestore.Transaction, ref: firestore.DocumentReference):
-        snap = ref.get(transaction=transaction)
-        if not snap.exists:
-            return
-        pdata = snap.to_dict() or {}
-        m_lbl = str(pdata.get("unit_main_label") or "Carton").strip()
-        p_lbl = str(pdata.get("unit_pack_label") or "Pack").strip()
-        packs_per_carton = max(1.0, float(pdata.get("packs_per_carton") or 1))
-        units_per_pack = max(1.0, float(pdata.get("units_per_pack") or 1))
+@app.get("/api/shops")
+def list_shops(request: Request):
+    staff = parse_staff_token(request)
+    docs = db.collection("shops").stream()
+    shops: List[Dict[str, Any]] = []
+    for doc in docs:
+        shop = normalize_shop(doc.id, doc.to_dict())
+        if shop["active"] or (staff and is_super_admin(staff)):
+            shops.append(shop)
+    shops.sort(key=lambda x: str(x.get("name", "")).lower())
+    return {"shops": shops}
 
-        if unit_type == m_lbl or unit_type.lower() == "carton":
-            deduct_cartons = qty
-        elif unit_type == p_lbl or unit_type.lower() == "pack":
-            deduct_cartons = qty / packs_per_carton
-        else:
-            deduct_cartons = qty / (packs_per_carton * units_per_pack)
 
-        current_stock = float(
-            pdata.get("qty_cartons")
-            if pdata.get("qty_cartons") is not None
-            else (pdata.get("stock") or 0)
-        )
-        new_stock = max(0.0, current_stock - deduct_cartons)
-        transaction.set(ref, {"qty_cartons": new_stock, "stock": new_stock, "updated_at": ts}, merge=True)
+@app.post("/api/shops")
+async def register_shop(
+    request: Request,
+    name: str = Form(...),
+    owner_name: str = Form(""),
+    owner_username: str = Form(...),
+    owner_password: str = Form(...),
+    location: str = Form("Calabar"),
+    phone: str = Form(""),
+    bank_details: str = Form(""),
+    tagline: str = Form(""),
+    avatar_file: Optional[UploadFile] = File(None),
+):
+    require_super_admin(request)
+    clean_name = name.strip()
+    clean_user = owner_username.strip()
+    if not clean_name or not clean_user or not owner_password:
+        raise HTTPException(status_code=400, detail="Shop name, owner username, and password are required")
 
-    _deduct_stock_tx(db.transaction(), prod_ref)
+    if hmac.compare_digest(clean_user, ADMIN_USERNAME):
+        raise HTTPException(status_code=400, detail="Owner username cannot match the Super Admin username")
+
+    for existing_w in db.collection("workers").where("username", "==", clean_user).stream():
+        if existing_w.exists:
+            raise HTTPException(status_code=400, detail=f"Username '{clean_user}' is already taken")
+
+    base_slug = make_slug(clean_name)
+    slug = base_slug
+    if db.collection("shops").document(slug).get().exists:
+        slug = f"{base_slug}-{uuid.uuid4().hex[:4]}"
+
+    avatar_url, avatar_public_id = upload_to_cloudinary(
+        avatar_file, folder="sammyreks_shops", resource_type="image", max_dim=400
+    )
+
+    ts = now_str()
+    shop_doc: Dict[str, Any] = {
+        "slug": slug,
+        "name": clean_name,
+        "owner_name": owner_name.strip() or clean_name,
+        "owner_username": clean_user,
+        "location": location.strip() or "Calabar",
+        "phone": phone.strip(),
+        "bank_details": bank_details.strip(),
+        "tagline": tagline.strip(),
+        "avatar_url": avatar_url or "",
+        "avatar_public_id": avatar_public_id or "",
+        "active": True,
+        "created_at": ts,
+    }
+    db.collection("shops").document(slug).set(shop_doc)
+
+    worker_doc: Dict[str, Any] = {
+        "name": owner_name.strip() or clean_name,
+        "role": "ShopOwner",
+        "shop_id": slug,
+        "username": clean_user,
+        "password": hash_password(owner_password),
+        "timestamp": ts,
+    }
+    db.collection("workers").document(uuid.uuid4().hex).set(worker_doc)
+
+    return {"ok": True, "shop": normalize_shop(slug, shop_doc)}
+
+
+@app.delete("/api/shops/{shop_id}")
+def delete_shop(shop_id: str, request: Request):
+    require_super_admin(request)
+    clean_id = normalize_shop_id(shop_id)
+    if clean_id == MAIN_SHOP_ID:
+        raise HTTPException(status_code=400, detail="Cannot delete the main store")
+
+    shop_ref = db.collection("shops").document(clean_id)
+    snap = shop_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Registered shop not found")
+
+    sdata = snap.to_dict() or {}
+    delete_from_cloudinary(
+        public_id=sdata.get("avatar_public_id"),
+        url=sdata.get("avatar_url"),
+        resource_type="image",
+    )
+    shop_ref.delete()
+
+    for wdoc in db.collection("workers").where("shop_id", "==", clean_id).stream():
+        wdoc.reference.delete()
+
+    return {"ok": True, "id": clean_id}
 
 
 # ==============================================================================
-# AUTO-STOCK: LOCATION POPULARITY, AUTO IMAGES, PACKAGING & OPTIONAL VIDEO ADS
+# AUTO-STOCK ROUTES (BARCODE, CATEGORY & NAME-FIRST BATCH SEARCH)
 # ==============================================================================
 
 def _http_get_json(url: str, headers: Optional[Dict[str, str]] = None, timeout: int = 12) -> Dict[str, Any]:
@@ -582,9 +701,7 @@ def _http_get_json(url: str, headers: Optional[Dict[str, str]] = None, timeout: 
 
 
 def _find_royalty_free_video_url(query_text: str) -> Optional[str]:
-    """Search Pexels or Pixabay Video API for a short (4-25s), landscape, commercial-free clip."""
     clean_q = (query_text or "product commercial").strip()
-
     if PEXELS_API_KEY:
         try:
             url = f"https://api.pexels.com/videos/search?query={quote(clean_q)}&per_page=8&orientation=landscape"
@@ -625,7 +742,6 @@ def _find_royalty_free_video_url(query_text: str) -> Optional[str]:
 
 
 def _download_video_advert(video_url: str, target_mode: Optional[str] = None) -> str:
-    """Download an MP4 clip locally to /static/uploads/ads/... or upload to Cloudinary."""
     clean_url = (video_url or "").strip()
     if not clean_url:
         return ""
@@ -682,6 +798,21 @@ def _download_video_advert(video_url: str, target_mode: Optional[str] = None) ->
                 pass
 
 
+def _infer_category_from_name(product_name: str) -> str:
+    q = (product_name or "").strip().lower()
+    rules: List[Tuple[str, List[str]]] = [
+        ("Beverages", ["malt", "maltina", "sprite", "coke", "cola", "fanta", "pepsi", "juice", "drink", "water", "milk", "yoghurt", "yogurt", "tea", "coffee", "bovril", "milo", "bournvita", "peak"]),
+        ("Food & Groceries", ["indomie", "noodle", "rice", "garri", "semo", "semolina", "beans", "spaghetti", "pasta", "oil", "sugar", "salt", "flour", "tin", "tomato", "seasoning", "maggi", "knorr", "biscuit", "bread"]),
+        ("Household & Cleaning", ["hypo", "bleach", "soap", "detergent", "liquid soap", "dish", "omo", "ariel", "klin", "harpic", "sanitiser", "sanitizer", "tissue", "mop", "broom", "foil", "wrap"]),
+        ("Personal Care & Cosmetics", ["lotion", "cream", "body wash", "shower", "shampoo", "hair", "perfume", "spray", "deodorant", "roll on", "toothpaste", "brush", "vaseline", "nivea", "dove"]),
+        ("Electronics & Accessories", ["charger", "cable", "earphone", "headset", "power bank", "battery", "bulb", "led", "lamp", "socket", "extension", "speaker", "fan", "remote", "phone"]),
+    ]
+    for cat_name, keywords in rules:
+        if any(kw in q for kw in keywords):
+            return cat_name
+    return "General"
+
+
 @app.get("/api/auto-stock/barcode/{barcode:path}")
 def auto_stock_by_barcode(
     barcode: str,
@@ -709,19 +840,20 @@ def auto_stock_by_barcode(
 
 @app.post("/api/auto-stock/search-names")
 async def auto_stock_by_names(request: Request):
-    """Batch lookup & auto-categorization by product names for the frontend Smart Auto-Stock table."""
     require_staff(request)
     payload = await request.json()
-    raw_names = payload.get("product_names") if isinstance(payload.get("product_names"), list) else []
-    names = [str(n).strip() for n in raw_names if str(n).strip()]
-    if not names:
-        raise HTTPException(status_code=400, detail="Provide at least one product name.")
-    if len(names) > MAX_BATCH_ITEMS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot auto-stock more than {MAX_BATCH_ITEMS} items per batch.",
-        )
+    raw_names = payload.get("product_names") or []
+    if isinstance(raw_names, str):
+        names_list = [s.strip() for s in re.split(r"[,;\r\n]+", raw_names) if s.strip()]
+    elif isinstance(raw_names, list):
+        names_list = [str(s or "").strip() for s in raw_names if str(s or "").strip()]
+    else:
+        names_list = []
 
+    if not names_list:
+        raise HTTPException(status_code=400, detail="Provide at least one product name to search.")
+
+    names_list = names_list[:MAX_BATCH_ITEMS]
     location = str(payload.get("location") or "Watt Market, Calabar").strip() or "Watt Market, Calabar"
     default_stock = max(
         0.0,
@@ -733,43 +865,55 @@ async def auto_stock_by_names(request: Request):
     )
 
     items: List[Dict[str, Any]] = []
-    for prod_name in names:
+    for raw_name in names_list:
+        inferred_cat = _infer_category_from_name(raw_name)
         try:
-            res = lookup_barcode_or_keyword(
-                prod_name,
+            lookup_res = lookup_barcode_or_keyword(
+                raw_name,
                 default_stock_cartons=default_stock,
                 location=location,
             )
-            item = res.get("item") if isinstance(res, dict) else None
-            if isinstance(item, dict):
-                item["selected"] = True
-                items.append(item)
-        except Exception as exc:
-            print(f"[WARN] Name lookup fallback for '{prod_name}': {exc}")
+            item = dict(lookup_res.get("item") or {})
+            item["name"] = str(item.get("name") or raw_name).strip() or raw_name
+            fetched_cat = str(item.get("category") or "").strip()
+            if not fetched_cat or fetched_cat.lower() in {"general", "uncategorized", "other"}:
+                item["category"] = inferred_cat
+            item["stock_cartons"] = float(
+                item.get("stock_cartons") if item.get("stock_cartons") is not None else default_stock
+            )
+            item["image_url"] = sanitize_url(str(item.get("image_url") or ""))
+            item["selected"] = True
+            items.append(item)
+        except Exception:
             items.append(
                 {
-                    "name": prod_name,
-                    "description": f"{prod_name} — stocked in {location}.",
-                    "category": "General",
-                    "location": location,
+                    "name": raw_name,
+                    "category": inferred_cat,
                     "vendor_name": "",
                     "main_unit": "Carton",
                     "sub_unit": "Pack",
                     "retail_unit": "Retail Unit",
                     "price_carton": 0.0,
-                    "price_pack": 0.0,
-                    "price_retail": 0.0,
-                    "cost_price_carton": 0.0,
-                    "packs_per_carton": 1,
-                    "units_per_pack": 1,
                     "stock_cartons": default_stock,
+                    "cost_price_carton": 0.0,
+                    "price_pack": 0.0,
+                    "packs_per_carton": 1,
+                    "price_retail": 0.0,
+                    "units_per_pack": 1,
                     "image_url": "",
-                    "price_benchmark_note": "Verify prices before publishing.",
+                    "video_url": "",
+                    "description": f"{raw_name} — {location}",
+                    "price_benchmark_note": "Enter carton, pack & retail prices before publishing",
                     "selected": True,
                 }
             )
 
-    return {"ok": True, "count": len(items), "items": items}
+    return {
+        "ok": True,
+        "location": location,
+        "count": len(items),
+        "items": items,
+    }
 
 
 @app.post("/api/auto-stock/category")
@@ -821,85 +965,8 @@ async def auto_stock_by_category(request: Request):
     }
 
 
-@app.post("/api/products/batch")
-async def batch_create_products(request: Request):
-    """Publish multiple reviewed auto-stock products into Firestore in one batch."""
-    require_staff(request)
-    payload = await request.json()
-    raw_items = payload.get("items") if isinstance(payload.get("items"), list) else []
-    if not raw_items:
-        raise HTTPException(status_code=400, detail="Select at least one product to publish.")
-    if len(raw_items) > MAX_BATCH_ITEMS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot publish more than {MAX_BATCH_ITEMS} items at once.",
-        )
-
-    batch = db.batch()
-    created_ids: List[str] = []
-    ts = now_str()
-
-    for raw in raw_items:
-        if not isinstance(raw, dict):
-            continue
-        clean_name = str(raw.get("name") or "").strip()
-        if not clean_name:
-            continue
-
-        price_carton = max(0.0, float(raw.get("price_carton") or 0.0))
-        price_pack = max(0.0, float(raw.get("price_pack") or 0.0))
-        price_retail = max(0.0, float(raw.get("price_retail") or 0.0))
-        stock_cartons = max(0.0, float(raw.get("stock_cartons") or 0.0))
-        cost_carton = max(0.0, float(raw.get("cost_price_carton") or 0.0))
-        ppc = max(1, int(raw.get("packs_per_carton") or 1))
-        upp = max(1, int(raw.get("units_per_pack") or 1))
-        safe_img = sanitize_url(str(raw.get("image_url") or ""))
-        clean_vid = str(raw.get("video_url") or "").strip()
-
-        doc_id = uuid.uuid4().hex
-        doc_ref = db.collection("products").document(doc_id)
-        batch.set(
-            doc_ref,
-            {
-                "name": clean_name,
-                "category": str(raw.get("category") or "General").strip() or "General",
-                "location": str(raw.get("location") or "Watt Market, Calabar").strip(),
-                "vendor_name": str(raw.get("vendor_name") or "").strip(),
-                "unit_main_label": str(raw.get("main_unit") or "Carton").strip() or "Carton",
-                "unit_pack_label": str(raw.get("sub_unit") or "Pack").strip() or "Pack",
-                "unit_retail_label": str(raw.get("retail_unit") or "Retail Unit").strip() or "Retail Unit",
-                "price_carton": price_carton,
-                "price": price_carton,
-                "qty_cartons": stock_cartons,
-                "stock": stock_cartons,
-                "cost": cost_carton,
-                "price_pack": price_pack,
-                "packs_per_carton": ppc,
-                "shelf": str(raw.get("location") or "").strip(),
-                "price_retail": price_retail,
-                "units_per_pack": upp,
-                "expiry": "",
-                "video_url": clean_vid,
-                "video_public_id": "",
-                "description": str(raw.get("description") or "").strip(),
-                "image_url": safe_img,
-                "image_public_id": "",
-                "created_at": ts,
-                "updated_at": ts,
-            },
-        )
-        created_ids.append(doc_id)
-
-    if not created_ids:
-        raise HTTPException(status_code=400, detail="No valid products found in batch payload.")
-
-    batch.commit()
-    _cache_invalidate("products:")
-    return {"ok": True, "count": len(created_ids), "ids": created_ids}
-
-
 # ==============================================================================
-# CORE ROUTES
+# CORE STOREFRONT, AUTH, PRODUCTS, ORDERS & PIN-LOCKED CHAT ROUTES
 # ==============================================================================
 
 @app.get("/", response_class=HTMLResponse)
@@ -917,8 +984,14 @@ async def login(request: Request):
 
     if hmac.compare_digest(username, ADMIN_USERNAME) and hmac.compare_digest(password, ADMIN_PASSWORD):
         role = "CEO" if mode == "admin" else "Staff"
-        token = issue_staff_token(username, role)
-        return {"ok": True, "username": username, "role": role, "token": token}
+        token = issue_staff_token(username, role, shop_id=MAIN_SHOP_ID)
+        return {
+            "ok": True,
+            "username": username,
+            "role": role,
+            "shop_id": MAIN_SHOP_ID,
+            "token": token,
+        }
 
     worker_docs = db.collection("workers").where("username", "==", username).stream()
     for doc in worker_docs:
@@ -926,11 +999,13 @@ async def login(request: Request):
         if verify_password(password, str(w.get("password", ""))):
             resolved_user = w.get("username") or w.get("name") or username
             resolved_role = w.get("role") or "Staff"
-            token = issue_staff_token(resolved_user, resolved_role)
+            resolved_shop_id = normalize_shop_id(str(w.get("shop_id") or MAIN_SHOP_ID))
+            token = issue_staff_token(resolved_user, resolved_role, shop_id=resolved_shop_id)
             return {
                 "ok": True,
                 "username": resolved_user,
                 "role": resolved_role,
+                "shop_id": resolved_shop_id,
                 "token": token,
             }
 
@@ -938,22 +1013,29 @@ async def login(request: Request):
 
 
 @app.get("/api/products")
-def get_products():
-    cached = _cache_get("products:list")
+def get_products(shop_id: str = Query(default=MAIN_SHOP_ID)):
+    target_shop = normalize_shop_id(shop_id)
+    cache_key = f"products:list:{target_shop}"
+    cached = _cache_get(cache_key)
     if cached is not None:
-        return {"products": cached, "cached": True}
+        return {"products": cached, "shop_id": target_shop, "cached": True}
 
     try:
         docs = db.collection("products").stream()
-        products = [normalize_product(doc.id, doc.to_dict()) for doc in docs]
+        products: List[Dict[str, Any]] = []
+        for doc in docs:
+            p = normalize_product(doc.id, doc.to_dict())
+            if target_shop == "all" or p["shop_id"] == target_shop:
+                products.append(p)
         products.sort(key=lambda x: str(x.get("name", "")).lower())
-        _cache_set("products:list", products)
-        _fallback_store["products"] = products
-        return {"products": products, "cached": False}
+        _cache_set(cache_key, products)
+        if target_shop == MAIN_SHOP_ID:
+            _fallback_store["products"] = products
+        return {"products": products, "shop_id": target_shop, "cached": False}
     except Exception as exc:
         print(f"[WARN] /api/products fallback triggered: {exc}")
-        fallback = list(_fallback_store.get("products") or [])
-        return {"products": fallback, "cached": True, "fallback": True}
+        fallback = list(_fallback_store.get("products") or []) if target_shop == MAIN_SHOP_ID else []
+        return {"products": fallback, "shop_id": target_shop, "cached": True, "fallback": True}
 
 
 @app.post("/api/products")
@@ -961,6 +1043,7 @@ async def save_product(
     request: Request,
     action_mode: str = Form("create"),
     existing_product_id: str = Form(""),
+    shop_id: str = Form(MAIN_SHOP_ID),
     category: str = Form("General"),
     location: str = Form("Watt Market, Calabar"),
     vendor_name: str = Form(""),
@@ -983,7 +1066,11 @@ async def save_product(
     image_file: Optional[UploadFile] = File(None),
     video_file: Optional[UploadFile] = File(None),
 ):
-    require_staff(request)
+    staff = require_staff(request)
+    effective_shop = resolve_effective_shop_id(staff, shop_id)
+    if effective_shop == "all":
+        effective_shop = MAIN_SHOP_ID
+
     clean_name = name.strip()
     if not clean_name:
         raise HTTPException(status_code=400, detail="Product name is required")
@@ -1006,6 +1093,10 @@ async def save_product(
         if not snap.exists:
             raise HTTPException(status_code=404, detail="Selected product not found")
         existing_data = snap.to_dict() or {}
+        existing_shop = normalize_shop_id(str(existing_data.get("shop_id") or MAIN_SHOP_ID))
+        if not is_super_admin(staff) and existing_shop != staff["shop_id"]:
+            raise HTTPException(status_code=403, detail="You cannot edit another shop's product")
+        effective_shop = existing_shop
     else:
         target_id = uuid.uuid4().hex
 
@@ -1070,14 +1161,11 @@ async def save_product(
             else (extract_cloudinary_public_id(clean_video_link) or "")
         )
     else:
-        if existing_data and old_video_url:
-            delete_from_cloudinary(
-                public_id=old_video_public_id, url=old_video_url, resource_type="video"
-            )
-        final_video_url = ""
-        final_video_public_id = ""
+        final_video_url = old_video_url
+        final_video_public_id = old_video_public_id
 
     product_doc: Dict[str, Any] = {
+        "shop_id": effective_shop,
         "name": clean_name,
         "category": category.strip() or "General",
         "location": location.strip() or "Watt Market, Calabar",
@@ -1119,13 +1207,17 @@ async def save_product(
 
 @app.delete("/api/products/{product_id}")
 def delete_product(product_id: str, request: Request):
-    require_staff(request)
+    staff = require_staff(request)
     doc_ref = db.collection("products").document(product_id)
     snap = doc_ref.get()
     if not snap.exists:
         raise HTTPException(status_code=404, detail="Product not found")
 
     pdata = snap.to_dict() or {}
+    existing_shop = normalize_shop_id(str(pdata.get("shop_id") or MAIN_SHOP_ID))
+    if not is_super_admin(staff) and existing_shop != staff["shop_id"]:
+        raise HTTPException(status_code=403, detail="You cannot delete another shop's product")
+
     delete_from_cloudinary(
         public_id=pdata.get("image_public_id"),
         url=pdata.get("image_url") or pdata.get("img_data"),
@@ -1143,18 +1235,24 @@ def delete_product(product_id: str, request: Request):
 
 
 @app.get("/api/orders")
-def get_orders(request: Request):
-    require_staff(request)
+def get_orders(request: Request, shop_id: Optional[str] = Query(default=None)):
+    staff = require_staff(request)
+    effective_shop = resolve_effective_shop_id(staff, shop_id)
     docs = db.collection("orders").stream()
-    orders = [normalize_order(doc.id, doc.to_dict()) for doc in docs]
+    orders: List[Dict[str, Any]] = []
+    for doc in docs:
+        order = normalize_order(doc.id, doc.to_dict())
+        if effective_shop == "all" or order["shop_id"] == effective_shop:
+            orders.append(order)
     orders.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
-    return {"orders": orders}
+    return {"orders": orders, "shop_id": effective_shop}
 
 
 @app.post("/api/orders")
 async def create_order(request: Request):
     _check_rate_limit(f"order:{_client_ip(request)}", max_attempts=20, window_seconds=300)
     payload = await request.json()
+    target_shop = normalize_shop_id(str(payload.get("shop_id") or MAIN_SHOP_ID))
     customer = str(payload.get("customer") or payload.get("customer_name") or "Customer").strip()
     phone = str(payload.get("contact_phone") or payload.get("phone") or "").strip()
     notes = str(payload.get("notes") or "").strip()
@@ -1199,6 +1297,7 @@ async def create_order(request: Request):
     ref_hash = hash_pin(payment_ref)
 
     order_doc: Dict[str, Any] = {
+        "shop_id": target_shop,
         "order_type": order_type,
         "customer": customer,
         "contact_phone": phone,
@@ -1216,6 +1315,7 @@ async def create_order(request: Request):
     db.collection("orders").document(order_id).set(order_doc)
 
     msg_doc: Dict[str, Any] = {
+        "shop_id": target_shop,
         "sender": "Customer",
         "customer_phone": phone,
         "phone": phone,
@@ -1228,7 +1328,13 @@ async def create_order(request: Request):
     }
     db.collection("messages").document(uuid.uuid4().hex).set(msg_doc)
 
-    return {"ok": True, "id": order_id, "payment_ref": payment_ref, "customer_pin": customer_pin}
+    return {
+        "ok": True,
+        "id": order_id,
+        "shop_id": target_shop,
+        "payment_ref": payment_ref,
+        "customer_pin": customer_pin,
+    }
 
 
 @app.post("/api/orders/{order_id}/verify")
@@ -1240,17 +1346,26 @@ async def verify_order(order_id: str, request: Request):
         raise HTTPException(status_code=404, detail="Order not found")
 
     order_data = snap.to_dict() or {}
-    already_verified = str(order_data.get("status") or "").strip().lower() == "verified"
+    order_shop = normalize_shop_id(str(order_data.get("shop_id") or MAIN_SHOP_ID))
+    if not is_super_admin(staff) and order_shop != staff["shop_id"]:
+        raise HTTPException(status_code=403, detail="You cannot verify orders for another shop")
+
     payload = await request.json() if request.headers.get("content-type", "").startswith("application/json") else {}
     verified_by = str(payload.get("verified_by") or staff.get("username") or "admin").strip()
 
-    settings_snap = db.collection("settings").document("business").get()
-    settings_data = settings_snap.to_dict() if settings_snap.exists else {}
-    biz_name = html.escape(str(settings_data.get("business_name") or "SAMMYREKS BUSINESS CENTER").upper())
-    currency = html.escape(str(settings_data.get("currency") or "₦"))
+    if order_shop == MAIN_SHOP_ID:
+        settings_snap = db.collection("settings").document("business").get()
+        settings_data = settings_snap.to_dict() if settings_snap.exists else {}
+        raw_biz = str(settings_data.get("business_name") or "SAMMYREKS BUSINESS CENTER")
+        currency = html.escape(str(settings_data.get("currency") or "₦"))
+    else:
+        shop_snap = db.collection("shops").document(order_shop).get()
+        shop_data = shop_snap.to_dict() if shop_snap.exists else {}
+        raw_biz = str(shop_data.get("name") or order_shop)
+        currency = "₦"
 
-    customer_raw = str(order_data.get("customer") or order_data.get("customer_name") or "Customer").strip()
-    customer = html.escape(customer_raw)
+    biz_name = html.escape(raw_biz.upper())
+    customer = html.escape(str(order_data.get("customer") or order_data.get("customer_name") or "Customer").strip())
     phone_raw = str(order_data.get("contact_phone") or order_data.get("phone") or "").strip()
     phone_esc = html.escape(phone_raw or "N/A")
     ref_code = str(order_data.get("payment_ref") or make_ref()).strip()
@@ -1269,47 +1384,17 @@ async def verify_order(order_id: str, request: Request):
             lines_html += f"<p style='margin:2px 0;'>{sp_text}</p>"
     elif items:
         for it in items:
-            pid = str(it.get("product_id") or "").strip()
-            it_name_raw = str(it.get("name") or "Item").strip()
-            it_unit_raw = str(it.get("unit") or "Unit").strip()
-            it_qty_num = max(0.0, float(it.get("qty") or 1))
-            it_unit_price = float(it.get("unit_price") or 0.0)
-            it_total = float(it.get("total_price") or (it_unit_price * it_qty_num))
-            total_val += it_total
-
-            if not already_verified:
-                if pid:
-                    _deduct_product_stock_in_firestore(pid, it_unit_raw, it_qty_num, ts)
-                db.collection("sales").document(uuid.uuid4().hex).set(
-                    {
-                        "product_id": pid,
-                        "item_name": it_name_raw,
-                        "unit_type": it_unit_raw,
-                        "qty": it_qty_num,
-                        "unit_price": it_unit_price,
-                        "total": it_total,
-                        "customer_name": customer_raw,
-                        "customer_phone": phone_raw or "N/A",
-                        "payment_source": "Online Order",
-                        "worker": verified_by,
-                        "record_debt": False,
-                        "payment_ref": ref_code,
-                        "timestamp": ts,
-                    }
-                )
-
-            it_name = html.escape(it_name_raw)
-            it_unit = html.escape(it_unit_raw)
+            it_name = html.escape(str(it.get("name") or "Item"))
+            it_unit = html.escape(str(it.get("unit") or "Unit"))
             it_qty = html.escape(str(it.get("qty") or 1))
+            it_total = float(it.get("total_price") or 0.0)
+            total_val += it_total
             lines_html += (
                 f"<p style='margin:2px 0;'>{it_qty} {it_unit}(s) of {it_name} &mdash; "
                 f"{currency}{it_total:,.2f}</p>"
             )
     elif order_data.get("notes"):
         lines_html += f"<p style='margin:2px 0;'>{html.escape(str(order_data.get('notes')))}</p>"
-
-    if items and not already_verified:
-        _cache_invalidate("products:")
 
     receipt_html = (
         f"<div style='background:#fdfcf7; color:#111; padding:16px; border-radius:6px; "
@@ -1340,6 +1425,7 @@ async def verify_order(order_id: str, request: Request):
     order_ref.set({"status": "Verified", "verified_by": verified_by, "verified_at": ts}, merge=True)
 
     msg_doc: Dict[str, Any] = {
+        "shop_id": order_shop,
         "sender": "System",
         "customer_phone": phone_raw,
         "phone": phone_raw,
@@ -1357,10 +1443,15 @@ async def verify_order(order_id: str, request: Request):
 
 @app.delete("/api/orders/{order_id}")
 def delete_order(order_id: str, request: Request):
-    require_staff(request)
+    staff = require_staff(request)
     order_ref = db.collection("orders").document(order_id)
-    if not order_ref.get().exists:
+    snap = order_ref.get()
+    if not snap.exists:
         raise HTTPException(status_code=404, detail="Order not found")
+    order_data = snap.to_dict() or {}
+    order_shop = normalize_shop_id(str(order_data.get("shop_id") or MAIN_SHOP_ID))
+    if not is_super_admin(staff) and order_shop != staff["shop_id"]:
+        raise HTTPException(status_code=403, detail="You cannot delete orders for another shop")
     order_ref.delete()
     return {"ok": True, "id": order_id}
 
@@ -1382,17 +1473,24 @@ def _doc_matches_pin_or_ref(doc_dict: Dict[str, Any], clean_pin: str) -> bool:
     return False
 
 
-def _customer_pin_authorized(phone: str, pin: str) -> bool:
+def _customer_pin_authorized(phone: str, pin: str, shop_id: str = MAIN_SHOP_ID) -> bool:
     clean_pin = (pin or "").strip()
+    target_shop = normalize_shop_id(shop_id)
     if not phone or not clean_pin:
         return False
 
     for doc in db.collection("orders").where("contact_phone", "==", phone).stream():
-        if _doc_matches_pin_or_ref(doc.to_dict() or {}, clean_pin):
+        d = doc.to_dict() or {}
+        if normalize_shop_id(str(d.get("shop_id") or MAIN_SHOP_ID)) != target_shop:
+            continue
+        if _doc_matches_pin_or_ref(d, clean_pin):
             return True
 
     for doc in db.collection("messages").where("customer_phone", "==", phone).stream():
-        if _doc_matches_pin_or_ref(doc.to_dict() or {}, clean_pin):
+        d = doc.to_dict() or {}
+        if normalize_shop_id(str(d.get("shop_id") or MAIN_SHOP_ID)) != target_shop:
+            continue
+        if _doc_matches_pin_or_ref(d, clean_pin):
             return True
 
     return False
@@ -1403,27 +1501,33 @@ def get_messages(
     request: Request,
     phone: Optional[str] = Query(default=None),
     pin: Optional[str] = Query(default=None),
+    shop_id: Optional[str] = Query(default=MAIN_SHOP_ID),
 ):
     staff = parse_staff_token(request)
     clean_phone = (phone or "").strip()
     clean_pin = (pin or "").strip()
 
     if not staff:
-        _check_rate_limit(f"pin:{_client_ip(request)}:{clean_phone}", max_attempts=15, window_seconds=300)
+        target_shop = normalize_shop_id(shop_id)
+        _check_rate_limit(f"pin:{_client_ip(request)}:{target_shop}:{clean_phone}", max_attempts=15, window_seconds=300)
         if not clean_phone or not clean_pin:
             raise HTTPException(status_code=401, detail="Enter your phone number and PIN or Order Ref to view chat")
-        if not _customer_pin_authorized(clean_phone, clean_pin):
+        if not _customer_pin_authorized(clean_phone, clean_pin, shop_id=target_shop):
             raise HTTPException(status_code=401, detail="Invalid phone number, PIN, or Order Reference Code")
+    else:
+        target_shop = resolve_effective_shop_id(staff, shop_id)
 
     docs = db.collection("messages").stream()
     messages: List[Dict[str, Any]] = []
     for doc in docs:
         data = normalize_message(doc.id, doc.to_dict())
+        if target_shop != "all" and data["shop_id"] != target_shop:
+            continue
         if clean_phone and data["customer_phone"] != clean_phone:
             continue
         messages.append(data)
     messages.sort(key=lambda x: str(x.get("timestamp", "")))
-    return {"messages": messages}
+    return {"messages": messages, "shop_id": target_shop}
 
 
 @app.post("/api/messages")
@@ -1433,6 +1537,7 @@ async def post_message(
     sender: str = Form("Customer"),
     text: str = Form(""),
     pin: str = Form(""),
+    shop_id: str = Form(MAIN_SHOP_ID),
     proof_file: Optional[UploadFile] = File(None),
 ):
     staff = parse_staff_token(request)
@@ -1447,9 +1552,14 @@ async def post_message(
         raise HTTPException(status_code=401, detail="Staff login required to send staff replies")
 
     if not staff:
-        _check_rate_limit(f"msg:{_client_ip(request)}:{clean_phone}", max_attempts=20, window_seconds=300)
-        if not _customer_pin_authorized(clean_phone, pin):
+        target_shop = normalize_shop_id(shop_id)
+        _check_rate_limit(f"msg:{_client_ip(request)}:{target_shop}:{clean_phone}", max_attempts=20, window_seconds=300)
+        if not _customer_pin_authorized(clean_phone, pin, shop_id=target_shop):
             raise HTTPException(status_code=401, detail="Unlock your chat with your phone number and PIN or Order Ref first")
+    else:
+        target_shop = resolve_effective_shop_id(staff, shop_id)
+        if target_shop == "all":
+            target_shop = MAIN_SHOP_ID
 
     proof_url, proof_public_id = upload_to_cloudinary(
         proof_file, folder="sammyreks_receipts", resource_type="image", max_dim=1000
@@ -1459,6 +1569,7 @@ async def post_message(
         raise HTTPException(status_code=400, detail="Enter a message or attach a receipt image")
 
     msg_doc: Dict[str, Any] = {
+        "shop_id": target_shop,
         "sender": clean_sender,
         "customer_phone": clean_phone,
         "phone": clean_phone,
@@ -1470,18 +1581,22 @@ async def post_message(
     }
     msg_id = uuid.uuid4().hex
     db.collection("messages").document(msg_id).set(msg_doc)
-    return {"ok": True, "id": msg_id, "proof_url": proof_url}
+    return {"ok": True, "id": msg_id, "shop_id": target_shop, "proof_url": proof_url}
 
 
 @app.delete("/api/messages/{message_id}/photo")
 def delete_message_photo(message_id: str, request: Request):
-    require_staff(request)
+    staff = require_staff(request)
     doc_ref = db.collection("messages").document(message_id)
     snap = doc_ref.get()
     if not snap.exists:
         raise HTTPException(status_code=404, detail="Message not found")
 
     mdata = snap.to_dict() or {}
+    msg_shop = normalize_shop_id(str(mdata.get("shop_id") or MAIN_SHOP_ID))
+    if not is_super_admin(staff) and msg_shop != staff["shop_id"]:
+        raise HTTPException(status_code=403, detail="You cannot modify messages for another shop")
+
     delete_from_cloudinary(
         public_id=mdata.get("proof_public_id"),
         url=mdata.get("proof_url"),
@@ -1493,12 +1608,16 @@ def delete_message_photo(message_id: str, request: Request):
 
 
 @app.delete("/api/messages/photos")
-def delete_all_message_photos(request: Request):
-    require_staff(request)
+def delete_all_message_photos(request: Request, shop_id: Optional[str] = Query(default=None)):
+    staff = require_staff(request)
+    effective_shop = resolve_effective_shop_id(staff, shop_id)
     docs = db.collection("messages").stream()
     cleared = 0
     for doc in docs:
         data = doc.to_dict() or {}
+        doc_shop = normalize_shop_id(str(data.get("shop_id") or MAIN_SHOP_ID))
+        if effective_shop != "all" and doc_shop != effective_shop:
+            continue
         if data.get("proof_url") or data.get("proof_public_id"):
             delete_from_cloudinary(
                 public_id=data.get("proof_public_id"),
@@ -1511,22 +1630,29 @@ def delete_all_message_photos(request: Request):
 
 
 @app.get("/api/sales")
-def get_sales(request: Request):
-    require_staff(request)
+def get_sales(request: Request, shop_id: Optional[str] = Query(default=None)):
+    staff = require_staff(request)
+    effective_shop = resolve_effective_shop_id(staff, shop_id)
     docs = db.collection("sales").stream()
     sales: List[Dict[str, Any]] = []
     for doc in docs:
         item = dict(doc.to_dict() or {})
         item["id"] = doc.id
-        sales.append(item)
+        item["shop_id"] = normalize_shop_id(str(item.get("shop_id") or MAIN_SHOP_ID))
+        if effective_shop == "all" or item["shop_id"] == effective_shop:
+            sales.append(item)
     sales.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
-    return {"sales": sales}
+    return {"sales": sales, "shop_id": effective_shop}
 
 
 @app.post("/api/sales")
 async def record_sale(request: Request):
     staff = require_staff(request)
     payload = await request.json()
+    effective_shop = resolve_effective_shop_id(staff, str(payload.get("shop_id") or MAIN_SHOP_ID))
+    if effective_shop == "all":
+        effective_shop = MAIN_SHOP_ID
+
     product_id = str(payload.get("product_id") or "").strip()
     item_name = str(payload.get("item_name") or "Item").strip()
     unit_type = str(payload.get("unit_type") or "Carton").strip()
@@ -1543,11 +1669,40 @@ async def record_sale(request: Request):
     ts = now_str()
 
     if product_id:
-        _deduct_product_stock_in_firestore(product_id, unit_type, qty, ts)
+        prod_ref = db.collection("products").document(product_id)
+
+        @firestore.transactional
+        def _deduct_stock_tx(transaction: firestore.Transaction, ref: firestore.DocumentReference):
+            snap = ref.get(transaction=transaction)
+            if not snap.exists:
+                return
+            pdata = snap.to_dict() or {}
+            m_lbl = str(pdata.get("unit_main_label") or "Carton")
+            p_lbl = str(pdata.get("unit_pack_label") or "Pack")
+            packs_per_carton = max(1.0, float(pdata.get("packs_per_carton") or 1))
+            units_per_pack = max(1.0, float(pdata.get("units_per_pack") or 1))
+
+            if unit_type == m_lbl:
+                deduct_cartons = qty
+            elif unit_type == p_lbl:
+                deduct_cartons = qty / packs_per_carton
+            else:
+                deduct_cartons = qty / (packs_per_carton * units_per_pack)
+
+            current_stock = float(
+                pdata.get("qty_cartons")
+                if pdata.get("qty_cartons") is not None
+                else (pdata.get("stock") or 0)
+            )
+            new_stock = max(0.0, current_stock - deduct_cartons)
+            transaction.set(ref, {"qty_cartons": new_stock, "stock": new_stock, "updated_at": ts}, merge=True)
+
+        _deduct_stock_tx(db.transaction(), prod_ref)
         _cache_invalidate("products:")
 
     if record_debt:
         debt_doc = {
+            "shop_id": effective_shop,
             "customer": customer_name,
             "phone": customer_phone,
             "amount": total,
@@ -1560,6 +1715,7 @@ async def record_sale(request: Request):
         db.collection("debtors").document(uuid.uuid4().hex).set(debt_doc)
 
     sale_doc = {
+        "shop_id": effective_shop,
         "product_id": product_id,
         "item_name": item_name,
         "unit_type": unit_type,
@@ -1580,23 +1736,30 @@ async def record_sale(request: Request):
 
 
 @app.get("/api/debtors")
-def get_debtors(request: Request):
-    require_staff(request)
+def get_debtors(request: Request, shop_id: Optional[str] = Query(default=None)):
+    staff = require_staff(request)
+    effective_shop = resolve_effective_shop_id(staff, shop_id)
     docs = db.collection("debtors").stream()
     debtors: List[Dict[str, Any]] = []
     for doc in docs:
         item = dict(doc.to_dict() or {})
         item["id"] = doc.id
-        debtors.append(item)
+        item["shop_id"] = normalize_shop_id(str(item.get("shop_id") or MAIN_SHOP_ID))
+        if effective_shop == "all" or item["shop_id"] == effective_shop:
+            debtors.append(item)
     debtors.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
     return {"debtors": debtors}
 
 
 @app.post("/api/debtors")
 async def add_debtor(request: Request):
-    require_staff(request)
+    staff = require_staff(request)
     payload = await request.json()
+    effective_shop = resolve_effective_shop_id(staff, str(payload.get("shop_id") or MAIN_SHOP_ID))
+    if effective_shop == "all":
+        effective_shop = MAIN_SHOP_ID
     doc = {
+        "shop_id": effective_shop,
         "customer": str(payload.get("customer") or "").strip(),
         "phone": str(payload.get("phone") or "").strip(),
         "amount": float(payload.get("amount") or 0.0),
@@ -1632,23 +1795,30 @@ def delete_debtor(debtor_id: str, request: Request):
 
 
 @app.get("/api/expenses")
-def get_expenses(request: Request):
-    require_staff(request)
+def get_expenses(request: Request, shop_id: Optional[str] = Query(default=None)):
+    staff = require_staff(request)
+    effective_shop = resolve_effective_shop_id(staff, shop_id)
     docs = db.collection("expenses").stream()
     expenses: List[Dict[str, Any]] = []
     for doc in docs:
         item = dict(doc.to_dict() or {})
         item["id"] = doc.id
-        expenses.append(item)
+        item["shop_id"] = normalize_shop_id(str(item.get("shop_id") or MAIN_SHOP_ID))
+        if effective_shop == "all" or item["shop_id"] == effective_shop:
+            expenses.append(item)
     expenses.sort(key=lambda x: str(x.get("timestamp", "")), reverse=True)
     return {"expenses": expenses}
 
 
 @app.post("/api/expenses")
 async def add_expense(request: Request):
-    require_staff(request)
+    staff = require_staff(request)
     payload = await request.json()
+    effective_shop = resolve_effective_shop_id(staff, str(payload.get("shop_id") or MAIN_SHOP_ID))
+    if effective_shop == "all":
+        effective_shop = MAIN_SHOP_ID
     doc = {
+        "shop_id": effective_shop,
         "category": str(payload.get("category") or "Operations").strip(),
         "amount": float(payload.get("amount") or 0.0),
         "note": str(payload.get("note") or "").strip(),
@@ -1671,30 +1841,34 @@ def delete_expense(expense_id: str, request: Request):
 
 @app.get("/api/workers")
 def get_workers(request: Request):
-    require_staff(request)
+    staff = require_staff(request)
     docs = db.collection("workers").stream()
     workers: List[Dict[str, Any]] = []
     for doc in docs:
         item = dict(doc.to_dict() or {})
         item.pop("password", None)
         item["id"] = doc.id
-        workers.append(item)
+        item["shop_id"] = normalize_shop_id(str(item.get("shop_id") or MAIN_SHOP_ID))
+        if is_super_admin(staff) or item["shop_id"] == staff["shop_id"]:
+            workers.append(item)
     workers.sort(key=lambda x: str(x.get("name", "")).lower())
     return {"workers": workers}
 
 
 @app.post("/api/workers")
 async def add_worker(request: Request):
-    require_admin_or_ceo(request)
+    staff = require_super_admin(request)
     payload = await request.json()
     name = str(payload.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="Worker name is required")
     username = str(payload.get("username") or name.lower().replace(" ", "")).strip()
     raw_pw = str(payload.get("password") or "")
+    target_shop = resolve_effective_shop_id(staff, str(payload.get("shop_id") or MAIN_SHOP_ID))
     doc = {
         "name": name,
         "role": str(payload.get("role") or "Staff").strip(),
+        "shop_id": target_shop,
         "username": username,
         "password": hash_password(raw_pw),
         "timestamp": now_str(),
@@ -1706,7 +1880,7 @@ async def add_worker(request: Request):
 
 @app.delete("/api/workers/{worker_id}")
 def delete_worker(worker_id: str, request: Request):
-    require_admin_or_ceo(request)
+    require_super_admin(request)
     doc_ref = db.collection("workers").document(worker_id)
     if not doc_ref.get().exists:
         raise HTTPException(status_code=404, detail="Worker not found")
@@ -1715,19 +1889,24 @@ def delete_worker(worker_id: str, request: Request):
 
 
 @app.get("/api/analytics")
-def get_analytics(request: Request):
-    require_staff(request)
+def get_analytics(request: Request, shop_id: Optional[str] = Query(default=None)):
+    staff = require_admin_or_ceo(request)
+    effective_shop = resolve_effective_shop_id(staff, shop_id)
     products_by_id: Dict[str, Dict[str, Any]] = {}
     products_by_name: Dict[str, Dict[str, Any]] = {}
     for doc in db.collection("products").stream():
         p = normalize_product(doc.id, doc.to_dict())
-        products_by_id[p["id"]] = p
-        products_by_name[p["name"].strip().lower()] = p
+        if effective_shop == "all" or p["shop_id"] == effective_shop:
+            products_by_id[p["id"]] = p
+            products_by_name[p["name"].strip().lower()] = p
 
     total_revenue = 0.0
     total_profit = 0.0
     for doc in db.collection("sales").stream():
         s = doc.to_dict() or {}
+        s_shop = normalize_shop_id(str(s.get("shop_id") or MAIN_SHOP_ID))
+        if effective_shop != "all" and s_shop != effective_shop:
+            continue
         if s.get("record_debt") is True or str(s.get("status") or "").lower() == "debt":
             continue
         qty = max(0.0, float(s.get("qty") or 1.0))
@@ -1759,11 +1938,15 @@ def get_analytics(request: Request):
     total_expenses = 0.0
     for doc in db.collection("expenses").stream():
         ex = doc.to_dict() or {}
+        ex_shop = normalize_shop_id(str(ex.get("shop_id") or MAIN_SHOP_ID))
+        if effective_shop != "all" and ex_shop != effective_shop:
+            continue
         total_expenses += float(ex.get("amount") or 0.0)
 
     net_cashflow = total_profit - total_expenses
     return {
         "ok": True,
+        "shop_id": effective_shop,
         "analytics": {
             "total_revenue": total_revenue,
             "total_profit": total_profit,
@@ -1800,13 +1983,12 @@ async def save_settings(
     tagline: str = Form(""),
     active_notice: str = Form(""),
     broadcast_video_url: str = Form(""),
-    clear_broadcast_video: str = Form("false"),
     currency: str = Form("₦"),
     extra_settings: str = Form(""),
     broadcast_video_file: Optional[UploadFile] = File(None),
-    awareness_image_file: List[UploadFile] = File(default=[]),
+    awareness_image_file: Optional[UploadFile] = File(None),
 ):
-    require_admin_or_ceo(request)
+    require_super_admin(request)
     ref = db.collection("settings").document("business")
     existing = ref.get().to_dict() if ref.get().exists else {}
 
@@ -1837,12 +2019,12 @@ async def save_settings(
             else (extract_cloudinary_public_id(clean_link) or "")
         )
     else:
-        if old_video and (clear_broadcast_video.strip().lower() == "true" or not clean_link):
-            delete_from_cloudinary(
-                public_id=old_video_public_id, url=old_video, resource_type="video"
-            )
-        final_video = ""
-        final_video_public_id = ""
+        final_video = old_video
+        final_video_public_id = old_video_public_id
+
+    uploaded_awareness_url, uploaded_awareness_public_id = upload_to_cloudinary(
+        awareness_image_file, folder="sammyreks_awareness", resource_type="image", max_dim=800
+    )
 
     parsed_extra: Any = existing.get("extra_settings")
     if extra_settings.strip():
@@ -1851,25 +2033,24 @@ async def save_settings(
         except json.JSONDecodeError:
             parsed_extra = extra_settings.strip()
 
-    uploaded_awareness_urls: List[str] = []
-    for af in awareness_image_file or []:
-        if af and af.filename:
-            img_u, _ = upload_to_cloudinary(
-                af, folder="sammyreks_awareness", resource_type="image", max_dim=900
+    final_awareness_url = str(existing.get("awareness_image_url") or "").strip()
+    final_awareness_public_id = str(existing.get("awareness_image_public_id") or "").strip()
+    if uploaded_awareness_url:
+        if final_awareness_public_id:
+            delete_from_cloudinary(
+                public_id=final_awareness_public_id, url=final_awareness_url, resource_type="image"
             )
-            if img_u:
-                uploaded_awareness_urls.append(img_u)
-
-    if uploaded_awareness_urls:
-        if not isinstance(parsed_extra, dict):
-            parsed_extra = {}
-        existing_raw = str(parsed_extra.get("awarenessImageUrl") or "")
-        existing_list = [
-            u.strip()
-            for u in re.split(r"\||\r?\n", existing_raw)
-            if u.strip() and not u.strip().startswith("data:image/")
-        ]
-        parsed_extra["awarenessImageUrl"] = "\n".join(existing_list + uploaded_awareness_urls)
+        final_awareness_url = uploaded_awareness_url
+        final_awareness_public_id = uploaded_awareness_public_id or ""
+        if isinstance(parsed_extra, dict):
+            existing_urls = [
+                u.strip()
+                for u in str(parsed_extra.get("awarenessImageUrl") or "").splitlines()
+                if u.strip()
+            ]
+            if uploaded_awareness_url not in existing_urls:
+                existing_urls.append(uploaded_awareness_url)
+            parsed_extra["awarenessImageUrl"] = "\n".join(existing_urls)
 
     doc: Dict[str, Any] = {
         "business_name": business_name.strip() or "Sammyreks Business Center",
@@ -1877,6 +2058,8 @@ async def save_settings(
         "active_notice": active_notice.strip(),
         "broadcast_video_url": final_video,
         "broadcast_video_public_id": final_video_public_id,
+        "awareness_image_url": final_awareness_url,
+        "awareness_image_public_id": final_awareness_public_id,
         "currency": currency.strip() or "₦",
         "updated_at": now_str(),
     }

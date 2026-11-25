@@ -26,7 +26,6 @@ from fastapi.templating import Jinja2Templates
 from firebase_admin import credentials, firestore
 
 from auto_stock import (
-    fetch_category_preview_items,
     lookup_barcode_or_keyword,
     sanitize_url,
 )
@@ -766,7 +765,7 @@ async def update_shop(
 
 
 # ==============================================================================
-# AUTO-STOCK ROUTES (BARCODE, CATEGORY & NAME-FIRST BATCH SEARCH)
+# AUTO-STOCK ROUTES (BARCODE & NAME-FIRST BATCH SEARCH)
 # ==============================================================================
 
 def _http_get_json(url: str, headers: Optional[Dict[str, str]] = None, timeout: int = 12) -> Dict[str, Any]:
@@ -1015,64 +1014,6 @@ async def auto_stock_by_names(request: Request):
         "ok": True,
         "location": location,
         "count": len(items),
-        "items": items,
-    }
-
-
-@app.post("/api/auto-stock/category")
-async def auto_stock_by_category(request: Request):
-    require_staff(request)
-    payload = await request.json()
-    category = str(payload.get("category") or "Beverages").strip() or "Beverages"
-    location = str(payload.get("location") or "Watt Market, Calabar").strip() or "Watt Market, Calabar"
-    count = max(1, min(MAX_BATCH_ITEMS, int(payload.get("count") or 6)))
-    default_stock = max(
-        0.0,
-        float(
-            payload.get("default_stock_cartons")
-            if payload.get("default_stock_cartons") is not None
-            else 5.0
-        ),
-    )
-    fetch_video = bool(payload.get("fetch_video", False))
-
-    try:
-        preview = await asyncio.to_thread(
-            fetch_category_preview_items,
-            category=category,
-            limit=count,
-            location=location,
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Auto-stock category search failed: {exc}")
-
-    raw_items = preview.get("items", []) if isinstance(preview, dict) else list(preview or [])
-    items: List[Dict[str, Any]] = []
-    for raw_it in raw_items:
-        it = dict(raw_it)
-        it["stock_cartons"] = default_stock
-        it["image_url"] = sanitize_url(str(it.get("image_url") or ""))
-        it["selected"] = True
-        items.append(it)
-
-    shared_video_url = ""
-    if fetch_video and items:
-        source_video = await asyncio.to_thread(
-            _find_royalty_free_video_url, f"{category} {location} product"
-        )
-        if source_video:
-            shared_video_url = await asyncio.to_thread(_download_video_advert, source_video)
-        if shared_video_url:
-            for it in items:
-                it["video_url"] = shared_video_url
-
-    return {
-        "ok": True,
-        "category": category,
-        "location": location,
-        "count": len(items),
-        "video_downloaded": bool(shared_video_url),
-        "video_url": shared_video_url,
         "items": items,
     }
 

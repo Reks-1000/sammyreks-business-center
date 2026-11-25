@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -27,12 +28,10 @@ from firebase_admin import credentials, firestore
 from auto_stock import (
     fetch_category_preview_items,
     lookup_barcode_or_keyword,
-    router as auto_stock_router,
     sanitize_url,
 )
 
 app = FastAPI(title="Sammyreks Business Center")
-app.include_router(auto_stock_router)
 templates = Jinja2Templates(directory="templates")
 
 LOCAL_ADS_DIR = os.path.join("static", "uploads", "ads")
@@ -902,7 +901,7 @@ def _infer_category_from_name(product_name: str) -> str:
 
 
 @app.get("/api/auto-stock/barcode/{barcode:path}")
-def auto_stock_by_barcode(
+async def auto_stock_by_barcode(
     barcode: str,
     request: Request,
     location: str = Query(default="Watt Market, Calabar"),
@@ -913,13 +912,27 @@ def auto_stock_by_barcode(
     if not clean_code:
         raise HTTPException(status_code=400, detail="Valid barcode or product keyword is required")
 
+    clean_location = (location or "Watt Market, Calabar").strip() or "Watt Market, Calabar"
+    clean_stock = max(0.0, float(default_stock_cartons))
+
     try:
-        result = lookup_barcode_or_keyword(
+        raw_res = await asyncio.to_thread(
+            lookup_barcode_or_keyword,
             clean_code,
-            default_stock_cartons=max(0.0, float(default_stock_cartons)),
-            location=(location or "Watt Market, Calabar").strip() or "Watt Market, Calabar",
+            location=clean_location,
         )
-        return {"ok": True, **result}
+        item = dict(
+            raw_res.get("item")
+            if isinstance(raw_res, dict) and "item" in raw_res
+            else (raw_res or {})
+        )
+        if not item:
+            raise HTTPException(status_code=404, detail=f"No product found for '{clean_code}'")
+        item["stock_cartons"] = clean_stock
+        item["image_url"] = sanitize_url(str(item.get("image_url") or ""))
+        return {"ok": True, "item": item}
+    except HTTPException:
+        raise
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
@@ -956,19 +969,21 @@ async def auto_stock_by_names(request: Request):
     for raw_name in names_list:
         inferred_cat = _infer_category_from_name(raw_name)
         try:
-            lookup_res = lookup_barcode_or_keyword(
+            lookup_res = await asyncio.to_thread(
+                lookup_barcode_or_keyword,
                 raw_name,
-                default_stock_cartons=default_stock,
                 location=location,
             )
-            item = dict(lookup_res.get("item") or {})
+            item = dict(
+                lookup_res.get("item")
+                if isinstance(lookup_res, dict) and "item" in lookup_res
+                else (lookup_res or {})
+            )
             item["name"] = str(item.get("name") or raw_name).strip() or raw_name
             fetched_cat = str(item.get("category") or "").strip()
             if not fetched_cat or fetched_cat.lower() in {"general", "uncategorized", "other"}:
                 item["category"] = inferred_cat
-            item["stock_cartons"] = float(
-                item.get("stock_cartons") if item.get("stock_cartons") is not None else default_stock
-            )
+            item["stock_cartons"] = default_stock
             item["image_url"] = sanitize_url(str(item.get("image_url") or ""))
             item["selected"] = True
             items.append(item)
@@ -1022,22 +1037,31 @@ async def auto_stock_by_category(request: Request):
     fetch_video = bool(payload.get("fetch_video", False))
 
     try:
-        preview = fetch_category_preview_items(
+        preview = await asyncio.to_thread(
+            fetch_category_preview_items,
             category=category,
-            count=count,
-            default_stock_cartons=default_stock,
-            fetch_video=fetch_video,
+            limit=count,
             location=location,
         )
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Auto-stock category search failed: {exc}")
 
-    items = list(preview.get("items") or [])
+    raw_items = preview.get("items", []) if isinstance(preview, dict) else list(preview or [])
+    items: List[Dict[str, Any]] = []
+    for raw_it in raw_items:
+        it = dict(raw_it)
+        it["stock_cartons"] = default_stock
+        it["image_url"] = sanitize_url(str(it.get("image_url") or ""))
+        it["selected"] = True
+        items.append(it)
+
     shared_video_url = ""
     if fetch_video and items:
-        source_video = _find_royalty_free_video_url(f"{category} {location} product")
+        source_video = await asyncio.to_thread(
+            _find_royalty_free_video_url, f"{category} {location} product"
+        )
         if source_video:
-            shared_video_url = _download_video_advert(source_video)
+            shared_video_url = await asyncio.to_thread(_download_video_advert, source_video)
         if shared_video_url:
             for it in items:
                 it["video_url"] = shared_video_url

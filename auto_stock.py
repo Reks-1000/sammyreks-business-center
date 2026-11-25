@@ -528,6 +528,23 @@ async def lookup_barcode(barcode: str) -> Dict[str, Any]:
 # ==============================================================================
 # 3. ASYNC & EVENT-LOOP-SAFE COMPATIBILITY SHIMS
 # ==============================================================================
+CATEGORY_ALIASES: Dict[str, set[str]] = {
+    "food & groceries": {
+        "noodles & pasta",
+        "dairy & breakfast",
+        "cooking & groceries",
+        "biscuits & snacks",
+    },
+    "groceries": {
+        "noodles & pasta",
+        "dairy & breakfast",
+        "cooking & groceries",
+        "biscuits & snacks",
+    },
+    "household & cleaning": {"soaps & detergents"},
+}
+
+
 async def lookup_barcode_or_keyword_async(
     query: str,
     location: str = "Watt Market, Calabar",
@@ -548,10 +565,12 @@ async def fetch_category_preview_items_async(
     location: str = "Watt Market, Calabar",
     **_: Any,
 ) -> List[Dict[str, Any]]:
+    cat_lower = (category or "").strip().lower()
+    allowed_cats = CATEGORY_ALIASES.get(cat_lower, {cat_lower})
     matches = [
         entry["name"]
         for entry in NIGERIAN_FMCG_CATALOG
-        if category.lower() in {"all", "general"} or entry["category"].lower() == category.lower()
+        if cat_lower in {"all", "general"} or entry["category"].lower() in allowed_cats
     ][:limit]
     if not matches:
         matches = [entry["name"] for entry in NIGERIAN_FMCG_CATALOG[:limit]]

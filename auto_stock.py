@@ -1,10 +1,10 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import re
-from typing import Any, Coroutine, Dict, List, Optional, TypeVar
+from typing import Any, Coroutine, Dict, List, Optional, TypeVar, Union
 from urllib.parse import urlparse
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 T = TypeVar("T")
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/auto-stock", tags=["auto-stock"])
 OFF_SEARCH_URL = "https://world.openfoodfacts.org/cgi/search.pl"
 OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 
-USER_AGENT = "SammyreksBusinessCenter/2.0 (Calabar-Nigeria-POS)"
+USER_AGENT = "SammyreksBusinessCenter/2.1 (Calabar-Nigeria-POS)"
 
 
 def _run_coro_sync(coro: Coroutine[Any, Any, T]) -> T:
@@ -104,7 +104,7 @@ NIGERIAN_FMCG_CATALOG: List[Dict[str, Any]] = [
         "off_query": "Sprite 50cl",
     },
     {
-        "keywords": ["coca cola", "coke", "coca-cola 50cl"],
+        "keywords": ["coca cola", "coke", "coca-cola 50cl", "coca-cola"],
         "name": "Coca-Cola PET Bottle 50cl (x12)",
         "category": "Beverages",
         "vendor_name": "Nigerian Bottling Company",
@@ -189,7 +189,7 @@ NIGERIAN_FMCG_CATALOG: List[Dict[str, Any]] = [
         "off_query": "Golden Penny spaghetti",
     },
     {
-        "keywords": ["peak", "peak milk", "peak refill", "peak evaporated"],
+        "keywords": ["peak milk", "peak refill", "peak evaporated"],
         "name": "Peak Evaporated Full Cream Milk 160g (x24)",
         "category": "Dairy & Breakfast",
         "vendor_name": "FrieslandCampina WAMCO",
@@ -301,7 +301,7 @@ CATEGORY_RULES: List[tuple[str, List[str]]] = [
     ("Dairy & Breakfast", ["milk", "peak", "three crowns", "cowbell", "dano", "loya", "hollandia", "yoghurt", "milo", "bournvita", "ovaltine", "golden morn", "cornflakes", "kellogg", "quaker", "oats", "tea", "lipton", "top tea", "coffee", "nescafe", "sugar"]),
     ("Soaps & Detergents", ["soap", "detergent", "hypo", "bleach", "omo", "ariel", "sunlight", "viva", "klin", "good mama", "dettol", "premier", "lux", "joy", "morning fresh", "mama lemon", "harpic", "izall"]),
     ("Biscuits & Snacks", ["biscuit", "cabin", "digestive", "coaster", "shortbread", "gala", "sausage", "chin chin", "plantain chips", "pringles", "cheese balls", "minimie chinchin", "popcorn", "wafer", "sweet", "tom tom", "buttermint"]),
-    ("Cooking & Groceries", ["rice", "beans", "garri", "semovita", "semolina", "wheat", "oil", "power oil", "kings", "mamador", "devon", "maggi", "knorr", "royco", "seasoning", "curry", "thyme", "tomato", "gino", "sonia", "tasty tom", "salt", "flour"]),
+    ("Cooking & Groceries", ["rice", "beans", "garri", "semovita", "semolina", "wheat", "oil", "power oil", "kings", "mamador", "devon", "maggi", "knorr", "royco", "seasoning", "curry", "thyme", "tomato", "gino", "sonia", "tasty tom", "salt", "flour", "bread"]),
 ]
 
 
@@ -311,21 +311,25 @@ def classify_product_category(product_name: str, fallback: str = "General") -> s
         return fallback
     for category_name, keywords in CATEGORY_RULES:
         for kw in keywords:
-            if kw in lower:
+            if re.search(rf"\b{re.escape(kw.lower())}\b", lower):
                 return category_name
     return fallback
 
 
 def match_nigerian_catalog(query_name: str) -> Optional[Dict[str, Any]]:
-    q = (query_name or "").strip().lower()
-    if not q:
+    """Match only intentional brand/product keywords—never generic single words inside a phrase."""
+    q = re.sub(r"\s+", " ", (query_name or "").strip().lower())
+    if len(q) < 3:
         return None
     best_match = None
     best_score = 0
     for entry in NIGERIAN_FMCG_CATALOG:
         for kw in entry["keywords"]:
-            if kw in q or q in kw:
-                score = len(kw)
+            kw_clean = kw.lower()
+            if re.search(rf"\b{re.escape(kw_clean)}\b", q) or (
+                len(q) >= 4 and kw_clean.startswith(q)
+            ):
+                score = len(kw_clean)
                 if score > best_score:
                     best_score = score
                     best_match = entry
@@ -335,7 +339,7 @@ def match_nigerian_catalog(query_name: str) -> Optional[Dict[str, Any]]:
 def _extract_best_off_image(product_obj: Dict[str, Any]) -> str:
     for key in ("image_front_url", "image_url", "image_front_small_url", "image_small_url"):
         val = str(product_obj.get(key) or "").strip()
-        if val.startswith("http"):
+        if sanitize_url(val):
             return val
     return ""
 
@@ -385,6 +389,7 @@ async def build_enriched_product(
     raw_name: str,
     default_stock: float,
     location: str,
+    fetch_video: bool = False,
 ) -> Dict[str, Any]:
     clean_query = raw_name.strip()
     catalog_hit = match_nigerian_catalog(clean_query)
@@ -407,13 +412,20 @@ async def build_enriched_product(
         description = catalog_hit["description"]
         benchmark_note = f"Verified {location} wholesale/retail benchmark"
     else:
-        resolved_title = off_data.get("name") or clean_query.title()
-        qty_tag = off_data.get("quantity")
-        if qty_tag and qty_tag.lower() not in resolved_title.lower():
-            resolved_title = f"{resolved_title} ({qty_tag})"
+        off_title = (off_data.get("name") or "").strip()
+        query_words = {w for w in re.findall(r"[a-z0-9]{3,}", clean_query.lower())}
+        off_words = {w for w in re.findall(r"[a-z0-9]{3,}", off_title.lower())}
+
+        if off_title and (query_words & off_words):
+            resolved_title = off_title
+            qty_tag = off_data.get("quantity")
+            if qty_tag and qty_tag.lower() not in resolved_title.lower():
+                resolved_title = f"{resolved_title} ({qty_tag})"
+        else:
+            resolved_title = clean_query.title()
 
         final_name = resolved_title
-        category = classify_product_category(final_name)
+        category = classify_product_category(f"{clean_query} {final_name}")
         vendor_name = off_data.get("brand") or "Authorized Distributor"
         main_unit = "Carton"
         sub_unit = "Pack"
@@ -428,11 +440,19 @@ async def build_enriched_product(
         description = f"{desc_base} Available in {main_unit}, {sub_unit}, or single {retail_unit}."
         benchmark_note = f"Auto-categorized into {category} ({location} est. pricing — verify before publishing)"
 
+    matched_img = sanitize_url(off_data.get("image_url", ""))
+    if not catalog_hit and matched_img:
+        off_title_lower = (off_data.get("name") or "").lower()
+        query_words = {w for w in re.findall(r"[a-z0-9]{3,}", clean_query.lower())}
+        if not any(w in off_title_lower for w in query_words):
+            matched_img = ""
+
     return {
         "selected": True,
         "name": final_name,
         "category": category,
         "vendor_name": vendor_name,
+        "location": location,
         "main_unit": main_unit,
         "sub_unit": sub_unit,
         "retail_unit": retail_unit,
@@ -443,36 +463,48 @@ async def build_enriched_product(
         "price_pack": price_pack,
         "price_retail": price_retail,
         "stock_cartons": default_stock,
-        "image_url": off_data.get("image_url", ""),
+        "image_url": matched_img,
         "video_url": "",
+        "fetch_video": bool(fetch_video),
         "description": description,
         "price_benchmark_note": benchmark_note,
     }
 
 
 class NameBatchAutoStockRequest(BaseModel):
-    product_names: List[str] = Field(..., min_length=1, max_length=25)
+    product_names: Union[List[str], str] = Field(...)
     default_stock_cartons: float = Field(default=5.0, ge=0)
-    location: str = Field(default="Watt Market, Calabar")
+    location: str = Field(default="Calabar")
 
 
-@router.post("/search-names")
-async def auto_stock_by_names(payload: NameBatchAutoStockRequest) -> Dict[str, Any]:
+class CategoryBatchAutoStockRequest(BaseModel):
+    category: str = Field(default="Beverages")
+    count: int = Field(default=5, ge=1, le=15)
+    default_stock_cartons: float = Field(default=5.0, ge=0)
+    location: str = Field(default="Calabar")
+    fetch_video: bool = Field(default=False)
+
+
+def _normalize_name_list(raw_names: Union[List[str], str]) -> List[str]:
+    source_list = [raw_names] if isinstance(raw_names, str) else list(raw_names or [])
     cleaned_names: List[str] = []
     seen = set()
-    for raw in payload.product_names:
-        for part in re.split(r"[,;\r\n]+", raw):
+    for raw in source_list:
+        for part in re.split(r"[,;\r\n]+", str(raw or "")):
             item = part.strip()
             if item and item.lower() not in seen:
                 seen.add(item.lower())
                 cleaned_names.append(item)
+    return cleaned_names[:20]
 
+
+@router.post("/search-names")
+async def auto_stock_by_names(payload: NameBatchAutoStockRequest) -> Dict[str, Any]:
+    cleaned_names = _normalize_name_list(payload.product_names)
     if not cleaned_names:
         raise HTTPException(status_code=400, detail="Enter at least one product name.")
 
-    cleaned_names = cleaned_names[:20]
-
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=12.0) as client:
         tasks = [
             build_enriched_product(
                 client=client,
@@ -491,37 +523,70 @@ async def auto_stock_by_names(payload: NameBatchAutoStockRequest) -> Dict[str, A
     }
 
 
+@router.post("/category")
+async def auto_stock_by_category(payload: CategoryBatchAutoStockRequest) -> Dict[str, Any]:
+    items = await fetch_category_preview_items_async(
+        category=payload.category,
+        limit=payload.count,
+        location=payload.location,
+        default_stock=payload.default_stock_cartons,
+        fetch_video=payload.fetch_video,
+    )
+    return {
+        "status": "ok",
+        "items": items,
+        "count": len(items),
+    }
+
+
 @router.get("/barcode/{barcode}")
-async def lookup_barcode(barcode: str) -> Dict[str, Any]:
-    clean_code = re.sub(r"[^0-9A-Za-z]", "", barcode or "")
-    if not clean_code:
-        raise HTTPException(status_code=400, detail="Invalid barcode.")
+async def lookup_barcode(
+    barcode: str,
+    location: str = Query(default="Calabar"),
+    default_stock_cartons: float = Query(default=5.0, ge=0),
+) -> Dict[str, Any]:
+    clean_query = (barcode or "").strip()
+    if not clean_query:
+        raise HTTPException(status_code=400, detail="Enter a barcode or product keyword.")
+
+    digits_only = re.sub(r"\D+", "", clean_query)
+    if len(digits_only) >= 8 and clean_query.replace("-", "").isdigit():
+        async with httpx.AsyncClient(timeout=12.0) as client:
+            try:
+                resp = await client.get(
+                    OFF_PRODUCT_URL.format(barcode=digits_only),
+                    headers={"User-Agent": USER_AGENT},
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("status") == 1 and data.get("product"):
+                        p = data["product"]
+                        raw_name = str(
+                            p.get("product_name") or p.get("generic_name") or f"Item {digits_only}"
+                        ).strip()
+                        item = await build_enriched_product(
+                            client=client,
+                            raw_name=raw_name,
+                            default_stock=default_stock_cartons,
+                            location=location,
+                        )
+                        direct_img = _extract_best_off_image(p)
+                        if direct_img:
+                            item["image_url"] = direct_img
+                        if p.get("brands"):
+                            item["vendor_name"] = str(p["brands"]).split(",")[0].strip()
+                        return {"status": "ok", "item": item}
+            except Exception:
+                pass
+        raise HTTPException(status_code=404, detail=f"No product record found for barcode {digits_only}.")
 
     async with httpx.AsyncClient(timeout=12.0) as client:
-        resp = await client.get(
-            OFF_PRODUCT_URL.format(barcode=clean_code),
-            headers={"User-Agent": USER_AGENT},
-        )
-        if resp.status_code != 200:
-            raise HTTPException(status_code=404, detail=f"Barcode {clean_code} not found.")
-        data = resp.json()
-        if data.get("status") != 1 or not data.get("product"):
-            raise HTTPException(status_code=404, detail=f"No product record found for barcode {clean_code}.")
-
-        p = data["product"]
-        raw_name = str(p.get("product_name") or p.get("generic_name") or f"Item {clean_code}").strip()
         item = await build_enriched_product(
             client=client,
-            raw_name=raw_name,
-            default_stock=5.0,
-            location="Watt Market, Calabar",
+            raw_name=clean_query,
+            default_stock=default_stock_cartons,
+            location=location,
         )
-        direct_img = _extract_best_off_image(p)
-        if direct_img:
-            item["image_url"] = direct_img
-        if p.get("brands"):
-            item["vendor_name"] = str(p["brands"]).split(",")[0].strip()
-
         return {"status": "ok", "item": item}
 
 
@@ -547,13 +612,13 @@ CATEGORY_ALIASES: Dict[str, set[str]] = {
 
 async def lookup_barcode_or_keyword_async(
     query: str,
-    location: str = "Watt Market, Calabar",
+    location: str = "Calabar",
 ) -> Dict[str, Any]:
     clean = str(query or "").strip()
     if not clean:
         return {}
     if clean.isdigit() and len(clean) >= 8:
-        res = await lookup_barcode(clean)
+        res = await lookup_barcode(clean, location=location)
         return res.get("item", {})
     async with httpx.AsyncClient(timeout=12.0) as client:
         return await build_enriched_product(client, clean, 5.0, location)
@@ -562,7 +627,9 @@ async def lookup_barcode_or_keyword_async(
 async def fetch_category_preview_items_async(
     category: str = "Beverages",
     limit: int = 8,
-    location: str = "Watt Market, Calabar",
+    location: str = "Calabar",
+    default_stock: float = 5.0,
+    fetch_video: bool = False,
     **_: Any,
 ) -> List[Dict[str, Any]]:
     cat_lower = (category or "").strip().lower()
@@ -575,20 +642,29 @@ async def fetch_category_preview_items_async(
     if not matches:
         matches = [entry["name"] for entry in NIGERIAN_FMCG_CATALOG[:limit]]
 
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    async with httpx.AsyncClient(timeout=12.0) as client:
         return await asyncio.gather(
-            *[build_enriched_product(client, name, 5.0, location) for name in matches]
+            *[
+                build_enriched_product(
+                    client,
+                    name,
+                    default_stock=default_stock,
+                    location=location,
+                    fetch_video=fetch_video,
+                )
+                for name in matches
+            ]
         )
 
 
-def lookup_barcode_or_keyword(query: str, location: str = "Watt Market, Calabar") -> Dict[str, Any]:
+def lookup_barcode_or_keyword(query: str, location: str = "Calabar") -> Dict[str, Any]:
     return _run_coro_sync(lookup_barcode_or_keyword_async(query, location))
 
 
 def fetch_category_preview_items(
     category: str = "Beverages",
     limit: int = 8,
-    location: str = "Watt Market, Calabar",
+    location: str = "Calabar",
     **_: Any,
 ) -> List[Dict[str, Any]]:
     return _run_coro_sync(

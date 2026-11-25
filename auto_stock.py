@@ -1,10 +1,13 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Coroutine, Dict, List, Optional, TypeVar
 from urllib.parse import urlparse
 import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+
+T = TypeVar("T")
 
 router = APIRouter(prefix="/api/auto-stock", tags=["auto-stock"])
 
@@ -12,6 +15,25 @@ OFF_SEARCH_URL = "https://world.openfoodfacts.org/cgi/search.pl"
 OFF_PRODUCT_URL = "https://world.openfoodfacts.org/api/v2/product/{barcode}.json"
 
 USER_AGENT = "SammyreksBusinessCenter/2.0 (Calabar-Nigeria-POS)"
+
+
+def _run_coro_sync(coro: Coroutine[Any, Any, T]) -> T:
+    """Run a coroutine safely whether or not an event loop is already running."""
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    def _worker() -> T:
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(_worker).result()
 
 
 def sanitize_url(url: str) -> str:
@@ -504,20 +526,23 @@ async def lookup_barcode(barcode: str) -> Dict[str, Any]:
 
 
 # ==============================================================================
-# 3. LEGACY COMPATIBILITY SHIMS (Prevents ImportError in main.py)
+# 3. ASYNC & EVENT-LOOP-SAFE COMPATIBILITY SHIMS
 # ==============================================================================
-def lookup_barcode_or_keyword(query: str, location: str = "Watt Market, Calabar") -> Dict[str, Any]:
+async def lookup_barcode_or_keyword_async(
+    query: str,
+    location: str = "Watt Market, Calabar",
+) -> Dict[str, Any]:
     clean = str(query or "").strip()
+    if not clean:
+        return {}
     if clean.isdigit() and len(clean) >= 8:
-        res = asyncio.run(lookup_barcode(clean))
+        res = await lookup_barcode(clean)
         return res.get("item", {})
-    async def _run() -> Dict[str, Any]:
-        async with httpx.AsyncClient(timeout=12.0) as client:
-            return await build_enriched_product(client, clean, 5.0, location)
-    return asyncio.run(_run())
+    async with httpx.AsyncClient(timeout=12.0) as client:
+        return await build_enriched_product(client, clean, 5.0, location)
 
 
-def fetch_category_preview_items(
+async def fetch_category_preview_items_async(
     category: str = "Beverages",
     limit: int = 8,
     location: str = "Watt Market, Calabar",
@@ -531,10 +556,22 @@ def fetch_category_preview_items(
     if not matches:
         matches = [entry["name"] for entry in NIGERIAN_FMCG_CATALOG[:limit]]
 
-    async def _run() -> List[Dict[str, Any]]:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            return await asyncio.gather(
-                *[build_enriched_product(client, name, 5.0, location) for name in matches]
-            )
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        return await asyncio.gather(
+            *[build_enriched_product(client, name, 5.0, location) for name in matches]
+        )
 
-    return asyncio.run(_run())
+
+def lookup_barcode_or_keyword(query: str, location: str = "Watt Market, Calabar") -> Dict[str, Any]:
+    return _run_coro_sync(lookup_barcode_or_keyword_async(query, location))
+
+
+def fetch_category_preview_items(
+    category: str = "Beverages",
+    limit: int = 8,
+    location: str = "Watt Market, Calabar",
+    **_: Any,
+) -> List[Dict[str, Any]]:
+    return _run_coro_sync(
+        fetch_category_preview_items_async(category=category, limit=limit, location=location)
+    )

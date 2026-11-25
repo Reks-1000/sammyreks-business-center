@@ -418,9 +418,7 @@
       display: block;
     }
 
-    /* ===================================================================== */
-    /* PROFESSIONAL WHATSAPP-STYLE CHAT BOARD & IN-APP LIGHTBOX            */
-    /* ===================================================================== */
+    /* WhatsApp-Style Chat Board & Lightbox */
     .wa-chat-board {
       display: flex;
       flex-direction: column;
@@ -679,7 +677,6 @@
     <div class="container-fluid">
       <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
         <div class="d-flex align-items-center gap-2">
-          <!-- Sidebar Toggle Button for Registered Businesses -->
           <button type="button" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1 fw-bold" data-bs-toggle="offcanvas" data-bs-target="#registeredShopsSidebar" aria-controls="registeredShopsSidebar">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -952,25 +949,25 @@
 
       <div class="tab-content">
 
-        <!-- TAB 1: INVENTORY & AUTO-STOCK -->
+        <!-- TAB 1: INVENTORY & DIRECT NAME AUTO-STOCK -->
         <div class="tab-pane fade show active" id="inventoryTab" role="tabpanel">
           <div class="row g-3 mb-3">
             <div class="col-lg-5">
               <div class="dark-panel h-100">
-                <h6 class="fw-bold mb-2" style="color:var(--gold);">Barcode &amp; Smart Auto-Stock</h6>
+                <h6 class="fw-bold mb-2" style="color:var(--gold);">Direct Name &amp; Barcode Auto-Stock</h6>
 
                 <div class="dark-subpanel mb-3">
-                  <label for="barcodeLookupInput" class="form-label small mb-1">Barcode or Single Product Lookup</label>
+                  <label for="barcodeLookupInput" class="form-label small mb-1">Barcode or Single Item Name</label>
                   <div class="input-group input-group-sm">
-                    <input id="barcodeLookupInput" type="text" class="form-control dark-input" placeholder="Barcode or item keyword..." />
+                    <input id="barcodeLookupInput" type="text" class="form-control dark-input" placeholder="Barcode or exact item name..." />
                     <button type="button" class="btn btn-warning fw-bold" onclick="lookupSingleBarcode()">Lookup</button>
                   </div>
                   <div id="barcodeLookupStatus" class="small text-secondary mt-1"></div>
                 </div>
 
                 <div class="dark-subpanel">
-                  <div class="fw-semibold small mb-1">Name-First Batch Auto-Stock</div>
-                  <textarea id="autoStockNamesInput" rows="3" class="form-control form-control-sm dark-input mb-2" placeholder="Enter product names separated by comma or new line..."></textarea>
+                  <div class="fw-semibold small mb-1">Direct Item Name Search (Uses Your Chosen Category)</div>
+                  <textarea id="autoStockNamesInput" rows="3" class="form-control form-control-sm dark-input mb-2" placeholder="Enter item names separated by comma or new line..."></textarea>
                   <div class="row g-2 mb-2">
                     <div class="col-6">
                       <label for="autoStockDefaultCartons" class="form-label small text-secondary mb-0">Default Stock</label>
@@ -990,32 +987,6 @@
                     </button>
                   </div>
                   <div id="autoStockBatchStatus" class="small text-secondary mt-2"></div>
-
-                  <hr class="border-secondary my-2" />
-                  <div class="row g-2 align-items-end">
-                    <div class="col-6">
-                      <label for="autoStockCategorySelect" class="form-label small text-secondary mb-0">Category Batch</label>
-                      <select id="autoStockCategorySelect" class="form-select form-select-sm dark-select">
-                        <option value="Beverages">Beverages</option>
-                        <option value="Food & Groceries">Food &amp; Groceries</option>
-                        <option value="Household & Cleaning">Household &amp; Cleaning</option>
-                        <option value="Personal Care & Cosmetics">Personal Care &amp; Cosmetics</option>
-                        <option value="Electronics & Accessories">Electronics &amp; Accessories</option>
-                        <option value="General">General</option>
-                      </select>
-                    </div>
-                    <div class="col-3">
-                      <label for="autoStockCategoryCount" class="form-label small text-secondary mb-0">Count</label>
-                      <input id="autoStockCategoryCount" type="number" min="1" max="15" value="5" class="form-control form-control-sm dark-input" />
-                    </div>
-                    <div class="col-3">
-                      <button type="button" class="btn btn-sm btn-outline-light w-100" onclick="runCategoryAutoStock()">Fetch</button>
-                    </div>
-                  </div>
-                  <div class="form-check mt-2">
-                    <input id="autoStockFetchVideoCheck" type="checkbox" class="form-check-input" />
-                    <label for="autoStockFetchVideoCheck" class="form-check-label small text-secondary">Attach stock ad video if available</label>
-                  </div>
                 </div>
 
                 <div id="autoStockBatchPreviewBox" class="mt-3 d-none">
@@ -1025,7 +996,7 @@
                       Save Selected
                     </button>
                   </div>
-                  <div id="autoStockBatchList" class="d-flex flex-column gap-1" style="max-height:200px;overflow-y:auto;"></div>
+                  <div id="autoStockBatchList" class="d-flex flex-column gap-1" style="max-height:220px;overflow-y:auto;"></div>
                 </div>
               </div>
             </div>
@@ -1050,7 +1021,7 @@
                       <input id="prodName" name="name" type="text" class="form-control form-control-sm dark-input" required />
                     </div>
                     <div class="col-md-3">
-                      <label for="prodCategory" class="form-label small mb-1">Category</label>
+                      <label for="prodCategory" class="form-label small mb-1">Category (Your Choice)</label>
                       <input id="prodCategory" name="category" type="text" class="form-control form-control-sm dark-input" value="General" list="categoryDatalist" />
                       <datalist id="categoryDatalist">
                         <option value="Beverages"></option>
@@ -1277,7 +1248,6 @@
         <!-- TAB 3: ORDERS & WHATSAPP-STYLE LIVE CHAT -->
         <div class="tab-pane fade" id="staffOrdersChatTab" role="tabpanel">
           <div class="row g-3">
-            <!-- Left Column: Orders & Active Customer Threads -->
             <div class="col-lg-5">
               <div class="dark-panel mb-3">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
@@ -1302,7 +1272,6 @@
               </div>
             </div>
 
-            <!-- Right Column: WhatsApp-Style Chat Board -->
             <div class="col-lg-7">
               <div class="dark-panel h-100 d-flex flex-column">
                 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
@@ -2439,7 +2408,6 @@
       }
     }
 
-    // Live chat polling while chat modal or staff chat tab is visible
     let liveChatPollTimer = null;
     function startLiveChatPolling() {
       if (liveChatPollTimer) return;
@@ -3619,7 +3587,7 @@
           box.innerHTML = `<div class="alert alert-success py-2 small mb-0">Sent! Ref: <strong>${escapeHtml(data.payment_ref)}</strong> • PIN: <strong>${escapeHtml(data.customer_pin)}</strong></div>`;
         }
       } catch (err) {
-        if (box) resBox.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${escapeHtml(err.message)}</div>`;
+        if (box) box.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${escapeHtml(err.message)}</div>`;
       }
     }
 
@@ -3878,27 +3846,57 @@
     }
 
     // ========================================================================
-    // BARCODE & AUTO-STOCK
+    // DIRECT ITEM NAME & BARCODE AUTO-STOCK (USER-CONTROLLED CATEGORY)
     // ========================================================================
+    function getChosenAutoStockCategory() {
+      const formCat = (document.getElementById("prodCategory")?.value || "").trim();
+      return formCat || "General";
+    }
+
+    function clearStagedBatchUI(statusMsg = "") {
+      state.stagedBatchItems = [];
+      const box = document.getElementById("autoStockBatchPreviewBox");
+      const list = document.getElementById("autoStockBatchList");
+      if (list) list.innerHTML = "";
+      if (box) box.classList.add("d-none");
+      const stEl = document.getElementById("autoStockBatchStatus");
+      if (stEl && statusMsg !== null) {
+        stEl.className = "small text-secondary mt-2";
+        stEl.textContent = statusMsg;
+      }
+    }
+
     async function lookupSingleBarcode() {
       const code = (document.getElementById("barcodeLookupInput")?.value || "").trim();
       const stEl = document.getElementById("barcodeLookupStatus");
-      if (!code) return;
-      if (stEl) stEl.textContent = "Searching...";
+      if (!code) {
+        if (stEl) {
+          stEl.className = "small text-warning mt-1";
+          stEl.textContent = "Type a barcode or item name first.";
+        }
+        return;
+      }
+      if (stEl) {
+        stEl.className = "small text-secondary mt-1";
+        stEl.textContent = `Searching "${code}"...`;
+      }
 
       try {
-        const loc = encodeURIComponent(document.getElementById("prodLocation")?.value || "Calabar");
-        const stock = encodeURIComponent(document.getElementById("prodStockCartons")?.value || "5");
-        const res = await fetch(`/api/auto-stock/barcode/${encodeURIComponent(code)}?location=${loc}&default_stock_cartons=${stock}`, {
-          headers: getStaffHeaders()
-        });
+        const category = encodeURIComponent(getChosenAutoStockCategory());
+        const loc = encodeURIComponent((document.getElementById("autoStockLocationInput")?.value || document.getElementById("prodLocation")?.value || "Calabar").trim());
+        const stock = encodeURIComponent(document.getElementById("autoStockDefaultCartons")?.value || document.getElementById("prodStockCartons")?.value || "5");
+        const res = await fetch(
+          `/api/auto-stock/barcode/${encodeURIComponent(code)}?category=${category}&location=${loc}&default_stock_cartons=${stock}&_=${Date.now()}`,
+          { cache: "no-store", headers: getStaffHeaders() }
+        );
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
-        if (!res.ok || !data.item) throw new Error(data.detail || "No match found");
+        if (!res.ok || !data.item) throw new Error(data.detail || `No match found for "${code}"`);
+
         applyItemToProductForm(data.item);
         if (stEl) {
           stEl.className = "small text-success mt-1";
-          stEl.textContent = `Loaded "${data.item.name}".`;
+          stEl.textContent = `Loaded "${data.item.name}" under ${data.item.category}.`;
         }
       } catch (err) {
         if (stEl) {
@@ -3911,21 +3909,25 @@
     async function runNameBatchAutoStock(fillFirst = true) {
       const names = (document.getElementById("autoStockNamesInput")?.value || "").trim();
       const stEl = document.getElementById("autoStockBatchStatus");
+      const category = getChosenAutoStockCategory();
       const defaultCartons = Math.max(0, parseFloat(document.getElementById("autoStockDefaultCartons")?.value || "5") || 0);
       const location = (document.getElementById("autoStockLocationInput")?.value || "Calabar").trim();
-      if (!names) return;
 
-      if (stEl) {
-        stEl.className = "small text-secondary mt-2";
-        stEl.textContent = "Searching & classifying...";
+      if (!names) {
+        clearStagedBatchUI("Enter one or more item names first.");
+        return;
       }
 
+      clearStagedBatchUI(`Searching "${names}"...`);
+
       try {
-        const res = await fetch("/api/auto-stock/search-names", {
+        const res = await fetch(`/api/auto-stock/search-names?_=${Date.now()}`, {
           method: "POST",
+          cache: "no-store",
           headers: getStaffHeaders({ "Content-Type": "application/json" }),
           body: JSON.stringify({
             product_names: names,
+            category,
             default_stock_cartons: defaultCartons,
             location
           })
@@ -3933,58 +3935,20 @@
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || !Array.isArray(data.items) || !data.items.length) {
-          throw new Error(data.detail || "Search returned no items");
+          throw new Error(data.detail || `Search returned no items for "${names}"`);
         }
-        state.stagedBatchItems = data.items;
-        if (fillFirst) applyItemToProductForm(data.items[0]);
+
+        state.stagedBatchItems = data.items.map(it => ({ ...it, category: it.category || category }));
+        if (fillFirst) {
+          applyItemToProductForm(state.stagedBatchItems[0]);
+        }
         renderStagedBatchPreview();
         if (stEl) {
           stEl.className = "small text-success mt-2";
-          stEl.textContent = `Classified ${data.items.length} item(s).`;
+          stEl.textContent = `Ready (${state.stagedBatchItems.length}) under ${category}: ${state.stagedBatchItems.map(x => x.name).join(", ")}`;
         }
       } catch (err) {
-        if (stEl) {
-          stEl.className = "small text-danger mt-2";
-          stEl.textContent = err.message;
-        }
-      }
-    }
-
-    async function runCategoryAutoStock() {
-      const category = document.getElementById("autoStockCategorySelect")?.value || "Beverages";
-      const count = Math.min(15, Math.max(1, parseInt(document.getElementById("autoStockCategoryCount")?.value || "5", 10) || 5));
-      const defaultCartons = Math.max(0, parseFloat(document.getElementById("autoStockDefaultCartons")?.value || "5") || 0);
-      const location = (document.getElementById("autoStockLocationInput")?.value || "Calabar").trim();
-      const fetchVideo = Boolean(document.getElementById("autoStockFetchVideoCheck")?.checked);
-      const stEl = document.getElementById("autoStockBatchStatus");
-
-      if (stEl) {
-        stEl.className = "small text-secondary mt-2";
-        stEl.textContent = `Fetching ${category}...`;
-      }
-
-      try {
-        const res = await fetch("/api/auto-stock/category", {
-          method: "POST",
-          headers: getStaffHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({
-            category,
-            count,
-            default_stock_cartons: defaultCartons,
-            location,
-            fetch_video: fetchVideo
-          })
-        });
-        if (handleStaffUnauthorized(res)) return;
-        const data = await safeJson(res);
-        if (!res.ok || !Array.isArray(data.items)) throw new Error(data.detail || "Category search failed");
-        state.stagedBatchItems = data.items;
-        renderStagedBatchPreview();
-        if (stEl) {
-          stEl.className = "small text-success mt-2";
-          stEl.textContent = `Staged ${data.items.length} item(s).`;
-        }
-      } catch (err) {
+        clearStagedBatchUI("");
         if (stEl) {
           stEl.className = "small text-danger mt-2";
           stEl.textContent = err.message;
@@ -4002,29 +3966,40 @@
         return;
       }
       box.classList.remove("d-none");
-      list.innerHTML = state.stagedBatchItems.map((it, idx) => `
-        <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2 py-1 px-2">
-          <div class="form-check mb-0">
-            <input type="checkbox" class="form-check-input staged-item-check" data-idx="${idx}" checked />
-            <label class="form-check-label small fw-semibold">${escapeHtml(it.name)}</label>
-            <div class="text-secondary" style="font-size:0.72rem;">${escapeHtml(it.category || "General")} • ${Number(it.stock_cartons || 0) > 0 ? "In Stock" : "Out of Stock"}</div>
+      list.innerHTML = state.stagedBatchItems.map((it, idx) => {
+        const thumbHtml = (it.image_url && isSafeMediaUrl(it.image_url))
+          ? `<img src="${escapeHtml(it.image_url)}" alt="" class="rounded" style="width:36px;height:36px;object-fit:contain;background:#0b1324;flex-shrink:0;" />`
+          : "";
+        return `
+          <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2 py-1 px-2">
+            <div class="d-flex align-items-center gap-2 min-w-0">
+              <input type="checkbox" class="form-check-input staged-item-check mt-0" data-idx="${idx}" checked />
+              ${thumbHtml}
+              <div class="min-w-0">
+                <div class="small fw-semibold text-truncate">${escapeHtml(it.name)}</div>
+                <div class="text-secondary" style="font-size:0.72rem;">${escapeHtml(it.category || "General")} • Stock: ${Number(it.stock_cartons || 0)}</div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2 flex-shrink-0" onclick="applyItemToProductForm(state.stagedBatchItems[${idx}])">Edit</button>
           </div>
-          <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="applyItemToProductForm(state.stagedBatchItems[${idx}])">Edit</button>
-        </div>
-      `).join("");
+        `;
+      }).join("");
     }
 
     function applyItemToProductForm(item) {
+      if (!item) return;
+      const chosenCat = item.category || getChosenAutoStockCategory();
+      resetProductForm();
       document.getElementById("action_mode").value = "create";
       document.getElementById("existing_product_id").value = "";
       document.getElementById("productFormTitle").textContent = "Add New Product (Auto-Filled)";
 
       const setV = (id, val) => {
         const el = document.getElementById(id);
-        if (el && val !== undefined && val !== null) el.value = val;
+        if (el) el.value = val !== undefined && val !== null ? val : "";
       };
       setV("prodName", item.name || "");
-      setV("prodCategory", item.category || "General");
+      setV("prodCategory", chosenCat);
       setV("prodLocation", stripMarketLabel(item.location || "Calabar") || "Calabar");
       setV("prodVendor", stripMarketLabel(item.vendor_name || ""));
       setV("prodMainUnit", item.main_unit || item.unit_main_label || "Carton");
@@ -4056,7 +4031,7 @@
         fd.append("action_mode", "create");
         fd.append("shop_id", state.staffShopId === "all" ? "main" : (state.staffShopId || "main"));
         fd.append("name", it.name || "Item");
-        fd.append("category", it.category || "General");
+        fd.append("category", it.category || getChosenAutoStockCategory());
         fd.append("location", stripMarketLabel(it.location || "Calabar") || "Calabar");
         fd.append("vendor_name", stripMarketLabel(it.vendor_name || ""));
         fd.append("main_unit", it.main_unit || "Carton");
@@ -4078,13 +4053,8 @@
         if (res.ok) saved += 1;
       }
 
-      state.stagedBatchItems = [];
-      renderStagedBatchPreview();
+      clearStagedBatchUI(`Saved ${saved} item(s).`);
       await loadProducts(state.staffShopId || "main");
-      if (stEl) {
-        stEl.className = "small text-success mt-2";
-        stEl.textContent = `Saved ${saved} item(s).`;
-      }
     }
 
     // ========================================================================

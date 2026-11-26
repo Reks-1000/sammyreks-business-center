@@ -393,21 +393,31 @@
       transition: background-color 0.45s ease, border-color 0.45s ease;
     }
 
-    /* Floating Awareness Card — Shows as much of the uploaded image as possible */
+    /* Floating Awareness Slideshow Card — Responsive 420px width & 360px max image height */
     .awareness-popup {
       position: fixed;
       right: 16px;
       bottom: 82px;
-      width: 360px;
-      max-width: calc(100vw - 32px);
+      width: min(420px, calc(100vw - 32px));
       max-height: calc(100vh - 108px);
       background: var(--bg-surface);
       border: 1px solid var(--gold);
       border-radius: 14px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
-      z-index: 1040;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
+      z-index: 1045;
       overflow-y: auto;
       display: none;
+    }
+
+    .awareness-media-stage {
+      background: #080f1c;
+      width: 100%;
+      min-height: 170px;
+      max-height: 360px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
     }
 
     #awarenessCardImg {
@@ -416,7 +426,7 @@
       height: auto;
       object-fit: contain;
       background: #080f1c;
-      display: block;
+      display: none;
       cursor: zoom-in;
     }
 
@@ -1641,44 +1651,57 @@
                 </div>
               </div>
 
+              <!-- SECTION 6: UPGRADED SLIDESHOW PHOTOS, VISUAL MANAGER & INTERVAL -->
               <div class="dark-subpanel mb-3">
                 <div class="fw-bold small text-warning mb-2">6. Floating Slideshow Photos, Per-Slide Descriptions &amp; Interval</div>
-                <div class="row g-2 mb-2">
+                <div class="row g-2 mb-3">
                   <div class="col-sm-6 col-md-4">
                     <div class="form-check form-switch mt-1">
-                      <input id="togShowFloatingAwareness" type="checkbox" class="form-check-input" />
+                      <input id="togShowFloatingAwareness" type="checkbox" class="form-check-input" onchange="toggleAwarenessCard(this.checked)" />
                       <label for="togShowFloatingAwareness" class="form-check-label small">Show Floating Slideshow Card</label>
                     </div>
                   </div>
                   <div class="col-sm-6 col-md-4">
                     <div class="form-check form-switch mt-1">
-                      <input id="togAutoSlidePhotos" type="checkbox" class="form-check-input" checked />
+                      <input id="togAutoSlidePhotos" type="checkbox" class="form-check-input" checked onchange="startAwarenessSlideshow(this.checked)" />
                       <label for="togAutoSlidePhotos" class="form-check-label small">Auto-Slide Photos</label>
                     </div>
                   </div>
                   <div class="col-sm-6 col-md-4">
                     <label for="setSlideSeconds" class="form-label small mb-1">Seconds Per Slide (Default 10s)</label>
-                    <input id="setSlideSeconds" type="number" min="2" max="120" value="10" class="form-control form-control-sm dark-input" />
+                    <input id="setSlideSeconds" type="number" min="2" max="120" value="10" class="form-control form-control-sm dark-input" onchange="startAwarenessSlideshow(Boolean(document.getElementById('togAutoSlidePhotos')?.checked))" />
                   </div>
                 </div>
-                <div class="row g-2 mb-2">
-                  <div class="col-md-8">
-                    <label for="setAwarenessSlides" class="form-label small mb-1">Image Links (One per line or separate with |)</label>
-                    <textarea id="setAwarenessSlides" rows="2" class="form-control form-control-sm dark-input"></textarea>
-                  </div>
-                  <div class="col-md-4">
-                    <label for="setAwarenessImageFile" class="form-label small mb-1">Upload Slide Photo</label>
-                    <input id="setAwarenessImageFile" name="awareness_image_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
-                  </div>
-                </div>
-                <div class="row g-2">
-                  <div class="col-md-7">
-                    <label for="setAwarenessDescriptions" class="form-label small mb-1">Each Slide's Description (One per line or separate with |, matching image order)</label>
-                    <textarea id="setAwarenessDescriptions" rows="2" class="form-control form-control-sm dark-input" placeholder="Description for slide 1 | Description for slide 2"></textarea>
-                  </div>
+
+                <div class="row g-2 mb-3">
                   <div class="col-md-5">
+                    <label for="setAwarenessImageFile" class="form-label small mb-1">Upload Slide Photo(s) (Multiple Supported)</label>
+                    <input id="setAwarenessImageFile" name="awareness_image_file" type="file" accept="image/*" multiple class="form-control form-control-sm dark-input" onchange="handleAwarenessSlidesUpload(this)" />
+                    <div id="awarenessUploadStatus" class="small text-secondary mt-1"></div>
+                  </div>
+                  <div class="col-md-7">
                     <label for="setAwarenessBottomCaption" class="form-label small mb-1">Shared / Bottom Caption (Fallback or Note)</label>
-                    <input id="setAwarenessBottomCaption" type="text" class="form-control form-control-sm dark-input" />
+                    <input id="setAwarenessBottomCaption" type="text" class="form-control form-control-sm dark-input" placeholder="Shown below slide descriptions or as fallback" oninput="renderAwarenessSlidesManager()" />
+                  </div>
+                </div>
+
+                <!-- Visual Slide Manager -->
+                <div class="mb-3">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small fw-semibold text-light">Uploaded &amp; Listed Slides (Reorder, Edit Caption, or Remove)</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="clearAllAwarenessSlides()">Clear All Slides</button>
+                  </div>
+                  <div id="awarenessSlidesManagerList" class="d-flex flex-column gap-2"></div>
+                </div>
+
+                <div class="row g-2">
+                  <div class="col-md-6">
+                    <label for="setAwarenessSlides" class="form-label small mb-1">Image Links (One per line or separate with |)</label>
+                    <textarea id="setAwarenessSlides" rows="2" class="form-control form-control-sm dark-input" oninput="renderAwarenessSlidesManager()"></textarea>
+                  </div>
+                  <div class="col-md-6">
+                    <label for="setAwarenessDescriptions" class="form-label small mb-1">Each Slide's Description (One per line or separate with |, matching image order)</label>
+                    <textarea id="setAwarenessDescriptions" rows="2" class="form-control form-control-sm dark-input" placeholder="Description for slide 1 | Description for slide 2" oninput="renderAwarenessSlidesManager()"></textarea>
                   </div>
                 </div>
               </div>
@@ -1735,15 +1758,17 @@
         <span id="awarenessSlideCounter" class="badge text-bg-dark border border-secondary-subtle" style="font-size:0.68rem;"></span>
       </div>
       <div class="d-flex align-items-center gap-1">
-        <button id="awarenessPrevBtn" type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-1 d-none" onclick="stepAwarenessSlide(-1)" title="Previous slide">‹</button>
-        <button id="awarenessNextBtn" type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-1 d-none" onclick="stepAwarenessSlide(1)" title="Next slide">›</button>
+        <button id="awarenessPrevBtn" type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2 d-none" onclick="stepAwarenessSlide(-1)" title="Previous slide">‹</button>
+        <button id="awarenessNextBtn" type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2 d-none" onclick="stepAwarenessSlide(1)" title="Next slide">›</button>
         <button type="button" class="btn-close small ms-1" onclick="toggleAwarenessCard(false)"></button>
       </div>
     </div>
-    <img id="awarenessCardImg" src="" alt="Slide" style="display:none;" onclick="openCurrentAwarenessInLightbox()" title="Click to view larger" />
+    <div class="awareness-media-stage">
+      <img id="awarenessCardImg" src="" alt="Slide" onclick="openCurrentAwarenessInLightbox()" title="Click to view larger" />
+    </div>
     <div class="p-3 small">
-      <div id="awarenessCardBody" class="fw-semibold text-light"></div>
-      <div id="awarenessCardFooterCaption" class="text-secondary mt-1 d-none" style="font-size:0.75rem;"></div>
+      <div id="awarenessCardBody" class="fw-semibold text-light" style="white-space:pre-line;"></div>
+      <div id="awarenessCardFooterCaption" class="text-secondary mt-2 pt-2 border-top border-secondary-subtle d-none" style="font-size:0.75rem;white-space:pre-line;"></div>
     </div>
   </div>
 
@@ -2500,6 +2525,7 @@
     let slideTimerHandle = null;
     let awarenessSlidesList = [];
     let awarenessSlideIdx = 0;
+    let pendingAwarenessSlideFiles = [];
 
     document.addEventListener("DOMContentLoaded", async () => {
       applyColorTheme(COLOR_THEMES[0]);
@@ -2588,6 +2614,228 @@
       );
       const clamped = Number.isFinite(secs) ? Math.min(120, Math.max(2, secs)) : 10;
       return clamped * 1000;
+    }
+
+    function appendSlideEntry(url, descText = "") {
+      const cleanUrl = String(url || "").trim();
+      if (!cleanUrl) return;
+
+      const slidesArea = document.getElementById("setAwarenessSlides");
+      const descsArea = document.getElementById("setAwarenessDescriptions");
+
+      const existingUrls = parsePipeOrLineList(slidesArea?.value || "");
+      if (!existingUrls.includes(cleanUrl)) {
+        existingUrls.push(cleanUrl);
+        if (slidesArea) slidesArea.value = existingUrls.join("\n");
+      }
+
+      if (descsArea) {
+        const existingDescs = parsePipeOrLineList(descsArea.value || "");
+        while (existingDescs.length < existingUrls.length - 1) {
+          existingDescs.push(`Slide ${existingDescs.length + 1}`);
+        }
+        if (existingDescs.length < existingUrls.length) {
+          existingDescs.push(descText || `Slide ${existingUrls.length}`);
+        }
+        descsArea.value = existingDescs.join("\n");
+      }
+    }
+
+    async function handleAwarenessSlidesUpload(inputEl) {
+      const statusEl = document.getElementById("awarenessUploadStatus");
+      const files = Array.from(inputEl?.files || []);
+      if (!files.length) return;
+
+      pendingAwarenessSlideFiles = files;
+      if (statusEl) {
+        statusEl.className = "small text-warning mt-1";
+        statusEl.textContent = `Uploading ${files.length} slide image(s)...`;
+      }
+
+      const uploadedUrls = [];
+
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const fd = new FormData();
+          fd.append("awareness_image_file", file);
+          fd.append("file", file);
+
+          let res = await fetch("/api/upload-slide", {
+            method: "POST",
+            headers: getStaffHeaders(),
+            body: fd
+          });
+
+          if (res.status === 404) {
+            res = await fetch("/api/settings", {
+              method: "POST",
+              headers: getStaffHeaders(),
+              body: fd
+            });
+          }
+
+          if (handleStaffUnauthorized(res)) return;
+          const data = await safeJson(res);
+          const returnedUrl =
+            data.url ||
+            data.image_url ||
+            data.awareness_image_url ||
+            data.settings?.awareness_image_url ||
+            "";
+
+          if (!res.ok || !returnedUrl) {
+            throw new Error(data.detail || `Failed to upload ${file.name}`);
+          }
+
+          const cleanBaseName = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]+/g, " ");
+          appendSlideEntry(returnedUrl, cleanBaseName);
+          uploadedUrls.push(returnedUrl);
+        }
+
+        pendingAwarenessSlideFiles = [];
+        inputEl.value = "";
+
+        const slidesRaw = document.getElementById("setAwarenessSlides")?.value || "";
+        const descsRaw = document.getElementById("setAwarenessDescriptions")?.value || "";
+        const bottomCaption = (document.getElementById("setAwarenessBottomCaption")?.value || "").trim();
+        const urls = parsePipeOrLineList(slidesRaw);
+        const descs = parsePipeOrLineList(descsRaw);
+        awarenessSlidesList = urls.map((url, idx) => ({
+          url,
+          description: descs[idx] || bottomCaption || `Slide ${idx + 1}`
+        }));
+        awarenessSlideIdx = Math.max(0, awarenessSlidesList.length - uploadedUrls.length);
+        startAwarenessSlideshow(Boolean(document.getElementById("togAutoSlidePhotos")?.checked));
+        renderAwarenessSlidesManager();
+        toggleAwarenessCard(true);
+
+        if (statusEl) {
+          statusEl.className = "small text-success mt-1";
+          statusEl.textContent = `Added ${uploadedUrls.length} slide(s). Click "Save All App Settings" to persist.`;
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.className = "small text-danger mt-1";
+          statusEl.textContent = `${err.message} (Will also attach on Save)`;
+        }
+      }
+    }
+
+    function getCurrentEditorSlides() {
+      const urls = parsePipeOrLineList(document.getElementById("setAwarenessSlides")?.value || "");
+      const descs = parsePipeOrLineList(document.getElementById("setAwarenessDescriptions")?.value || "");
+      const bottomCaption = (document.getElementById("setAwarenessBottomCaption")?.value || "").trim();
+
+      return urls.map((url, idx) => ({
+        url,
+        description: descs[idx] || bottomCaption || `Slide ${idx + 1}`
+      }));
+    }
+
+    function syncEditorSlidesToFields(slides) {
+      const slidesArea = document.getElementById("setAwarenessSlides");
+      const descsArea = document.getElementById("setAwarenessDescriptions");
+      if (slidesArea) slidesArea.value = slides.map(s => s.url).join("\n");
+      if (descsArea) descsArea.value = slides.map(s => s.description).join("\n");
+
+      awarenessSlidesList = slides;
+      if (awarenessSlideIdx >= awarenessSlidesList.length) {
+        awarenessSlideIdx = Math.max(0, awarenessSlidesList.length - 1);
+      }
+      startAwarenessSlideshow(Boolean(document.getElementById("togAutoSlidePhotos")?.checked));
+      renderAwarenessSlidesManager();
+    }
+
+    function renderAwarenessSlidesManager() {
+      const container = document.getElementById("awarenessSlidesManagerList");
+      if (!container) return;
+
+      const slides = getCurrentEditorSlides();
+      if (!slides.length) {
+        container.innerHTML = `<div class="small text-secondary py-2 px-2 rounded" style="background:#0b1220;">No slides added yet. Upload images or paste links above.</div>`;
+        return;
+      }
+
+      container.innerHTML = slides.map((slide, idx) => {
+        const safeUrl = isSafeMediaUrl(slide.url) ? escapeHtml(slide.url) : "";
+        const thumb = safeUrl
+          ? `<img src="${safeUrl}" alt="Slide ${idx + 1}" class="rounded border border-secondary-subtle" style="width:54px;height:54px;object-fit:contain;background:#080f1c;flex-shrink:0;" />`
+          : `<div class="rounded border border-secondary-subtle d-flex align-items-center justify-content-center text-secondary" style="width:54px;height:54px;font-size:0.7rem;flex-shrink:0;">No Img</div>`;
+
+        return `
+          <div class="d-flex align-items-center gap-2 p-2 rounded" style="background:#0b1220;border:1px solid var(--border-subtle);">
+            <span class="badge text-bg-warning text-dark">#${idx + 1}</span>
+            ${thumb}
+            <div class="flex-grow-1 min-w-0">
+              <input
+                type="text"
+                class="form-control form-control-sm dark-input mb-1"
+                value="${escapeHtml(slide.description)}"
+                placeholder="Description for slide #${idx + 1}"
+                oninput="updateSingleSlideDescription(${idx}, this.value)"
+              />
+              <div class="text-secondary text-truncate" style="font-size:0.7rem;">${escapeHtml(slide.url)}</div>
+            </div>
+            <div class="d-flex flex-column gap-1 flex-shrink-0">
+              <button type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2" ${idx === 0 ? "disabled" : ""} onclick="moveAwarenessSlide(${idx}, -1)" title="Move up">↑</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2" ${idx === slides.length - 1 ? "disabled" : ""} onclick="moveAwarenessSlide(${idx}, 1)" title="Move down">↓</button>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger py-1 px-2 flex-shrink-0" onclick="removeAwarenessSlide(${idx})" title="Remove this slide">
+              Remove
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function updateSingleSlideDescription(index, newText) {
+      const slides = getCurrentEditorSlides();
+      if (!slides[index]) return;
+      slides[index].description = newText;
+
+      const descsArea = document.getElementById("setAwarenessDescriptions");
+      if (descsArea) descsArea.value = slides.map(s => s.description).join("\n");
+
+      awarenessSlidesList = slides;
+      renderCurrentAwarenessSlide();
+    }
+
+    function moveAwarenessSlide(index, delta) {
+      const slides = getCurrentEditorSlides();
+      const target = index + delta;
+      if (target < 0 || target >= slides.length) return;
+      [slides[index], slides[target]] = [slides[target], slides[index]];
+      syncEditorSlidesToFields(slides);
+    }
+
+    function removeAwarenessSlide(index) {
+      const slides = getCurrentEditorSlides();
+      const removed = slides.splice(index, 1)[0];
+      syncEditorSlidesToFields(slides);
+
+      if (removed && removed.url && removed.url.startsWith("/static/uploads/")) {
+        fetch(`/api/upload-slide?url=${encodeURIComponent(removed.url)}`, {
+          method: "DELETE",
+          headers: getStaffHeaders()
+        }).catch(() => {});
+      }
+
+      const fb = document.getElementById("settingsFeedbackText");
+      if (fb) {
+        fb.className = "small text-warning";
+        fb.textContent = "Slide removed — click Save All App Settings to make permanent.";
+      }
+    }
+
+    function clearAllAwarenessSlides() {
+      if (!confirm("Remove all slideshow photos and descriptions?")) return;
+      syncEditorSlidesToFields([]);
+      const fb = document.getElementById("settingsFeedbackText");
+      if (fb) {
+        fb.className = "small text-warning";
+        fb.textContent = "All slides cleared — click Save All App Settings to save.";
+      }
     }
 
     function renderCurrentAwarenessSlide() {
@@ -2874,6 +3122,7 @@
         searchInp.placeholder = inputs.setSearchPlaceholder;
       }
 
+      renderAwarenessSlidesManager();
       updateCartBadge();
       renderProductsGrid();
     }
@@ -3677,7 +3926,7 @@
           box.innerHTML = `<div class="alert alert-success py-2 small mb-0">Sent! Ref: <strong>${escapeHtml(data.payment_ref)}</strong> • PIN: <strong>${escapeHtml(data.customer_pin)}</strong></div>`;
         }
       } catch (err) {
-        if (box) resBox.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${escapeHtml(err.message)}</div>`;
+        if (box) box.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${escapeHtml(err.message)}</div>`;
       }
     }
 
@@ -4973,29 +5222,26 @@
         pinFieldLabel: (document.getElementById("setPinFieldLabel")?.value || "").trim(),
         orderNotePlaceholder: (document.getElementById("setOrderNotePlaceholder")?.value || "").trim(),
         showRotatingTips: Boolean(document.getElementById("togShowRotatingTips")?.checked),
-        secondsPerTip: parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10,
-        rotatingTips: document.getElementById("setRotatingTips")?.value || "",
+        secondsPerTip: Math.max(2, parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10),
+        rotatingTips: (document.getElementById("setRotatingTips")?.value || "").trim(),
         showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
         autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
         secondsPerSlide: Math.min(120, Math.max(2, parseInt(document.getElementById("setSlideSeconds")?.value || "10", 10) || 10)),
-        awarenessSlides: document.getElementById("setAwarenessSlides")?.value || "",
-        awarenessDescriptions: document.getElementById("setAwarenessDescriptions")?.value || "",
+        awarenessSlides: (document.getElementById("setAwarenessSlides")?.value || "").trim(),
+        awarenessDescriptions: (document.getElementById("setAwarenessDescriptions")?.value || "").trim(),
         awarenessBottomCaption: (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
       };
 
-      const fd = new FormData();
-      fd.append("business_name", (document.getElementById("setBusinessName")?.value || "Sammyreks Business Center").trim());
-      fd.append("tagline", (document.getElementById("setTagline")?.value || "").trim());
-      fd.append("active_notice", (document.getElementById("setActiveNotice")?.value || "").trim());
-      fd.append("broadcast_video_url", (document.getElementById("setBroadcastVideoUrl")?.value || "").trim());
-      fd.append("currency", (document.getElementById("setCurrency")?.value || "₦").trim() || "₦");
-      fd.append("extra_settings", JSON.stringify(updatedExtra));
+      const form = document.getElementById("appSettingsForm");
+      const fd = new FormData(form);
+      fd.set("extra_settings_json", JSON.stringify(updatedExtra));
 
-      const vidFile = document.getElementById("setBroadcastVideoFile")?.files?.[0];
-      if (vidFile) fd.append("broadcast_video_file", vidFile);
+      const firstSlideUrl = parsePipeOrLineList(updatedExtra.awarenessSlides)[0] || "";
+      fd.set("awareness_image_url", firstSlideUrl);
 
-      const awFile = document.getElementById("setAwarenessImageFile")?.files?.[0];
-      if (awFile) fd.append("awareness_image_file", awFile);
+      if (!pendingAwarenessSlideFiles.length) {
+        fd.delete("awareness_image_file");
+      }
 
       try {
         const res = await fetch("/api/settings", {
@@ -5007,13 +5253,18 @@
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Save failed");
 
-        if (data.settings) {
-          state.settings = { ...state.settings, ...data.settings };
-          applySettingsToUI();
-        }
+        pendingAwarenessSlideFiles = [];
+        const awFile = document.getElementById("setAwarenessImageFile");
+        if (awFile) awFile.value = "";
+        const awStatus = document.getElementById("awarenessUploadStatus");
+        if (awStatus) awStatus.textContent = "";
+
+        state.settings = { ...state.settings, ...data.settings };
+        applySettingsToUI();
+
         if (fb) {
           fb.className = "small text-success fw-semibold";
-          fb.textContent = "All app settings saved.";
+          fb.textContent = "All settings saved and active!";
         }
       } catch (err) {
         if (fb) {

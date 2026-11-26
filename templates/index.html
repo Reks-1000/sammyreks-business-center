@@ -1,2199 +1,85 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sammyreks Business Center</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
-  <style>
-    :root {
-      --bg-body: #0f172a;
-      --bg-surface: #162033;
-      --bg-surface-2: #1e293b;
-      --bg-input: #0b1220;
-      --bg-header: #0d1526;
-      --border-subtle: #2b3952;
-      --text-primary: #f8fafc;
-      --text-secondary: #94a3b8;
-      --gold: #f5b700;
-      --gold-dark: #d99b00;
-      --teal: #10b981;
-      --cyan: #0ea5e9;
-      --danger: #ef4444;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; }
-
-    body {
-      background-color: var(--bg-body);
-      color: var(--text-primary);
-      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
-      padding-bottom: 84px;
-      overflow-x: hidden;
-      transition: background-color 0.45s ease, color 0.35s ease;
-    }
-
-    /* Top Header */
-    .app-header {
-      background: var(--bg-header);
-      border-bottom: 1px solid var(--border-subtle);
-      padding: 12px 16px;
-      transition: background-color 0.45s ease, border-color 0.45s ease;
-    }
-
-    .brand-icon-badge {
-      width: 40px;
-      height: 40px;
-      border-radius: 11px;
-      background: rgba(245, 183, 0, 0.14);
-      border: 1px solid var(--gold);
-      color: var(--gold);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .brand-heading {
-      color: var(--gold);
-      font-weight: 800;
-      font-size: 1.32rem;
-      letter-spacing: -0.01em;
-      margin: 0;
-    }
-
-    .brand-tagline {
-      color: var(--text-secondary);
-      font-size: 0.78rem;
-    }
-
-    .hdr-pill-btn {
-      background: transparent;
-      border-radius: 8px;
-      font-size: 0.84rem;
-      font-weight: 600;
-      padding: 5px 12px;
-      transition: all 0.15s ease;
-      cursor: pointer;
-    }
-
-    .hdr-btn-white {
-      border: 1px solid #cbd5e1;
-      color: #f8fafc;
-    }
-    .hdr-btn-white.active,
-    .hdr-btn-white:hover {
-      background: rgba(248, 250, 252, 0.12);
-    }
-
-    .hdr-btn-gold {
-      border: 1px solid var(--gold);
-      color: var(--gold);
-    }
-    .hdr-btn-gold:hover,
-    .hdr-btn-gold.active {
-      background: var(--gold);
-      color: #111827;
-    }
-
-    .hdr-btn-cyan {
-      border: 1px solid var(--cyan);
-      color: #38bdf8;
-    }
-    .hdr-btn-cyan:hover {
-      background: rgba(14, 165, 233, 0.16);
-    }
-
-    .hdr-btn-green {
-      border: 1px solid var(--teal);
-      color: #34d399;
-    }
-    .hdr-btn-green:hover {
-      background: rgba(16, 185, 129, 0.16);
-    }
-
-    .hdr-btn-red {
-      border: 1px solid var(--danger);
-      color: #f87171;
-    }
-    .hdr-btn-red:hover {
-      background: rgba(239, 68, 68, 0.16);
-    }
-
-    .staff-pill-badge {
-      background: #14532d;
-      border: 1px solid #22c55e;
-      color: #dcfce7;
-      font-size: 0.8rem;
-      font-weight: 700;
-      padding: 5px 11px;
-      border-radius: 8px;
-    }
-
-    /* Full-width Gold Notice Strip */
-    .gold-notice-bar {
-      background: var(--gold);
-      color: #111827;
-      font-weight: 700;
-      font-size: 0.9rem;
-      text-align: center;
-      padding: 8px 14px;
-    }
-
-    /* Fixed Static Bottom Navigation Bar */
-    .fixed-bottom-nav {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      z-index: 1030;
-      background: var(--bg-header);
-      border-top: 1px solid var(--border-subtle);
-      box-shadow: 0 -6px 22px rgba(0, 0, 0, 0.45);
-      padding: 6px 8px;
-      transition: background-color 0.45s ease, border-color 0.45s ease;
-    }
-
-    .bottom-nav-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 6px;
-      max-width: 920px;
-      margin: 0 auto;
-    }
-
-    .bottom-nav-btn {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      color: var(--text-primary);
-      border-radius: 10px;
-      padding: 6px 4px;
-      font-size: 0.72rem;
-      font-weight: 700;
-      line-height: 1.15;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 3px;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-
-    .bottom-nav-btn:hover,
-    .bottom-nav-btn.active {
-      border-color: var(--gold);
-      color: var(--gold);
-      background: var(--bg-surface-2);
-    }
-
-    /* Dedicated Partner Store Banner */
-    .partner-store-hero {
-      background: linear-gradient(135deg, #0b192c 0%, #152a45 100%);
-      border: 1px solid var(--cyan);
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 16px;
-    }
-
-    .partner-store-avatar {
-      width: 54px;
-      height: 54px;
-      border-radius: 12px;
-      object-fit: cover;
-      border: 1px solid var(--cyan);
-      background: #0b1220;
-      flex-shrink: 0;
-    }
-
-    /* Dark Cards & Inputs */
-    .dark-panel {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      padding: 14px;
-      transition: background-color 0.45s ease, border-color 0.45s ease;
-    }
-
-    .dark-subpanel {
-      background: var(--bg-surface-2);
-      border: 1px solid var(--border-subtle);
-      border-radius: 10px;
-      padding: 12px;
-      transition: background-color 0.45s ease, border-color 0.45s ease;
-    }
-
-    .dark-input,
-    .dark-select {
-      background-color: var(--bg-input) !important;
-      border: 1px solid var(--border-subtle) !important;
-      color: var(--text-primary) !important;
-      border-radius: 9px;
-    }
-
-    .dark-input::placeholder {
-      color: #64748b !important;
-    }
-
-    .dark-input:focus,
-    .dark-select:focus {
-      border-color: var(--gold) !important;
-      box-shadow: 0 0 0 0.18rem rgba(245, 183, 0, 0.2) !important;
-    }
-
-    /* Sidebar Offcanvas for Registered Businesses */
-    .offcanvas-dark-custom {
-      background-color: var(--bg-header);
-      color: var(--text-primary);
-      border-right: 1px solid var(--border-subtle);
-    }
-
-    .sidebar-shop-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      padding: 12px;
-      transition: border-color 0.2s ease, transform 0.15s ease;
-    }
-
-    .sidebar-shop-card:hover {
-      border-color: var(--gold);
-    }
-
-    .sidebar-shop-card.active-shop {
-      border-color: var(--cyan);
-      background: rgba(14, 165, 233, 0.08);
-    }
-
-    /* Product Cards */
-    .product-card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 14px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      transition: background-color 0.45s ease, border-color 0.45s ease;
-    }
-
-    .product-media-wrap {
-      position: relative;
-      min-height: 190px;
-      max-height: 250px;
-      background: #0b1324;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px;
-      overflow: hidden;
-    }
-
-    .product-media-wrap img,
-    .product-media-wrap video {
-      width: 100%;
-      max-height: 225px;
-      height: auto;
-      object-fit: contain;
-      border-radius: 8px;
-      display: block;
-    }
-
-    .media-cat-tag {
-      position: absolute;
-      top: 9px;
-      left: 9px;
-      background: rgba(15, 23, 42, 0.88);
-      border: 1px solid var(--border-subtle);
-      color: var(--gold);
-      font-size: 0.7rem;
-      font-weight: 700;
-      padding: 2px 9px;
-      border-radius: 999px;
-      z-index: 2;
-    }
-
-    .media-video-indicator {
-      position: absolute;
-      top: 9px;
-      right: 9px;
-      background: rgba(15, 23, 42, 0.9);
-      border: 1px solid var(--gold);
-      color: var(--gold);
-      font-size: 0.72rem;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 999px;
-      z-index: 2;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .media-switch-btn {
-      position: absolute;
-      bottom: 9px;
-      right: 9px;
-      background: rgba(15, 23, 42, 0.94);
-      border: 1px solid var(--gold);
-      color: var(--gold);
-      font-size: 0.74rem;
-      font-weight: 700;
-      padding: 4px 10px;
-      border-radius: 999px;
-      z-index: 2;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-    }
-
-    .sponsor-pos-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      background: rgba(14, 165, 233, 0.14);
-      border: 1px solid rgba(56, 189, 248, 0.45);
-      color: #7dd3fc;
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 2px 8px;
-      border-radius: 999px;
-    }
-
-    .gold-price-tag {
-      background: rgba(245, 183, 0, 0.14);
-      border: 1px solid rgba(245, 183, 0, 0.4);
-      color: var(--gold);
-      font-weight: 700;
-      font-size: 0.78rem;
-      padding: 3px 8px;
-      border-radius: 7px;
-      display: inline-block;
-    }
-
-    .tier-chip {
-      background: var(--bg-surface-2);
-      border: 1px solid var(--border-subtle);
-      color: #cbd5e1;
-      font-size: 0.74rem;
-      padding: 2px 7px;
-      border-radius: 6px;
-    }
-
-    /* Rotating Tip Strip at Top */
-    .tip-banner {
-      background: var(--bg-surface-2);
-      border: 1px solid var(--border-subtle);
-      border-radius: 10px;
-      padding: 8px 12px;
-      font-size: 0.83rem;
-      color: #f8fafc;
-      transition: background-color 0.45s ease, border-color 0.45s ease;
-    }
-
-    /* Floating Awareness Slideshow Card — Responsive 420px width & 360px max image height */
-    .awareness-popup {
-      position: fixed;
-      right: 16px;
-      bottom: 82px;
-      width: min(420px, calc(100vw - 32px));
-      max-height: calc(100vh - 108px);
-      background: var(--bg-surface);
-      border: 1px solid var(--gold);
-      border-radius: 14px;
-      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
-      z-index: 1045;
-      overflow-y: auto;
-      display: none;
-    }
-
-    .awareness-media-stage {
-      background: #080f1c;
-      width: 100%;
-      min-height: 170px;
-      max-height: 360px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    #awarenessCardImg {
-      width: 100%;
-      max-height: 360px;
-      height: auto;
-      object-fit: contain;
-      background: #080f1c;
-      display: none;
-      cursor: zoom-in;
-    }
-
-    /* WhatsApp-Style Chat Board & Lightbox */
-    .wa-chat-board {
-      display: flex;
-      flex-direction: column;
-      height: 410px;
-      background: #080f1c;
-      background-image: radial-gradient(rgba(148, 163, 184, 0.07) 1px, transparent 0);
-      background-size: 18px 18px;
-      border: 1px solid var(--border-subtle);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    .wa-chat-topbar {
-      background: #0d1526;
-      border-bottom: 1px solid var(--border-subtle);
-      padding: 8px 12px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .wa-chat-messages {
-      flex: 1 1 auto;
-      overflow-y: auto;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 9px;
-    }
-
-    .wa-bubble {
-      max-width: 82%;
-      padding: 9px 12px;
-      border-radius: 13px;
-      font-size: 0.87rem;
-      line-height: 1.42;
-      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.28);
-      word-break: break-word;
-    }
-
-    .wa-bubble-outgoing {
-      align-self: flex-end;
-      background: #14532d;
-      border: 1px solid rgba(74, 222, 128, 0.28);
-      color: #f0fdf4;
-      border-bottom-right-radius: 4px;
-    }
-
-    .wa-bubble-incoming {
-      align-self: flex-start;
-      background: #1e293b;
-      border: 1px solid var(--border-subtle);
-      color: #f8fafc;
-      border-bottom-left-radius: 4px;
-    }
-
-    .wa-bubble-system {
-      align-self: center;
-      max-width: 94%;
-      background: rgba(245, 183, 0, 0.13);
-      border: 1px solid rgba(245, 183, 0, 0.45);
-      color: #fef3c7;
-      font-size: 0.81rem;
-      border-radius: 10px;
-    }
-
-    .wa-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      font-size: 0.71rem;
-      opacity: 0.82;
-      margin-bottom: 4px;
-    }
-
-    .wa-photo-card {
-      margin-top: 6px;
-      background: #060b14;
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 10px;
-      padding: 6px;
-    }
-
-    .wa-photo-thumb {
-      width: 100%;
-      max-width: 255px;
-      max-height: 195px;
-      object-fit: contain;
-      border-radius: 7px;
-      cursor: zoom-in;
-      display: block;
-      margin: 0 auto;
-    }
-
-    .wa-photo-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      font-size: 0.71rem;
-      color: #cbd5e1;
-      margin-top: 5px;
-      padding: 0 2px;
-    }
-
-    .wa-composer {
-      background: #0d1526;
-      border-top: 1px solid var(--border-subtle);
-      padding: 8px 10px;
-    }
-
-    .wa-composer-row {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      width: 100%;
-    }
-
-    .wa-composer-input {
-      flex: 1 1 auto;
-      min-width: 0;
-      height: 38px;
-      font-size: 0.86rem;
-    }
-
-    .wa-add-img-btn {
-      height: 38px;
-      padding: 0 10px;
-      border-radius: 10px;
-      background: rgba(56, 189, 248, 0.12);
-      border: 1px solid rgba(56, 189, 248, 0.55);
-      color: #7dd3fc;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-      font-size: 0.76rem;
-      font-weight: 700;
-      white-space: nowrap;
-      flex-shrink: 0;
-      cursor: pointer;
-      margin-bottom: 0;
-      transition: all 0.15s ease;
-    }
-
-    .wa-add-img-btn:hover {
-      background: rgba(56, 189, 248, 0.24);
-      color: #e0f2fe;
-    }
-
-    .wa-ig-send-btn {
-      height: 38px;
-      width: 44px;
-      border-radius: 11px;
-      border: none;
-      background: linear-gradient(135deg, #f58529 0%, #dd2a7b 55%, #8134af 100%);
-      color: #ffffff;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      cursor: pointer;
-      box-shadow: 0 3px 12px rgba(221, 42, 123, 0.35);
-      transition: transform 0.12s ease, opacity 0.15s ease;
-    }
-
-    .wa-ig-send-btn:hover {
-      transform: scale(1.04);
-      opacity: 0.96;
-    }
-
-    .wa-thread-item {
-      background: var(--bg-surface-2);
-      border: 1px solid var(--border-subtle);
-      border-radius: 9px;
-      padding: 8px 10px;
-      text-align: left;
-      width: 100%;
-      color: var(--text-primary);
-      cursor: pointer;
-      transition: border-color 0.15s ease, background-color 0.15s ease;
-    }
-
-    .wa-thread-item:hover,
-    .wa-thread-item.active {
-      border-color: var(--gold);
-      background: rgba(245, 183, 0, 0.1);
-    }
-
-    .wa-attach-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(14, 165, 233, 0.14);
-      border: 1px solid rgba(56, 189, 248, 0.45);
-      color: #e0f2fe;
-      border-radius: 8px;
-      padding: 4px 10px;
-      font-size: 0.76rem;
-    }
-
-    /* Staff Tabs & Tables */
-    .nav-pills .nav-link {
-      color: #cbd5e1;
-      background: var(--bg-surface-2);
-      border: 1px solid var(--border-subtle);
-      font-size: 0.84rem;
-      font-weight: 600;
-    }
-
-    .nav-pills .nav-link.active {
-      background: var(--gold);
-      color: #111827;
-      border-color: var(--gold);
-    }
-
-    .table-dark-custom {
-      --bs-table-bg: #162033;
-      --bs-table-color: #f8fafc;
-      --bs-table-border-color: #2b3952;
-      --bs-table-hover-bg: #1e293b;
-      --bs-table-hover-color: #ffffff;
-    }
-
-    .modal-content {
-      background: var(--bg-surface);
-      color: var(--text-primary);
-      border: 1px solid var(--border-subtle);
-    }
-
-    .modal-header,
-    .modal-footer {
-      border-color: var(--border-subtle);
-    }
-
-    .btn-close {
-      filter: invert(1) grayscale(100%) brightness(200%);
-    }
-
-    .receipt-paper {
-      background: #fdfcf7;
-      color: #111;
-      border-radius: 8px;
-      padding: 15px;
-      font-family: "Courier New", Courier, monospace;
-      font-size: 0.84rem;
-    }
-  </style>
-</head>
-<body>
-
-  <!-- TOP NAVIGATION HEADER -->
-  <header class="app-header">
-    <div class="container-fluid">
-      <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-        <div class="d-flex align-items-center gap-2">
-          <button type="button" class="btn btn-sm btn-outline-warning d-inline-flex align-items-center gap-1 fw-bold" data-bs-toggle="offcanvas" data-bs-target="#registeredShopsSidebar" aria-controls="registeredShopsSidebar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-            <span>Stores</span>
-            <span id="sidebarShopCountBadge" class="badge rounded-pill text-bg-warning text-dark">0</span>
-          </button>
-
-          <span id="brandStoreIcon" class="brand-icon-badge" aria-hidden="true" title="Sammyreks Business Center">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 9l1.5-5h15L21 9"></path>
-              <path d="M3 9a2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 5 0 2.5 2.5 0 0 0 3-2.45"></path>
-              <path d="M5 11.5V20h14v-8.5"></path>
-              <path d="M10 20v-5h4v5"></path>
-            </svg>
-          </span>
-
-          <div>
-            <h1 id="brandNameDisplay" class="brand-heading">Sammyreks Business Center</h1>
-            <div id="brandTaglineDisplay" class="brand-tagline d-none"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Action Pills Bar -->
-      <div class="d-flex flex-wrap align-items-center gap-2">
-        <button id="navStorefrontBtn" type="button" class="hdr-pill-btn hdr-btn-white active" onclick="enterMainStorefront()">
-          Main App
-        </button>
-
-        <button id="navRegisterShopBtn" type="button" class="hdr-pill-btn hdr-btn-gold" onclick="openRegisterShopModal()">
-          + Register Your Business
-        </button>
-
-        <button id="navCartBtn" type="button" class="hdr-pill-btn hdr-btn-cyan" onclick="openCartModal()">
-          Cart <span id="topCartBadge" class="badge rounded-pill text-bg-warning text-dark ms-1">0</span>
-        </button>
-
-        <button id="navChatBtn" type="button" class="hdr-pill-btn hdr-btn-green" onclick="openCustomerChatModal()">
-          Order Chat / Receipt
-        </button>
-
-        <span id="staffSessionBadge" class="staff-pill-badge d-none"></span>
-
-        <button id="navLoginBtn" type="button" class="hdr-pill-btn hdr-btn-gold" onclick="openStaffLoginModal()">
-          Staff / Admin Login
-        </button>
-
-        <button id="navDashboardBtn" type="button" class="hdr-pill-btn hdr-btn-gold d-none" onclick="showDashboardView()">
-          Dashboard
-        </button>
-
-        <button id="navLogoutBtn" type="button" class="hdr-pill-btn hdr-btn-red d-none" onclick="logoutStaff()">
-          Logout
-        </button>
-      </div>
-    </div>
-  </header>
-
-  <!-- SIDEBAR DRAWER: REGISTERED BUSINESSES -->
-  <div class="offcanvas offcanvas-start offcanvas-dark-custom" tabindex="-1" id="registeredShopsSidebar" aria-labelledby="registeredShopsSidebarLabel">
-    <div class="offcanvas-header border-bottom border-secondary-subtle">
-      <div>
-        <h5 class="offcanvas-title fw-bold text-warning mb-0" id="registeredShopsSidebarLabel">Registered Stores</h5>
-        <div class="small text-secondary">Select a store near your location to shop directly</div>
-      </div>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-    </div>
-    <div class="offcanvas-body d-flex flex-column gap-3">
-      <div id="sidebarMainStoreCard" class="sidebar-shop-card active-shop">
-        <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
-          <div class="fw-bold text-warning">Shop with Sammyreks Business Center</div>
-          <span class="badge text-bg-warning text-dark">Main App</span>
-        </div>
-        <div class="small text-secondary mb-2">
-          Location: <strong class="text-light">Calabar</strong>
-        </div>
-        <button type="button" class="btn btn-sm btn-warning fw-bold w-100" data-bs-dismiss="offcanvas" onclick="enterMainStorefront()">
-          Open Main Storefront
-        </button>
-      </div>
-
-      <div class="border-top border-secondary-subtle pt-2">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <span class="small fw-bold text-uppercase text-secondary">Partner Businesses</span>
-          <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" data-bs-dismiss="offcanvas" onclick="openRegisterShopModal()">
-            + Register
-          </button>
-        </div>
-        <div id="sidebarPartnerShopsList" class="d-flex flex-column gap-2">
-          <div class="small text-secondary py-2">No registered partner businesses yet.</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- GOLD ANNOUNCEMENT BANNER -->
-  <div id="activeNoticeBanner" class="gold-notice-bar d-none"></div>
-
-  <!-- MAIN CONTENT AREA -->
-  <div class="container-fluid py-3 px-3 px-md-4">
-
-    <!-- ROTATING TIPS BAR PLACED AT THE TOP -->
-    <div id="rotatingTipStrip" class="tip-banner mb-3 d-flex justify-content-between align-items-center gap-2">
-      <div class="d-flex align-items-center gap-2">
-        <span class="badge text-bg-warning text-dark">Tip</span>
-        <span id="rotatingTipText">Choose Retail Unit, Pack, or Carton and tap Add to Cart.</span>
-      </div>
-      <div class="d-flex align-items-center gap-1 flex-shrink-0">
-        <button type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2" onclick="cycleTip(-1)">‹</button>
-        <button type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2" onclick="cycleTip(1)">›</button>
-        <button id="toggleAwarenessBtn" type="button" class="btn btn-sm btn-outline-warning py-0 px-2 d-none" onclick="toggleAwarenessCard()">
-          Slides
-        </button>
-      </div>
-    </div>
-
-    <!-- ===================================================================== -->
-    <!-- 1. STOREFRONT VIEW                                                    -->
-    <!-- ===================================================================== -->
-    <div id="storefrontSection">
-
-      <div id="partnerStoreFrontHeader" class="partner-store-hero d-none">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-          <div class="d-flex align-items-center gap-3">
-            <img id="partnerHeroAvatar" src="" alt="Store Logo" class="partner-store-avatar d-none" />
-            <div id="partnerHeroFallbackIcon" class="brand-icon-badge" style="width:52px;height:52px;border-color:var(--cyan);color:#38bdf8;background:rgba(14,165,233,0.14);">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 9l1.5-5h15L21 9"></path>
-                <path d="M5 11.5V20h14v-8.5"></path>
-                <rect x="9" y="13" width="6" height="4" rx="1"></rect>
-              </svg>
-            </div>
-            <div>
-              <span class="badge text-bg-info text-dark mb-1">Independent Partner Storefront</span>
-              <h4 id="partnerHeroTitle" class="fw-bold mb-0 text-light">Shop with Business</h4>
-              <div id="partnerHeroMeta" class="small text-info mt-1">Location: Calabar</div>
-            </div>
-          </div>
-
-          <div class="d-flex flex-wrap gap-2">
-            <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="offcanvas" data-bs-target="#registeredShopsSidebar">
-              Switch Store
-            </button>
-            <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="enterMainStorefront()">
-              ← Back to Main App
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div id="broadcastVideoContainer" class="dark-panel mb-3 d-none">
-        <div class="d-flex justify-content-between align-items-center mb-2">
-          <h5 class="mb-0 fw-bold" style="color:var(--gold);">Featured Promo Broadcast</h5>
-          <button id="toggleBroadcastBtn" type="button" class="btn btn-sm btn-outline-secondary text-light" onclick="toggleBroadcastBody()">
-            Hide
-          </button>
-        </div>
-        <div id="broadcastVideoBody">
-          <video id="broadcastVideoPlayer" class="w-100 rounded" style="max-height:280px;object-fit:contain;background:#000;" controls playsinline></video>
-        </div>
-      </div>
-
-      <div class="dark-panel mb-3">
-        <div class="row g-2 align-items-center">
-          <div class="col-md-5">
-            <input id="storeSearchInput" type="search" class="form-control dark-input" placeholder="Search products, brands, or sponsors..." oninput="renderProductsGrid()" />
-          </div>
-          <div class="col-md-4">
-            <select id="storeCategoryFilter" class="form-select dark-select" onchange="renderProductsGrid()">
-              <option value="All">All Categories</option>
-            </select>
-          </div>
-          <div id="customRequestCol" class="col-md-3">
-            <button id="customRequestBtn" type="button" class="btn w-100 fw-bold" style="border:1px solid var(--gold);color:var(--gold);background:transparent;" onclick="openSpecialRequestModal()">
-              Custom Request
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div id="productsGrid" class="row g-3"></div>
-    </div>
-
-    <!-- ===================================================================== -->
-    <!-- 2. STAFF & ADMIN DASHBOARD VIEW                                       -->
-    <!-- ===================================================================== -->
-    <div id="staffSection" class="d-none">
-      <div class="dark-panel mb-3">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pb-2 mb-3 border-bottom border-secondary-subtle">
-          <div>
-            <h4 id="dashboardHeadingTitle" class="mb-0 fw-bold" style="color:var(--gold);">Staff &amp; Admin Dashboard</h4>
-            <div id="staffContextSubtitle" class="small text-secondary">Signed in</div>
-          </div>
-          <div class="d-flex flex-wrap align-items-center gap-2">
-            <div id="ceoShopFilterWrap" class="d-none align-items-center gap-2">
-              <label for="staffShopSelector" class="small text-secondary mb-0">Portfolio:</label>
-              <select id="staffShopSelector" class="form-select form-select-sm dark-select" style="width:auto;" onchange="onStaffShopChanged()">
-                <option value="main">Main Store (main)</option>
-                <option value="all">All Shops (Overview)</option>
-              </select>
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-warning" onclick="refreshStaffWorkspace()">
-              Refresh
-            </button>
-          </div>
-        </div>
-
-        <div id="analyticsKpiRow" class="row g-2">
-          <div class="col-6 col-md-3">
-            <div class="dark-subpanel">
-              <div class="small text-secondary">Total Revenue</div>
-              <div id="kpiRevenue" class="fw-bold fs-6 mt-1">₦0.00</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="dark-subpanel">
-              <div class="small text-secondary">Gross Profit</div>
-              <div id="kpiProfit" class="fw-bold fs-6 text-success mt-1">₦0.00</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="dark-subpanel">
-              <div class="small text-secondary">Expenses</div>
-              <div id="kpiExpenses" class="fw-bold fs-6 text-danger mt-1">₦0.00</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="dark-subpanel">
-              <div class="d-flex justify-content-between align-items-center">
-                <span class="small text-secondary">Net Cashflow</span>
-                <span id="stockAlertBadge" class="badge text-bg-secondary">0 alerts</span>
-              </div>
-              <div id="kpiCashflow" class="fw-bold fs-6 mt-1">₦0.00</div>
-            </div>
-          </div>
-        </div>
-        <div id="stockAlertsLine" class="small text-warning mt-2"></div>
-      </div>
-
-      <ul class="nav nav-pills gap-2 mb-3 flex-wrap" role="tablist">
-        <li class="nav-item" role="presentation">
-          <button class="nav-link active" id="tab-inventory" data-bs-toggle="pill" data-bs-target="#inventoryTab" type="button" role="tab">
-            Inventory &amp; Auto-Stock
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-pos" data-bs-toggle="pill" data-bs-target="#posTab" type="button" role="tab">
-            POS Sale
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-orders-chat" data-bs-toggle="pill" data-bs-target="#staffOrdersChatTab" type="button" role="tab">
-            Orders &amp; Live Chat <span id="pendingOrdersNavBadge" class="badge text-bg-warning text-dark ms-1">0</span>
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-records" data-bs-toggle="pill" data-bs-target="#recordsTab" type="button" role="tab">
-            Debtors, Expenses &amp; Team
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-settings" data-bs-toggle="pill" data-bs-target="#settingsTab" type="button" role="tab">
-            <span id="settingsTabLabel">Overall App Settings</span>
-          </button>
-        </li>
-      </ul>
-
-      <div class="tab-content">
-
-        <!-- TAB 1: INVENTORY & DIRECT NAME AUTO-STOCK -->
-        <div class="tab-pane fade show active" id="inventoryTab" role="tabpanel">
-          <div class="row g-3 mb-3">
-            <div class="col-lg-5">
-              <div class="dark-panel h-100">
-                <h6 class="fw-bold mb-2" style="color:var(--gold);">Direct Name &amp; Barcode Auto-Stock</h6>
-
-                <div class="dark-subpanel mb-3">
-                  <label for="barcodeLookupInput" class="form-label small mb-1">Barcode or Single Item Name</label>
-                  <div class="input-group input-group-sm">
-                    <input id="barcodeLookupInput" type="text" class="form-control dark-input" placeholder="Barcode or exact item name..." />
-                    <button type="button" class="btn btn-warning fw-bold" onclick="lookupSingleBarcode()">Lookup</button>
-                  </div>
-                  <div id="barcodeLookupStatus" class="small text-secondary mt-1"></div>
-                </div>
-
-                <div class="dark-subpanel">
-                  <div class="fw-semibold small mb-1">Direct Item Name Search (Uses Your Chosen Category)</div>
-                  <textarea id="autoStockNamesInput" rows="3" class="form-control form-control-sm dark-input mb-2" placeholder="Enter item names separated by comma or new line..."></textarea>
-                  <div class="row g-2 mb-2">
-                    <div class="col-6">
-                      <label for="autoStockDefaultCartons" class="form-label small text-secondary mb-0">Default Stock</label>
-                      <input id="autoStockDefaultCartons" type="number" step="0.5" min="0" value="5" class="form-control form-control-sm dark-input" />
-                    </div>
-                    <div class="col-6">
-                      <label for="autoStockLocationInput" class="form-label small text-secondary mb-0">Store Location</label>
-                      <input id="autoStockLocationInput" type="text" value="Calabar" class="form-control form-control-sm dark-input" />
-                    </div>
-                  </div>
-                  <div class="d-flex flex-wrap gap-2">
-                    <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="runNameBatchAutoStock(true)">
-                      Search &amp; Fill Form
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="runNameBatchAutoStock(false)">
-                      Stage Batch List
-                    </button>
-                  </div>
-                  <div id="autoStockBatchStatus" class="small text-secondary mt-2"></div>
-                </div>
-
-                <div id="autoStockBatchPreviewBox" class="mt-3 d-none">
-                  <div class="d-flex justify-content-between align-items-center mb-1">
-                    <span class="small fw-bold text-warning">Staged Items</span>
-                    <button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="saveStagedBatchItems()">
-                      Save Selected
-                    </button>
-                  </div>
-                  <div id="autoStockBatchList" class="d-flex flex-column gap-1" style="max-height:220px;overflow-y:auto;"></div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-lg-7">
-              <div class="dark-panel h-100">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 id="productFormTitle" class="fw-bold mb-0" style="color:var(--gold);">Add New Product</h6>
-                  <button type="button" class="btn btn-sm btn-outline-secondary text-light" onclick="resetProductForm()">
-                    Clear / New Item
-                  </button>
-                </div>
-
-                <form id="productForm" onsubmit="submitProductForm(event)" enctype="multipart/form-data">
-                  <input type="hidden" id="action_mode" name="action_mode" value="create" />
-                  <input type="hidden" id="existing_product_id" name="existing_product_id" value="" />
-                  <input type="hidden" id="productShopIdInput" name="shop_id" value="main" />
-
-                  <div class="row g-2">
-                    <div class="col-md-6">
-                      <label for="prodName" class="form-label small mb-1">Product Name *</label>
-                      <input id="prodName" name="name" type="text" class="form-control form-control-sm dark-input" required />
-                    </div>
-                    <div class="col-md-3">
-                      <label for="prodCategory" class="form-label small mb-1">Category (Your Choice)</label>
-                      <input id="prodCategory" name="category" type="text" class="form-control form-control-sm dark-input" value="General" list="categoryDatalist" />
-                      <datalist id="categoryDatalist">
-                        <option value="Beverages"></option>
-                        <option value="Food & Groceries"></option>
-                        <option value="Household & Cleaning"></option>
-                        <option value="Personal Care & Cosmetics"></option>
-                        <option value="Electronics & Accessories"></option>
-                        <option value="General"></option>
-                      </datalist>
-                    </div>
-                    <div class="col-md-3">
-                      <label for="prodLocation" class="form-label small mb-1">Store Location</label>
-                      <input id="prodLocation" name="location" type="text" class="form-control form-control-sm dark-input" value="Calabar" />
-                    </div>
-
-                    <div class="col-md-4">
-                      <label for="prodVendor" class="form-label small mb-1">Sponsor / Brand</label>
-                      <input id="prodVendor" name="vendor_name" type="text" class="form-control form-control-sm dark-input" />
-                    </div>
-                    <div class="col-md-4">
-                      <label for="prodShelf" class="form-label small mb-1">Shelf / Aisle</label>
-                      <input id="prodShelf" name="shelf_location" type="text" class="form-control form-control-sm dark-input" />
-                    </div>
-                    <div class="col-md-4">
-                      <label for="prodExpiry" class="form-label small mb-1">Expiry Date</label>
-                      <input id="prodExpiry" name="expiry_date" type="date" class="form-control form-control-sm dark-input" />
-                    </div>
-
-                    <div class="col-md-4">
-                      <label for="prodMainUnit" class="form-label small mb-1">Main Unit Label</label>
-                      <input id="prodMainUnit" name="main_unit" type="text" class="form-control form-control-sm dark-input" value="Carton" />
-                    </div>
-                    <div class="col-md-4">
-                      <label for="prodSubUnit" class="form-label small mb-1">Pack Unit Label</label>
-                      <input id="prodSubUnit" name="sub_unit" type="text" class="form-control form-control-sm dark-input" value="Pack" />
-                    </div>
-                    <div class="col-md-4">
-                      <label for="prodRetailUnit" class="form-label small mb-1">Retail Unit Label</label>
-                      <input id="prodRetailUnit" name="retail_unit" type="text" class="form-control form-control-sm dark-input" value="Retail Unit" />
-                    </div>
-
-                    <div class="col-md-3">
-                      <label for="prodPriceCarton" class="form-label small mb-1">Main Price</label>
-                      <input id="prodPriceCarton" name="price_carton" type="number" step="0.01" min="0" value="0" class="form-control form-control-sm dark-input" />
-                    </div>
-                    <div class="col-md-3">
-                      <label for="prodCostCarton" class="form-label small mb-1">Cost / Main Unit</label>
-                      <input id="prodCostCarton" name="cost_price_carton" type="number" step="0.01" min="0" value="0" class="form-control form-control-sm dark-input" />
-                    </div>
-                    <div class="col-md-3">
-                      <label for="prodStockCartons" class="form-label small mb-1">Stock (Main)</label>
-                      <input id="prodStockCartons" name="stock_cartons" type="number" step="0.5" min="0" value="0" class="form-control form-control-sm dark-input" />
-                    </div>
-                    <div class="col-md-3">
-                      <label for="prodPacksPerCarton" class="form-label small mb-1">Packs / Main</label>
-                      <input id="prodPacksPerCarton" name="packs_per_carton" type="number" min="1" value="1" class="form-control form-control-sm dark-input" />
-                    </div>
-
-                    <div class="col-md-6">
-                      <label for="prodPricePack" class="form-label small mb-1">Pack Price</label>
-                      <input id="prodPricePack" name="price_pack" type="number" step="0.01" min="0" value="0" class="form-control form-control-sm dark-input" />
-                    </div>
-                    <div class="col-md-3">
-                      <label for="prodPriceRetail" class="form-label small mb-1">Retail Price</label>
-                      <input id="prodPriceRetail" name="price_retail" type="number" step="0.01" min="0" value="0" class="form-control form-control-sm dark-input" />
-                    </div>
-                    <div class="col-md-3">
-                      <label for="prodRetailPerPack" class="form-label small mb-1">Units / Pack</label>
-                      <input id="prodRetailPerPack" name="retail_per_pack" type="number" min="1" value="1" class="form-control form-control-sm dark-input" />
-                    </div>
-
-                    <div class="col-md-6">
-                      <label for="prodImageUrl" class="form-label small mb-1">Product Image URL</label>
-                      <input id="prodImageUrl" name="image_url" type="text" class="form-control form-control-sm dark-input" placeholder="Existing image preserved if blank" />
-                    </div>
-                    <div class="col-md-6">
-                      <label for="prodImageFile" class="form-label small mb-1">Upload New Image</label>
-                      <input id="prodImageFile" name="image_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" onchange="previewSelectedProductImage()" />
-                    </div>
-
-                    <div class="col-md-6">
-                      <label for="prodVideoLink" class="form-label small mb-1">Advert Video URL</label>
-                      <input id="prodVideoLink" name="video_link" type="text" class="form-control form-control-sm dark-input" placeholder="Existing video preserved if blank" />
-                    </div>
-                    <div class="col-md-6">
-                      <label for="prodVideoFile" class="form-label small mb-1">Upload Advert Video</label>
-                      <input id="prodVideoFile" name="video_file" type="file" accept="video/*" class="form-control form-control-sm dark-input" />
-                    </div>
-
-                    <div class="col-12">
-                      <label for="prodDescription" class="form-label small mb-1">Description</label>
-                      <textarea id="prodDescription" name="description" rows="2" class="form-control form-control-sm dark-input"></textarea>
-                    </div>
-                  </div>
-
-                  <div id="productMediaPreviewBar" class="d-flex align-items-center gap-2 mt-2 d-none">
-                    <img id="productFormImagePreview" src="" alt="Preview" class="rounded border" style="width:46px;height:46px;object-fit:contain;background:#0b1324;" />
-                    <span id="productFormMediaText" class="small text-secondary text-truncate"></span>
-                  </div>
-
-                  <div id="productFormFeedback" class="small mt-2"></div>
-
-                  <div class="mt-3">
-                    <button id="saveProductSubmitBtn" type="submit" class="btn btn-warning btn-sm fw-bold px-4">
-                      Save Product
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-
-          <div class="dark-panel">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-              <h6 class="fw-bold mb-0" style="color:var(--gold);">Saved Inventory</h6>
-              <input id="staffInventorySearch" type="search" class="form-control form-control-sm dark-input" style="max-width:260px;" placeholder="Filter saved inventory..." oninput="renderStaffInventoryTable()" />
-            </div>
-            <div class="table-responsive" style="max-height:420px;overflow:auto;">
-              <table class="table table-sm table-dark-custom table-hover align-middle mb-0">
-                <thead>
-                  <tr>
-                    <th>Item</th>
-                    <th>Category</th>
-                    <th>Shop</th>
-                    <th>Availability</th>
-                    <th>Main Price</th>
-                    <th>Pack Price</th>
-                    <th>Retail Price</th>
-                    <th>Media</th>
-                    <th class="text-end">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="staffInventoryTbody">
-                  <tr><td colspan="9" class="text-center text-secondary py-3">No inventory loaded yet.</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 2: POS SALE -->
-        <div class="tab-pane fade" id="posTab" role="tabpanel">
-          <div class="row g-3">
-            <div class="col-lg-6">
-              <div class="dark-panel">
-                <h6 class="fw-bold mb-3" style="color:var(--gold);">Point of Sale (POS) Checkout</h6>
-                <form id="posSaleForm" onsubmit="submitPosSale(event)">
-                  <div class="mb-2">
-                    <label for="posProductSelect" class="form-label small">Select Product</label>
-                    <select id="posProductSelect" class="form-select form-select-sm dark-select" onchange="onPosProductChange()" required></select>
-                  </div>
-                  <div class="row g-2 mb-2">
-                    <div class="col-md-6">
-                      <label for="posUnitSelect" class="form-label small">Unit Type</label>
-                      <select id="posUnitSelect" class="form-select form-select-sm dark-select" onchange="recalculatePosTotal()"></select>
-                    </div>
-                    <div class="col-md-6">
-                      <label for="posQtyInput" class="form-label small">Quantity</label>
-                      <input id="posQtyInput" type="number" step="1" min="1" value="1" class="form-control form-control-sm dark-input" oninput="recalculatePosTotal()" required />
-                    </div>
-                  </div>
-                  <div class="row g-2 mb-2">
-                    <div class="col-md-6">
-                      <label for="posCustomerName" class="form-label small">Customer Name</label>
-                      <input id="posCustomerName" type="text" class="form-control form-control-sm dark-input" value="Walk-in Customer" />
-                    </div>
-                    <div class="col-md-6">
-                      <label for="posCustomerPhone" class="form-label small">Customer Phone</label>
-                      <input id="posCustomerPhone" type="text" class="form-control form-control-sm dark-input" />
-                    </div>
-                  </div>
-                  <div class="row g-2 mb-3">
-                    <div class="col-md-6">
-                      <label for="posPaymentSource" class="form-label small">Payment Mode</label>
-                      <select id="posPaymentSource" class="form-select form-select-sm dark-select">
-                        <option value="Cash">Cash</option>
-                        <option value="Transfer">Bank Transfer</option>
-                        <option value="POS Card">POS Terminal</option>
-                        <option value="Credit">Credit / Debt</option>
-                      </select>
-                    </div>
-                    <div class="col-md-6 d-flex align-items-end">
-                      <div class="form-check">
-                        <input id="posRecordDebtCheck" type="checkbox" class="form-check-input" onchange="onPosDebtCheckboxChange()" />
-                        <label for="posRecordDebtCheck" class="form-check-label small text-secondary">Record as unpaid debt</label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="dark-subpanel mb-3 d-flex justify-content-between align-items-center">
-                    <span class="small text-secondary">Unit Price: <strong id="posUnitPriceLabel" class="text-light">₦0.00</strong></span>
-                    <span class="fw-bold">Total: <span id="posTotalLabel" style="color:var(--gold);">₦0.00</span></span>
-                  </div>
-
-                  <button type="submit" class="btn btn-success btn-sm fw-bold px-4">Complete Sale &amp; Receipt</button>
-                </form>
-              </div>
-            </div>
-
-            <div class="col-lg-6">
-              <div class="dark-panel">
-                <h6 class="fw-bold mb-2" style="color:var(--gold);">Recent POS Sales</h6>
-                <div class="table-responsive" style="max-height:360px;overflow:auto;">
-                  <table class="table table-sm table-dark-custom table-hover align-middle mb-0">
-                    <thead>
-                      <tr>
-                        <th>Ref / Time</th>
-                        <th>Item</th>
-                        <th>Qty</th>
-                        <th>Total</th>
-                        <th>Mode</th>
-                      </tr>
-                    </thead>
-                    <tbody id="recentSalesTbody">
-                      <tr><td colspan="5" class="text-center text-secondary py-3">No recent sales.</td></tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 3: ORDERS & WHATSAPP-STYLE LIVE CHAT -->
-        <div class="tab-pane fade" id="staffOrdersChatTab" role="tabpanel">
-          <div class="row g-3">
-            <div class="col-lg-5">
-              <div class="dark-panel mb-3">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                  <h6 class="fw-bold mb-0" style="color:var(--gold);">Customer Orders</h6>
-                  <div class="btn-group btn-group-sm" role="group">
-                    <button type="button" class="btn btn-outline-warning active" data-order-filter="All" onclick="setOrderFilter('All', this)">All</button>
-                    <button type="button" class="btn btn-outline-warning" data-order-filter="Pending" onclick="setOrderFilter('Pending', this)">Pending</button>
-                    <button type="button" class="btn btn-outline-warning" data-order-filter="Verified" onclick="setOrderFilter('Verified', this)">Verified</button>
-                  </div>
-                </div>
-                <div id="staffOrdersList" class="d-flex flex-column gap-2" style="max-height:240px;overflow-y:auto;"></div>
-              </div>
-
-              <div class="dark-panel">
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                  <h6 class="fw-bold mb-0 text-info">Customer Chat Threads</h6>
-                  <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="clearStaffThreadSelection()">All Threads</button>
-                </div>
-                <div id="staffChatThreadsList" class="d-flex flex-column gap-2" style="max-height:190px;overflow-y:auto;">
-                  <div class="small text-secondary">No active customer chats yet.</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-lg-7">
-              <div class="dark-panel h-100 d-flex flex-column">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                  <div>
-                    <h6 class="fw-bold mb-0" style="color:var(--gold);">WhatsApp-Style Live Chat Board</h6>
-                    <div id="staffActiveChatTargetLabel" class="small text-secondary">Viewing all store conversations</div>
-                  </div>
-                  <div class="d-flex gap-1 align-items-center">
-                    <input id="staffChatPhoneFilter" type="text" class="form-control form-control-sm dark-input" style="width:155px;" placeholder="Filter phone..." oninput="onStaffPhoneFilterChange()" />
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAllStaffChatPhotos()">Clear Photos</button>
-                  </div>
-                </div>
-
-                <div class="wa-chat-board flex-grow-1">
-                  <div class="wa-chat-topbar">
-                    <span id="staffChatStatusBadge" class="badge text-bg-success">Live Desk • Instant Sync</span>
-                    <div class="d-flex flex-wrap gap-1">
-                      <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size:0.72rem;" onclick="applyStaffQuickReply('Payment received and verified. Thank you!')">
-                        Payment Verified
-                      </button>
-                      <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" style="font-size:0.72rem;" onclick="applyStaffQuickReply('Your order is being processed. Please confirm delivery details.')">
-                        Order Processing
-                      </button>
-                    </div>
-                  </div>
-
-                  <div id="staffChatMessagesBox" class="wa-chat-messages"></div>
-
-                  <form id="staffReplyForm" class="wa-composer" onsubmit="sendStaffChatReply(event)" enctype="multipart/form-data">
-                    <div id="staffAttachPreviewBar" class="mb-2 d-none">
-                      <span class="wa-attach-pill">
-                        <span id="staffAttachFileName"></span>
-                        <button type="button" class="btn-close" style="transform:scale(0.75);" onclick="clearStaffAttachment()"></button>
-                      </span>
-                    </div>
-                    <div class="d-flex flex-column gap-2">
-                      <input id="staffReplyPhone" type="text" class="form-control form-control-sm dark-input" placeholder="Customer phone number *" required />
-                      <div class="wa-composer-row">
-                        <input id="staffReplyText" type="text" class="form-control dark-input wa-composer-input" placeholder="Write a message..." />
-                        <label for="staffReplyProofFile" class="wa-add-img-btn" title="Add image to chat">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                            <polyline points="21 15 16 10 5 21"></polyline>
-                          </svg>
-                          <span class="d-none d-sm-inline">Add Image</span>
-                        </label>
-                        <input id="staffReplyProofFile" type="file" accept="image/*" class="d-none" onchange="onStaffAttachmentSelected()" />
-                        <button type="submit" class="wa-ig-send-btn" title="Send message" aria-label="Send message">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- TAB 4: DEBTORS, EXPENSES, TEAM & PARTNER SHOPS -->
-        <div class="tab-pane fade" id="recordsTab" role="tabpanel">
-          <div class="row g-3 mb-3">
-            <div class="col-lg-4">
-              <div class="dark-panel h-100">
-                <h6 class="fw-bold mb-2" style="color:var(--gold);">Debtors Ledger</h6>
-                <form id="debtorForm" onsubmit="submitDebtorForm(event)" class="mb-3">
-                  <input id="debtorCustomer" type="text" class="form-control form-control-sm dark-input mb-1" placeholder="Customer name *" required />
-                  <input id="debtorPhone" type="text" class="form-control form-control-sm dark-input mb-1" placeholder="Phone number *" required />
-                  <div class="row g-1 mb-1">
-                    <div class="col-5">
-                      <input id="debtorAmount" type="number" step="0.01" min="0" class="form-control form-control-sm dark-input" placeholder="Amount" required />
-                    </div>
-                    <div class="col-7">
-                      <input id="debtorItems" type="text" class="form-control form-control-sm dark-input" placeholder="Items bought" />
-                    </div>
-                  </div>
-                  <button type="submit" class="btn btn-sm btn-warning fw-bold w-100">Add Debtor</button>
-                </form>
-                <div id="debtorsList" class="d-flex flex-column gap-2" style="max-height:250px;overflow-y:auto;"></div>
-              </div>
-            </div>
-
-            <div class="col-lg-4">
-              <div class="dark-panel h-100">
-                <h6 class="fw-bold mb-2" style="color:var(--gold);">Expenses Tracker</h6>
-                <form id="expenseForm" onsubmit="submitExpenseForm(event)" class="mb-3">
-                  <div class="row g-1 mb-1">
-                    <div class="col-6">
-                      <input id="expenseCategory" type="text" class="form-control form-control-sm dark-input" value="Operations" placeholder="Category" />
-                    </div>
-                    <div class="col-6">
-                      <input id="expenseAmount" type="number" step="0.01" min="0" class="form-control form-control-sm dark-input" placeholder="Amount *" required />
-                    </div>
-                  </div>
-                  <input id="expenseNote" type="text" class="form-control form-control-sm dark-input mb-1" placeholder="Note / description" />
-                  <button type="submit" class="btn btn-sm btn-warning fw-bold w-100">Record Expense</button>
-                </form>
-                <div id="expensesList" class="d-flex flex-column gap-2" style="max-height:250px;overflow-y:auto;"></div>
-              </div>
-            </div>
-
-            <div class="col-lg-4">
-              <div class="dark-panel h-100">
-                <h6 class="fw-bold mb-2" style="color:var(--gold);">Staff &amp; Workers</h6>
-                <form id="workerForm" onsubmit="submitWorkerForm(event)" class="mb-3">
-                  <input id="workerName" type="text" class="form-control form-control-sm dark-input mb-1" placeholder="Full name *" required />
-                  <div class="row g-1 mb-1">
-                    <div class="col-6">
-                      <input id="workerUsername" type="text" class="form-control form-control-sm dark-input" placeholder="Username" />
-                    </div>
-                    <div class="col-6">
-                      <input id="workerRole" type="text" class="form-control form-control-sm dark-input" value="Staff" placeholder="Role" />
-                    </div>
-                  </div>
-                  <input id="workerPassword" type="password" class="form-control form-control-sm dark-input mb-1" placeholder="Password" />
-                  <button id="addWorkerBtn" type="submit" class="btn btn-sm btn-outline-warning w-100">Add Staff (CEO)</button>
-                </form>
-                <div id="workersList" class="d-flex flex-column gap-2" style="max-height:250px;overflow-y:auto;"></div>
-              </div>
-            </div>
-          </div>
-
-          <div id="ceoPartnerShopsCard" class="dark-panel d-none">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <h6 class="fw-bold mb-0" style="color:var(--gold);">Registered Partner Shops (Super Admin)</h6>
-              <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="openRegisterShopModal()">+ Register New Shop</button>
-            </div>
-            <div id="partnerShopsAdminList" class="row g-2"></div>
-          </div>
-        </div>
-
-        <!-- TAB 5: SETTINGS -->
-        <div class="tab-pane fade" id="settingsTab" role="tabpanel">
-          <div id="partnerShopConfigPanel" class="dark-panel d-none">
-            <div class="mb-3">
-              <h6 class="fw-bold mb-0 text-info">Your Business Storefront Configuration</h6>
-              <div class="small text-secondary">Configure your own store name, location, bank account details, and banner. Your store runs independently from the main app.</div>
-            </div>
-
-            <form id="partnerOwnSettingsForm" onsubmit="savePartnerOwnSettings(event)" enctype="multipart/form-data">
-              <div class="row g-2">
-                <div class="col-md-6">
-                  <label for="pSetName" class="form-label small mb-1">Business / Store Name *</label>
-                  <input id="pSetName" name="name" type="text" class="form-control form-control-sm dark-input" required />
-                </div>
-                <div class="col-md-6">
-                  <label for="pSetLocation" class="form-label small mb-1">Store Location (Shown in Sidebar &amp; Storefront) *</label>
-                  <input id="pSetLocation" name="location" type="text" class="form-control form-control-sm dark-input" placeholder="e.g. Marian Road, Calabar" required />
-                </div>
-                <div class="col-md-6">
-                  <label for="pSetPhone" class="form-label small mb-1">Business Phone / WhatsApp</label>
-                  <input id="pSetPhone" name="phone" type="text" class="form-control form-control-sm dark-input" />
-                </div>
-                <div class="col-md-6">
-                  <label for="pSetAvatarFile" class="form-label small mb-1">Update Business Logo / Photo</label>
-                  <input id="pSetAvatarFile" name="avatar_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
-                </div>
-                <div class="col-12">
-                  <label for="pSetTagline" class="form-label small mb-1">Storefront Headline / Banner Message</label>
-                  <input id="pSetTagline" name="tagline" type="text" class="form-control form-control-sm dark-input" placeholder="Welcome to our store! Fast delivery around Calabar." />
-                </div>
-                <div class="col-12">
-                  <label for="pSetBankDetails" class="form-label small mb-1">Your Bank / Transfer Details (Shown to Customers Buying from Your Store)</label>
-                  <textarea id="pSetBankDetails" name="bank_details" rows="2" class="form-control form-control-sm dark-input" placeholder="Bank Name / Account Number / Account Name"></textarea>
-                </div>
-              </div>
-
-              <div class="d-flex align-items-center gap-2 mt-3">
-                <button type="submit" class="btn btn-info btn-sm fw-bold text-dark px-4">Save Store Configuration</button>
-                <span id="partnerConfigFeedback" class="small"></span>
-              </div>
-            </form>
-          </div>
-
-          <div id="mainAppSettingsPanel" class="dark-panel">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-              <div>
-                <h6 class="fw-bold mb-0" style="color:var(--gold);">Main App &amp; Storefront Settings</h6>
-                <div class="small text-secondary">Control main app identity, auto-color theme cycling, notice banner, broadcast video, and storefront options.</div>
-              </div>
-              <button type="button" class="btn btn-sm btn-outline-warning" onclick="resetAllAppToggles()">
-                Reset All Toggles
-              </button>
-            </div>
-
-            <form id="appSettingsForm" onsubmit="saveAppSettings(event)" enctype="multipart/form-data">
-              <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">1. Main App Identity, Auto-Color Theme &amp; Broadcast</div>
-                <div class="row g-2 mb-2">
-                  <div class="col-md-5">
-                    <label for="setBusinessName" class="form-label small mb-1">Main Business Name</label>
-                    <input id="setBusinessName" name="business_name" type="text" class="form-control form-control-sm dark-input" value="Sammyreks Business Center" />
-                  </div>
-                  <div class="col-md-5">
-                    <label for="setTagline" class="form-label small mb-1">Tagline</label>
-                    <input id="setTagline" name="tagline" type="text" class="form-control form-control-sm dark-input" />
-                  </div>
-                  <div class="col-md-2">
-                    <label for="setCurrency" class="form-label small mb-1">Currency Symbol</label>
-                    <input id="setCurrency" name="currency" type="text" class="form-control form-control-sm dark-input" value="₦" />
-                  </div>
-                </div>
-
-                <div class="p-2 px-3 rounded mb-2" style="background:#0b1220;border:1px solid var(--gold);">
-                  <div class="form-check form-switch mb-0">
-                    <input id="togAutoColorCycle" type="checkbox" class="form-check-input" onchange="previewAdminAutoColorToggle()" />
-                    <label for="togAutoColorCycle" class="form-check-label small fw-bold text-warning">
-                      Enable Auto-Color Theme Cycling (Cycles Ocean, Seafoam, Sunset, Royal &amp; Gold palettes every 10s; reverts when OFF)
-                    </label>
-                  </div>
-                </div>
-
-                <div class="row g-2">
-                  <div class="col-12">
-                    <label for="setActiveNotice" class="form-label small mb-1">Active Notice Banner (Shown at top of Main App)</label>
-                    <input id="setActiveNotice" name="active_notice" type="text" class="form-control form-control-sm dark-input" />
-                  </div>
-
-                  <div class="col-md-6">
-                    <label for="setBroadcastVideoFile" class="form-label small mb-1">Upload Broadcast Video File</label>
-                    <input id="setBroadcastVideoFile" name="broadcast_video_file" type="file" accept="video/*" class="form-control form-control-sm dark-input" />
-                  </div>
-                  <div class="col-md-6">
-                    <label for="setBroadcastVideoUrl" class="form-label small mb-1">OR Broadcast Video Link</label>
-                    <div class="input-group input-group-sm">
-                      <input id="setBroadcastVideoUrl" name="broadcast_video_url" type="text" class="form-control dark-input" placeholder="https://..." />
-                      <button type="button" class="btn btn-outline-secondary text-light" onclick="clearBroadcastVideoField()">Clear</button>
-                    </div>
-                  </div>
-
-                  <div class="col-md-6">
-                    <label for="setFooterCopyright" class="form-label small mb-1">Footer Copyright Text</label>
-                    <input id="setFooterCopyright" type="text" class="form-control form-control-sm dark-input" />
-                  </div>
-                  <div class="col-md-6">
-                    <label for="setReceiptFooter" class="form-label small mb-1">Thermal Receipt Footer Message</label>
-                    <input id="setReceiptFooter" type="text" class="form-control form-control-sm dark-input" placeholder="Thank you for your patronage!" />
-                  </div>
-                </div>
-              </div>
-
-              <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">2. Navigation Tabs, Cash Flow Analytics &amp; Alerts</div>
-                <div class="row g-2 mb-2">
-                  <div class="col-sm-6 col-md-4">
-                    <div class="form-check form-switch">
-                      <input id="togShowAnalytics" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowAnalytics" class="form-check-label small">Show Business Analytics (Cash Flow)</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-4">
-                    <div class="form-check form-switch">
-                      <input id="togShowStockAlerts" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowStockAlerts" class="form-check-label small">Show Low Stock &amp; Expiry Alerts</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-4">
-                    <div class="form-check form-switch">
-                      <input id="togShowRequestTab" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowRequestTab" class="form-check-label small">Show Custom Request Button</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-4">
-                    <div class="form-check form-switch">
-                      <input id="togShowLiveCartBadge" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowLiveCartBadge" class="form-check-label small">Show Live Cart Count Badge</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-4">
-                    <div class="form-check form-switch">
-                      <input id="togShowChatReceiptsTab" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowChatReceiptsTab" class="form-check-label small">Show Chat &amp; Receipts</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-4">
-                    <div class="form-check form-switch">
-                      <input id="togShowHeaderCartBtn" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowHeaderCartBtn" class="form-check-label small">Show Top Header Cart Button</label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">3. Shop Display &amp; Product Cards</div>
-                <div class="row g-2 mb-2">
-                  <div class="col-sm-6 col-md-3">
-                    <div class="form-check form-switch">
-                      <input id="togShowWatchAd" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowWatchAd" class="form-check-label small">Show Watch Ad Buttons</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-3">
-                    <div class="form-check form-switch">
-                      <input id="togShowVendorTags" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowVendorTags" class="form-check-label small">Show Sponsor Tags</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-3">
-                    <div class="form-check form-switch">
-                      <input id="togShowAvailability" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowAvailability" class="form-check-label small">Show Availability Status</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-3">
-                    <div class="form-check form-switch">
-                      <input id="togHideOutOfStock" type="checkbox" class="form-check-input" />
-                      <label for="togHideOutOfStock" class="form-check-label small">Hide Out-of-Stock Items</label>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <label for="setSearchPlaceholder" class="form-label small mb-1">Search Box Placeholder</label>
-                  <input id="setSearchPlaceholder" type="text" class="form-control form-control-sm dark-input" value="Search products, brands, or sponsors..." />
-                </div>
-              </div>
-
-              <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">4. Checkout, Bank Details &amp; Automatic PIN Help</div>
-                <div class="form-check form-switch mb-2">
-                  <input id="togAutoGeneratePin" type="checkbox" class="form-check-input" checked />
-                  <label for="togAutoGeneratePin" class="form-check-label small">Auto-Generate PIN</label>
-                </div>
-                <div class="row g-2">
-                  <div class="col-md-6">
-                    <label for="setBankDetails" class="form-label small mb-1">Main Store Bank Account / Transfer Details</label>
-                    <textarea id="setBankDetails" rows="2" class="form-control form-control-sm dark-input" placeholder="e.g. Moniepoint / 1234567890 / Sammyreks Business Center"></textarea>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="setPinHelperMsg" class="form-label small mb-1">Customer PIN Helper Message</label>
-                    <textarea id="setPinHelperMsg" rows="2" class="form-control form-control-sm dark-input"></textarea>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="setPinFieldLabel" class="form-label small mb-1">PIN Field Label</label>
-                    <input id="setPinFieldLabel" type="text" class="form-control form-control-sm dark-input" value="4-Digit Chat PIN (leave blank — auto)" />
-                  </div>
-                  <div class="col-md-6">
-                    <label for="setOrderNotePlaceholder" class="form-label small mb-1">Order Note Placeholder</label>
-                    <input id="setOrderNotePlaceholder" type="text" class="form-control form-control-sm dark-input" />
-                  </div>
-                </div>
-              </div>
-
-              <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">5. Rotating Storefront Tips</div>
-                <div class="row g-2 align-items-center mb-2">
-                  <div class="col-sm-6">
-                    <div class="form-check form-switch">
-                      <input id="togShowRotatingTips" type="checkbox" class="form-check-input" checked />
-                      <label for="togShowRotatingTips" class="form-check-label small">Show Rotating Tips Strip</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6">
-                    <label for="setSecondsPerTip" class="form-label small mb-1">Seconds Per Tip</label>
-                    <input id="setSecondsPerTip" type="number" min="2" max="60" value="10" class="form-control form-control-sm dark-input" />
-                  </div>
-                </div>
-                <div>
-                  <label for="setRotatingTips" class="form-label small mb-1">Rotate Tips (One per line or separate with |)</label>
-                  <textarea id="setRotatingTips" rows="2" class="form-control form-control-sm dark-input"></textarea>
-                </div>
-              </div>
-
-              <!-- SECTION 6: UPGRADED SLIDESHOW PHOTOS, VISUAL MANAGER & INTERVAL -->
-              <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">6. Floating Slideshow Photos, Per-Slide Descriptions &amp; Interval</div>
-                <div class="row g-2 mb-3">
-                  <div class="col-sm-6 col-md-4">
-                    <div class="form-check form-switch mt-1">
-                      <input id="togShowFloatingAwareness" type="checkbox" class="form-check-input" onchange="toggleAwarenessCard(this.checked)" />
-                      <label for="togShowFloatingAwareness" class="form-check-label small">Show Floating Slideshow Card</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-4">
-                    <div class="form-check form-switch mt-1">
-                      <input id="togAutoSlidePhotos" type="checkbox" class="form-check-input" checked onchange="startAwarenessSlideshow(this.checked)" />
-                      <label for="togAutoSlidePhotos" class="form-check-label small">Auto-Slide Photos</label>
-                    </div>
-                  </div>
-                  <div class="col-sm-6 col-md-4">
-                    <label for="setSlideSeconds" class="form-label small mb-1">Seconds Per Slide (Default 10s)</label>
-                    <input id="setSlideSeconds" type="number" min="2" max="120" value="10" class="form-control form-control-sm dark-input" onchange="startAwarenessSlideshow(Boolean(document.getElementById('togAutoSlidePhotos')?.checked))" />
-                  </div>
-                </div>
-
-                <div class="row g-2 mb-3">
-                  <div class="col-md-5">
-                    <label for="setAwarenessImageFile" class="form-label small mb-1">Upload Slide Photo(s) (Multiple Supported)</label>
-                    <input id="setAwarenessImageFile" name="awareness_image_file" type="file" accept="image/*" multiple class="form-control form-control-sm dark-input" onchange="handleAwarenessSlidesUpload(this)" />
-                    <div id="awarenessUploadStatus" class="small text-secondary mt-1"></div>
-                  </div>
-                  <div class="col-md-7">
-                    <label for="setAwarenessBottomCaption" class="form-label small mb-1">Shared / Bottom Caption (Fallback or Note)</label>
-                    <input id="setAwarenessBottomCaption" type="text" class="form-control form-control-sm dark-input" placeholder="Shown below slide descriptions or as fallback" oninput="renderAwarenessSlidesManager()" />
-                  </div>
-                </div>
-
-                <!-- Visual Slide Manager -->
-                <div class="mb-3">
-                  <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="small fw-semibold text-light">Uploaded &amp; Listed Slides (Reorder, Edit Caption, or Remove)</span>
-                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="clearAllAwarenessSlides()">Clear All Slides</button>
-                  </div>
-                  <div id="awarenessSlidesManagerList" class="d-flex flex-column gap-2"></div>
-                </div>
-
-                <div class="row g-2">
-                  <div class="col-md-6">
-                    <label for="setAwarenessSlides" class="form-label small mb-1">Image Links (One per line or separate with |)</label>
-                    <textarea id="setAwarenessSlides" rows="2" class="form-control form-control-sm dark-input" oninput="renderAwarenessSlidesManager()"></textarea>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="setAwarenessDescriptions" class="form-label small mb-1">Each Slide's Description (One per line or separate with |, matching image order)</label>
-                    <textarea id="setAwarenessDescriptions" rows="2" class="form-control form-control-sm dark-input" placeholder="Description for slide 1 | Description for slide 2" oninput="renderAwarenessSlidesManager()"></textarea>
-                  </div>
-                </div>
-              </div>
-
-              <div class="d-flex flex-wrap align-items-center gap-2">
-                <button id="saveSettingsSubmitBtn" type="submit" class="btn btn-warning btn-sm fw-bold px-4">
-                  Save All App Settings
-                </button>
-                <span id="settingsFeedbackText" class="small"></span>
-              </div>
-            </form>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  </div>
-
-  <!-- STATIC FIXED BOTTOM NAVIGATION BAR -->
-  <nav id="bottomNavBar" class="fixed-bottom-nav" aria-label="Quick Navigation">
-    <div class="bottom-nav-grid">
-      <button id="bnavHomeBtn" type="button" class="bottom-nav-btn active" onclick="enterMainStorefront()">
-        <span>🏠</span>
-        <span>Main App</span>
-      </button>
-
-      <button id="bnavStoresBtn" type="button" class="bottom-nav-btn" data-bs-toggle="offcanvas" data-bs-target="#registeredShopsSidebar">
-        <span>🏪</span>
-        <span>Stores</span>
-      </button>
-
-      <button id="bnavCartBtn" type="button" class="bottom-nav-btn" onclick="openCartModal()">
-        <span>🛒 Cart (<span id="bottomCartCount">0</span>)</span>
-        <span>Checkout</span>
-      </button>
-
-      <button id="bnavChatBtn" type="button" class="bottom-nav-btn" onclick="openCustomerChatModal()">
-        <span>💬</span>
-        <span>Chat/Receipt</span>
-      </button>
-
-      <button id="bnavRequestBtn" type="button" class="bottom-nav-btn" onclick="openSpecialRequestModal()">
-        <span>📝</span>
-        <span>Request</span>
-      </button>
-    </div>
-  </nav>
-
-  <!-- FLOATING AWARENESS SLIDESHOW CARD -->
-  <div id="awarenessFloatCard" class="awareness-popup">
-    <div class="p-2 px-3 border-bottom border-secondary d-flex justify-content-between align-items-center" style="background:#0d1526;">
-      <div class="d-flex align-items-center gap-2">
-        <span id="awarenessCardTitle" class="fw-bold small text-warning">Store Update</span>
-        <span id="awarenessSlideCounter" class="badge text-bg-dark border border-secondary-subtle" style="font-size:0.68rem;"></span>
-      </div>
-      <div class="d-flex align-items-center gap-1">
-        <button id="awarenessPrevBtn" type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2 d-none" onclick="stepAwarenessSlide(-1)" title="Previous slide">‹</button>
-        <button id="awarenessNextBtn" type="button" class="btn btn-sm btn-outline-secondary text-light py-0 px-2 d-none" onclick="stepAwarenessSlide(1)" title="Next slide">›</button>
-        <button type="button" class="btn-close small ms-1" onclick="toggleAwarenessCard(false)"></button>
-      </div>
-    </div>
-    <div class="awareness-media-stage">
-      <img id="awarenessCardImg" src="" alt="Slide" onclick="openCurrentAwarenessInLightbox()" title="Click to view larger" />
-    </div>
-    <div class="p-3 small">
-      <div id="awarenessCardBody" class="fw-semibold text-light" style="white-space:pre-line;"></div>
-      <div id="awarenessCardFooterCaption" class="text-secondary mt-2 pt-2 border-top border-secondary-subtle d-none" style="font-size:0.75rem;white-space:pre-line;"></div>
-    </div>
-  </div>
-
-  <!-- IN-APP CHAT PHOTO / RECEIPT LIGHTBOX MODAL -->
-  <div class="modal fade" id="chatImageLightboxModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content" style="background:#0b1220;border:1px solid var(--border-subtle);">
-        <div class="modal-header py-2">
-          <h6 id="lightboxCaptionTitle" class="modal-title fw-bold text-warning mb-0">Payment Proof / Attachment</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body text-center p-3" style="background:#050912;">
-          <img id="lightboxFullImage" src="" alt="Full attachment preview" class="img-fluid rounded" style="max-height:70vh;object-fit:contain;" />
-        </div>
-        <div class="modal-footer py-2 justify-content-between">
-          <a id="lightboxOriginalLink" href="#" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-outline-info">
-            Open Raw File
-          </a>
-          <button type="button" class="btn btn-sm btn-warning fw-bold px-3" data-bs-dismiss="modal">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 1: STAFF / ADMIN LOGIN -->
-  <div class="modal fade" id="staffLoginModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title fw-bold text-warning">Staff &amp; Admin Login</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <form id="staffLoginForm" onsubmit="submitStaffLogin(event)">
-          <div class="modal-body">
-            <div class="mb-2">
-              <label for="loginUsername" class="form-label small">Username</label>
-              <input id="loginUsername" type="text" class="form-control dark-input" required autocomplete="username" />
-            </div>
-            <div class="mb-2">
-              <label for="loginPassword" class="form-label small">Password</label>
-              <input id="loginPassword" type="password" class="form-control dark-input" required autocomplete="current-password" />
-            </div>
-            <div class="mb-2">
-              <label for="loginMode" class="form-label small">Login Mode</label>
-              <select id="loginMode" class="form-select dark-select">
-                <option value="admin">Admin / CEO / Business Owner</option>
-                <option value="staff">Staff</option>
-              </select>
-            </div>
-            <div id="loginErrorText" class="text-danger small mt-2"></div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-warning btn-sm fw-bold px-4">Sign In</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 2: REGISTER PARTNER BUSINESS -->
-  <div class="modal fade" id="registerShopModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title fw-bold text-warning">+ Register Your Business</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div id="registerShopNotice" class="small text-secondary mb-3">
-            Registered businesses appear in the Stores sidebar with their exact location so nearby customers can shop directly on their dedicated store page.
-          </div>
-          <form id="registerShopForm" onsubmit="submitPartnerShop(event)" enctype="multipart/form-data">
-            <div class="row g-2">
-              <div class="col-md-6">
-                <label class="form-label small">Business / Store Name *</label>
-                <input name="name" type="text" class="form-control form-control-sm dark-input" placeholder="e.g. Sammy Reks" required />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label small">Owner Full Name</label>
-                <input name="owner_name" type="text" class="form-control form-control-sm dark-input" />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label small">Owner Login Username *</label>
-                <input name="owner_username" type="text" class="form-control form-control-sm dark-input" required />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label small">Owner Login Password *</label>
-                <input name="owner_password" type="password" class="form-control form-control-sm dark-input" required />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label small">Store Location (For Nearby Customers) *</label>
-                <input name="location" type="text" class="form-control form-control-sm dark-input" value="Calabar" placeholder="e.g. Marian Road, Calabar" required />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label small">Phone Number</label>
-                <input name="phone" type="text" class="form-control form-control-sm dark-input" />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label small">Store Logo / Photo</label>
-                <input name="avatar_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
-              </div>
-              <div class="col-12">
-                <label class="form-label small">Store Bank / Payment Details</label>
-                <input name="bank_details" type="text" class="form-control form-control-sm dark-input" placeholder="Bank name, account number, account name" />
-              </div>
-            </div>
-            <div id="registerShopFeedback" class="small mt-2"></div>
-            <div class="mt-3 d-flex justify-content-end gap-2">
-              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-warning btn-sm fw-bold px-4">Register Business</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 3: CART & CHECKOUT -->
-  <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 id="cartModalTitle" class="modal-title fw-bold text-warning">Shopping Cart</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div id="cartItemsContainer" class="mb-3"></div>
-          <div id="checkoutBankDetailsBox" class="dark-subpanel small mb-3 d-none"></div>
-          <hr class="border-secondary" />
-          <h6 class="fw-bold mb-2 text-warning">Submit Order</h6>
-          <form id="cartCheckoutForm" onsubmit="submitCartOrder(event)">
-            <div class="row g-2">
-              <div class="col-md-6">
-                <label for="checkoutCustomerName" class="form-label small">Your Name</label>
-                <input id="checkoutCustomerName" type="text" class="form-control form-control-sm dark-input" />
-              </div>
-              <div class="col-md-6">
-                <label for="checkoutPhone" class="form-label small">Phone Number *</label>
-                <input id="checkoutPhone" type="tel" class="form-control form-control-sm dark-input" required />
-              </div>
-              <div id="checkoutPinFieldWrap" class="col-md-6">
-                <label id="checkoutPinLabel" for="checkoutPin" class="form-label small">4-Digit Chat PIN (leave blank — auto)</label>
-                <input id="checkoutPin" type="text" maxlength="12" class="form-control form-control-sm dark-input" />
-              </div>
-              <div class="col-md-6">
-                <label for="checkoutNotes" class="form-label small">Delivery / Pickup Notes</label>
-                <input id="checkoutNotes" type="text" class="form-control form-control-sm dark-input" />
-              </div>
-            </div>
-            <div id="checkoutResultBox" class="mt-3"></div>
-            <div class="mt-3 d-flex justify-content-end gap-2">
-              <button type="button" class="btn btn-outline-danger btn-sm" onclick="clearCart()">Clear Cart</button>
-              <button type="submit" class="btn btn-warning btn-sm fw-bold px-4">Place Order</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 4: CUSTOM REQUEST -->
-  <div class="modal fade" id="specialRequestModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title fw-bold text-warning">Custom / Multi-Item Request</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <form id="specialRequestForm" onsubmit="submitSpecialRequest(event)">
-          <div class="modal-body">
-            <div class="row g-2 mb-3">
-              <div class="col-md-6">
-                <label for="reqCustomerName" class="form-label small">Your Name</label>
-                <input id="reqCustomerName" type="text" class="form-control form-control-sm dark-input" />
-              </div>
-              <div class="col-md-6">
-                <label for="reqCustomerPhone" class="form-label small">Phone Number *</label>
-                <input id="reqCustomerPhone" type="tel" class="form-control form-control-sm dark-input" required />
-              </div>
-            </div>
-            <div class="d-flex justify-content-between align-items-center mb-2">
-              <span class="small fw-bold">Items Needed</span>
-              <button type="button" class="btn btn-sm btn-outline-warning" onclick="addSpecialRequestRow()">+ Add Row</button>
-            </div>
-            <div id="specialRequestRows" class="d-flex flex-column gap-2 mb-2"></div>
-            <div id="specialRequestResultBox" class="mt-2"></div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-            <button type="submit" class="btn btn-warning btn-sm fw-bold px-4">Send Request</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 5: WHATSAPP-STYLE CUSTOMER ORDER CHAT & RECEIPT -->
-  <div class="modal fade" id="customerChatModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <h5 id="customerChatModalTitle" class="modal-title fw-bold text-warning mb-0">Order Chat &amp; Official Receipt</h5>
-            <div id="customerChatSubHeader" class="small text-secondary">Messages update with immediate effect</div>
-          </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div id="chatBankDetailsBox" class="dark-subpanel small mb-2 d-none"></div>
-
-          <form id="customerChatUnlockForm" onsubmit="unlockCustomerChat(event)" class="row g-2 mb-2">
-            <div class="col-md-5">
-              <input id="custChatPhone" type="tel" class="form-control form-control-sm dark-input" placeholder="Your Phone Number *" required />
-            </div>
-            <div class="col-md-4">
-              <input id="custChatPin" type="text" class="form-control form-control-sm dark-input" placeholder="4-Digit PIN or Ref Code *" required />
-            </div>
-            <div class="col-md-3">
-              <button type="submit" class="btn btn-warning btn-sm fw-bold w-100">Unlock Chat</button>
-            </div>
-          </form>
-          <div id="custChatAuthStatus" class="small text-secondary mb-2">Enter your phone number and PIN or Order Reference Code.</div>
-
-          <div class="wa-chat-board">
-            <div class="wa-chat-topbar">
-              <span id="customerChatSessionBadge" class="badge text-bg-secondary">Locked</span>
-              <span class="small text-secondary">Tap any receipt or image to enlarge in-app</span>
-            </div>
-
-            <div id="customerChatBox" class="wa-chat-messages"></div>
-
-            <form id="customerSendMessageForm" class="wa-composer" onsubmit="sendCustomerChatMessage(event)" enctype="multipart/form-data">
-              <div id="custAttachPreviewBar" class="mb-2 d-none">
-                <span class="wa-attach-pill">
-                  <span id="custAttachFileName"></span>
-                  <button type="button" class="btn-close" style="transform:scale(0.75);" onclick="clearCustomerAttachment()"></button>
-                </span>
-              </div>
-              <div class="wa-composer-row">
-                <input id="custMsgText" type="text" class="form-control dark-input wa-composer-input" placeholder="Write a message or payment note..." />
-                <label for="custMsgProofFile" class="wa-add-img-btn" title="Add image to chat">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                    <polyline points="21 15 16 10 5 21"></polyline>
-                  </svg>
-                  <span class="d-none d-sm-inline">Add Image</span>
-                </label>
-                <input id="custMsgProofFile" type="file" accept="image/*" class="d-none" onchange="onCustomerAttachmentSelected()" />
-                <button type="submit" class="wa-ig-send-btn" title="Send message" aria-label="Send message">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                  </svg>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 6: PRINTABLE POS RECEIPT -->
-  <div class="modal fade" id="receiptModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-sm modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header py-2">
-          <h6 class="modal-title fw-bold mb-0 text-warning">Sale Receipt</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div id="receiptPaperContent" class="receipt-paper"></div>
-        </div>
-        <div class="modal-footer py-2">
-          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="window.print()">Print</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL 7: PRODUCT ADVERT MODAL -->
-  <div class="modal fade" id="productAdvertModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h6 id="advertModalTitle" class="modal-title fw-bold text-uppercase" style="color:var(--gold);">Product Advert</h6>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopAdvertVideo()"></button>
-        </div>
-        <div class="modal-body">
-          <div id="advertNoVideoBanner" class="dark-subpanel text-center text-secondary small py-2 mb-3 d-none">
-            No video advert attached for this product yet.
-          </div>
-
-          <div id="advertVideoPlayerWrap" class="mb-3 d-none">
-            <video id="advertModalVideo" class="w-100 rounded" style="max-height:320px;background:#000;object-fit:contain;" controls playsinline></video>
-          </div>
-
-          <div class="row g-3 align-items-center">
-            <div class="col-md-5">
-              <div class="dark-subpanel text-center p-2">
-                <img id="advertModalImg" src="" alt="Product" class="img-fluid rounded d-none" style="max-height:220px;object-fit:contain;" />
-                <div id="advertModalNoImg" class="text-secondary small py-4 d-none">No product image</div>
-              </div>
-            </div>
-            <div class="col-md-7">
-              <h5 id="advertModalName" class="fw-bold text-uppercase mb-1"></h5>
-              <div id="advertModalSponsor" class="mb-2"></div>
-              <div id="advertModalAvail" class="mb-2"></div>
-              <p id="advertModalDesc" class="small mb-2"></p>
-              <div id="advertModalPrice" class="fw-bold" style="color:var(--gold);"></div>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer justify-content-between">
-          <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="addFromAdvertModal()">Add to Cart</button>
-          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" onclick="stopAdvertVideo()">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-  <script>
+<script>
+    // ========================================================================
+    // 1. GLOBAL STATE & THEME CONFIGURATION
+    // ========================================================================
     const COLOR_THEMES = [
       {
-        name: "Default Slate & Gold",
-        body: "#0f172a",
-        surface: "#162033",
-        surface2: "#1e293b",
-        input: "#0b1220",
-        header: "#0d1526",
-        border: "#2b3952",
-        gold: "#f5b700"
-      },
-      {
-        name: "Deep Ocean & Aqua",
-        body: "#041c2c",
-        surface: "#082b42",
-        surface2: "#0d3b59",
-        input: "#03131e",
-        header: "#031624",
-        border: "#15557d",
-        gold: "#22d3ee"
-      },
-      {
-        name: "Seafoam & Coral",
-        body: "#062326",
-        surface: "#0b353a",
-        surface2: "#11484f",
-        input: "#04181a",
-        header: "#051c1f",
-        border: "#1b6770",
-        gold: "#fb7185"
-      },
-      {
-        name: "Sunset Lagoon",
-        body: "#1b1433",
-        surface: "#281e4a",
-        surface2: "#352861",
-        input: "#120d24",
-        header: "#150f29",
-        border: "#4d3a8a",
-        gold: "#fb923c"
-      },
-      {
-        name: "Emerald & Amber",
-        body: "#071c19",
-        surface: "#0d2b26",
-        surface2: "#143b35",
-        input: "#051412",
-        header: "#061714",
-        border: "#1e5249",
-        gold: "#fbbf24"
-      },
-      {
-        name: "Royal Indigo & Gold",
-        body: "#11132b",
-        surface: "#191d3f",
-        surface2: "#222854",
-        input: "#0b0d1f",
-        header: "#0c0f24",
-        border: "#323a73",
-        gold: "#facc15"
-      },
-      {
-        name: "Crimson & Gold",
-        body: "#1e0d12",
-        surface: "#2d131b",
-        surface2: "#3d1924",
-        input: "#14080c",
-        header: "#17090e",
-        border: "#592334",
+        name: "Default Deep Navy",
+        body: "#060b14",
+        surface: "#0d1626",
+        surface2: "#132036",
+        input: "#0a1220",
+        header: "#08101e",
+        border: "#1e2e4a",
         gold: "#f59e0b"
       },
       {
-        name: "Midnight Teal & Lime",
-        body: "#091b24",
-        surface: "#0f2936",
-        surface2: "#16384a",
-        input: "#051218",
-        header: "#07151c",
-        border: "#234f66",
-        gold: "#a3e635"
+        name: "Midnight Emerald",
+        body: "#05110e",
+        surface: "#0b1f1a",
+        surface2: "#112c25",
+        input: "#081814",
+        header: "#071612",
+        border: "#1a3f35",
+        gold: "#10b981"
+      },
+      {
+        name: "Royal Indigo",
+        body: "#090717",
+        surface: "#13102b",
+        surface2: "#1b173d",
+        input: "#0e0c21",
+        header: "#0b091c",
+        border: "#2a2459",
+        gold: "#a78bfa"
+      },
+      {
+        name: "Obsidian Crimson",
+        body: "#12070b",
+        surface: "#210e15",
+        surface2: "#2e141e",
+        input: "#190a10",
+        header: "#16090e",
+        border: "#471e2d",
+        gold: "#fb7185"
       }
     ];
 
     const state = {
-      selectedShopId: "main",
-      staffShopId: "main",
-      products: [],
-      shops: [],
-      cart: [],
       settings: {
         business_name: "Sammyreks Business Center",
-        currency: "₦",
         tagline: "",
+        currency: "₦",
         active_notice: "",
         broadcast_video_url: "",
         awareness_image_url: "",
         extra_settings: {}
+      },
+      shops: [],
+      selectedShopId: "main",
+      products: [],
+      cart: [],
+      orders: [],
+      orderFilter: "All",
+      sales: [],
+      debtors: [],
+      expenses: [],
+      workers: [],
+      staffMessages: [],
+      stagedBatchItems: [],
+      pendingPhotoClearConfirm: false,
+      pendingSlideClearConfirm: false,
+      tips: [
+        "Tip: Use your Phone Number & 4-digit PIN (or Order Ref) in Chat & Receipts to track orders.",
+        "Tip: Click 'Watch Ad' on any item card to view product photos or video demos.",
+        "Tip: Need an item not listed? Use 'Request Custom Items' to send a direct request."
+      ],
+      tipIndex: 0,
+      customerChat: {
+        phone: "",
+        pin: "",
+        unlocked: false,
+        messages: []
       },
       staff: {
         token: sessionStorage.getItem("srk_staff_token") || "",
@@ -2201,40 +87,52 @@
         role: sessionStorage.getItem("srk_staff_role") || "",
         shop_id: sessionStorage.getItem("srk_staff_shop") || "main"
       },
-      orders: [],
-      orderFilter: "All",
-      staffMessages: [],
-      sales: [],
-      debtors: [],
-      expenses: [],
-      workers: [],
-      stagedBatchItems: [],
-      customerChat: {
-        phone: "",
-        pin: "",
-        unlocked: false,
-        messages: []
-      },
+      staffShopId: sessionStorage.getItem("srk_staff_shop") || "main",
       colorCycle: {
         active: false,
         index: 0,
         timer: null
-      },
-      tips: [
-        "Open Stores in the top-left or bottom bar to shop directly with registered businesses near your location.",
-        "Choose Retail Unit, Pack, or Carton and tap Add to Cart.",
-        "Submit an order to get a Reference Code & PIN for Order Chat / Receipt."
-      ],
-      tipIndex: 0
+      }
     };
 
     const modals = {};
+    let activeObjectUrls = [];
+    let tipTimerHandle = null;
+    let slideTimerHandle = null;
+    let liveChatPollTimer = null;
+    let awarenessSlidesList = [];
+    let awarenessSlideIdx = 0;
+    let pendingAwarenessSlideFiles = [];
+    let activeAdvertProductId = null;
+
+    // ========================================================================
+    // 2. CORE UTILITIES, SANITIZERS & FORMATTERS
+    // ========================================================================
+    function trackObjectUrl(file) {
+      if (!file) return "";
+      const url = URL.createObjectURL(file);
+      activeObjectUrls.push(url);
+      return url;
+    }
+
+    function revokeObjectUrl(url) {
+      if (!url || !url.startsWith("blob:")) return;
+      try {
+        URL.revokeObjectURL(url);
+      } catch {
+        // Ignore already revoked URLs
+      }
+      activeObjectUrls = activeObjectUrls.filter(u => u !== url);
+    }
+
     function getModal(id) {
       if (!modals[id]) {
         const el = document.getElementById(id);
-        if (el && window.bootstrap) modals[id] = new bootstrap.Modal(el);
+        if (el && window.bootstrap && typeof window.bootstrap.Modal === "function") {
+          modals[id] = new window.bootstrap.Modal(el);
+        }
       }
-      return modals[id];
+      return modals[id] || null;
     }
 
     function escapeHtml(val) {
@@ -2246,10 +144,30 @@
         .replace(/'/g, "&#39;");
     }
 
+    function escapeJsAttr(val) {
+      return escapeHtml(String(val ?? "").replace(/\\/g, "\\\\"));
+    }
+
+    function sanitizeReceiptHtml(html) {
+      const template = document.createElement("template");
+      template.innerHTML = String(html ?? "");
+      template.content.querySelectorAll("script, iframe, object, embed, link, meta").forEach(el => el.remove());
+      template.content.querySelectorAll("*").forEach(el => {
+        Array.from(el.attributes).forEach(attr => {
+          const name = attr.name.toLowerCase();
+          const val = attr.value.trim().toLowerCase();
+          if (name.startsWith("on") || ((name === "href" || name === "src") && val.startsWith("javascript:"))) {
+            el.removeAttribute(attr.name);
+          }
+        });
+      });
+      return template.innerHTML;
+    }
+
     function isSafeMediaUrl(url) {
       const s = String(url || "").trim();
       if (!s) return false;
-      if (s.startsWith("/")) return true;
+      if (s.startsWith("/") || s.startsWith("blob:")) return true;
       return /^https?:\/\//i.test(s);
     }
 
@@ -2263,37 +181,37 @@
     function formatMoney(amount) {
       const curr = state.settings.currency || "₦";
       const num = Number(amount || 0);
-      return `${curr}${num.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      const safeNum = Number.isFinite(num) ? num : 0;
+      return `${curr}${safeNum.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
     function formatNowTime() {
-      const d = new Date();
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
     function normalizePhoneDigits(val) {
       return String(val || "").replace(/\D+/g, "");
     }
 
-    function syncChatScroll(box, forceScroll = false) {
-      if (!box) return;
-      const distanceFromBottom = box.scrollHeight - box.scrollTop - box.clientHeight;
-      const wasNearBottom = distanceFromBottom <= 80;
-      if (forceScroll || wasNearBottom) {
-        box.scrollTop = box.scrollHeight;
+    function parsePipeOrLineList(raw) {
+      if (!raw) return [];
+      return String(raw)
+        .split(/\r?\n|\|/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    async function safeJson(res) {
+      try {
+        return await res.json();
+      } catch {
+        return {};
       }
     }
 
-    function appendImmediateBubble(boxId, msg, perspective, canDeletePhoto = false) {
-      const box = document.getElementById(boxId);
-      if (!box) return;
-      const placeholder = box.querySelector("[data-empty-chat='1']");
-      if (placeholder) placeholder.remove();
-
-      box.insertAdjacentHTML("beforeend", renderWhatsAppBubble(msg, perspective, canDeletePhoto));
-      box.scrollTop = box.scrollHeight;
-    }
-
+    // ========================================================================
+    // 3. AUTH & STATE HELPERS
+    // ========================================================================
     function isStaffLoggedIn() {
       return Boolean(state.staff && state.staff.token);
     }
@@ -2313,14 +231,6 @@
       return headers;
     }
 
-    async function safeJson(res) {
-      try {
-        return await res.json();
-      } catch {
-        return {};
-      }
-    }
-
     function handleStaffUnauthorized(res) {
       if (res && res.status === 401) {
         logoutStaff();
@@ -2335,8 +245,26 @@
     }
 
     // ========================================================================
-    // IN-APP LIGHTBOX & WHATSAPP BUBBLE RENDERER (USED IN BOTH CHATS)
+    // 4. WHATSAPP CHAT BUBBLES, LIGHTBOX & LIVE POLLING
     // ========================================================================
+    function syncChatScroll(box, forceScroll = false) {
+      if (!box) return;
+      const distanceFromBottom = box.scrollHeight - box.scrollTop - box.clientHeight;
+      if (forceScroll || distanceFromBottom <= 80) {
+        box.scrollTop = box.scrollHeight;
+      }
+    }
+
+    function appendImmediateBubble(boxId, msg, perspective, canDeletePhoto = false) {
+      const box = document.getElementById(boxId);
+      if (!box) return;
+      const placeholder = box.querySelector("[data-empty-chat='1']");
+      if (placeholder) placeholder.remove();
+
+      box.insertAdjacentHTML("beforeend", renderWhatsAppBubble(msg, perspective, canDeletePhoto));
+      box.scrollTop = box.scrollHeight;
+    }
+
     function openChatImageLightbox(url, caption = "Attachment Preview") {
       if (!url || !isSafeMediaUrl(url)) return;
       const img = document.getElementById("lightboxFullImage");
@@ -2364,24 +292,21 @@
         bubbleClass = isStaff ? "wa-bubble-outgoing" : "wa-bubble-incoming";
       }
 
-      const contentHtml = isOfficialReceiptCard
-        ? rawBody
-        : escapeHtml(rawBody);
-
+      const contentHtml = isOfficialReceiptCard ? sanitizeReceiptHtml(rawBody) : escapeHtml(rawBody);
       const hasSafeProof = Boolean(msg.proof_url) && isSafeMediaUrl(msg.proof_url);
-      const safeUrl = hasSafeProof ? escapeHtml(msg.proof_url) : "";
-      const safeCaption = escapeHtml(`${sender}${msg.customer_phone ? ` (${msg.customer_phone})` : ""} • ${msg.timestamp || "Attachment"}`);
+      const safeUrl = hasSafeProof ? escapeJsAttr(msg.proof_url) : "";
+      const safeCaption = escapeJsAttr(`${sender}${msg.customer_phone ? ` (${msg.customer_phone})` : ""} • ${msg.timestamp || "Attachment"}`);
 
       let attachmentHtml = "";
       if (hasSafeProof) {
         const removeBtnHtml = canDeletePhoto && msg.id && !String(msg.id).startsWith("opt_")
-          ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:0.68rem;" onclick="event.stopPropagation();deleteSingleChatPhoto('${escapeHtml(msg.id)}')">Remove Photo</button>`
+          ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" style="font-size:0.68rem;" onclick="event.stopPropagation();deleteSingleChatPhoto('${escapeJsAttr(msg.id)}')">Remove Photo</button>`
           : "";
 
         attachmentHtml = `
           <div class="wa-photo-card">
             <img
-              src="${safeUrl}"
+              src="${escapeHtml(msg.proof_url)}"
               alt="Chat attachment"
               class="wa-photo-thumb"
               onclick="openChatImageLightbox('${safeUrl}', '${safeCaption}')"
@@ -2456,7 +381,6 @@
       }
     }
 
-    let liveChatPollTimer = null;
     function startLiveChatPolling() {
       if (liveChatPollTimer) return;
       liveChatPollTimer = setInterval(async () => {
@@ -2475,9 +399,10 @@
     }
 
     // ========================================================================
-    // ADMIN-CONTROLLED 10-SECOND AUTO COLOR CYCLER
+    // 5. THEME CYCLER, TIPS & AWARENESS SLIDESHOW
     // ========================================================================
     function applyColorTheme(themeObj) {
+      if (!themeObj) return;
       const root = document.documentElement.style;
       root.setProperty("--bg-body", themeObj.body);
       root.setProperty("--bg-surface", themeObj.surface);
@@ -2514,96 +439,26 @@
     }
 
     function previewAdminAutoColorToggle() {
-      const checked = Boolean(document.getElementById("togAutoColorCycle")?.checked);
-      setAutoColorEnabled(checked);
-    }
-
-    // ========================================================================
-    // INITIALIZATION, SETTINGS & ADJUSTABLE SLIDESHOW (10s DEFAULT)
-    // ========================================================================
-    let tipTimerHandle = null;
-    let slideTimerHandle = null;
-    let awarenessSlidesList = [];
-    let awarenessSlideIdx = 0;
-    let pendingAwarenessSlideFiles = [];
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      applyColorTheme(COLOR_THEMES[0]);
-      addSpecialRequestRow();
-      updateTipDisplay();
-      restartTipRotation(10);
-      startLiveChatPolling();
-
-      document.getElementById("customerChatModal")?.addEventListener("shown.bs.modal", () => {
-        renderCustomerChatMessages(true);
-      });
-
-      document.getElementById("tab-orders-chat")?.addEventListener("shown.bs.tab", async () => {
-        renderStaffChatThreads();
-        renderStaffChatMessages(true);
-        if (isStaffLoggedIn()) {
-          await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
-        }
-      });
-
-      await loadSettings();
-      await loadShops();
-      await enterMainStorefront();
-      updateCartBadge();
-      syncHeaderState(false);
-    });
-
-    function parsePipeOrLineList(raw) {
-      if (!raw) return [];
-      return String(raw)
-        .split(/\r?\n|\|/)
-        .map(s => s.trim())
-        .filter(Boolean);
-    }
-
-    function clearBroadcastVideoField() {
-      const inp = document.getElementById("setBroadcastVideoUrl");
-      const fileInp = document.getElementById("setBroadcastVideoFile");
-      if (inp) inp.value = "";
-      if (fileInp) fileInp.value = "";
-    }
-
-    function resetAllAppToggles() {
-      const defaults = {
-        togAutoColorCycle: false,
-        togShowAnalytics: true,
-        togShowStockAlerts: true,
-        togShowRequestTab: true,
-        togShowLiveCartBadge: true,
-        togShowChatReceiptsTab: true,
-        togShowHeaderCartBtn: true,
-        togShowWatchAd: true,
-        togShowVendorTags: true,
-        togShowAvailability: true,
-        togHideOutOfStock: false,
-        togAutoGeneratePin: true,
-        togShowRotatingTips: true,
-        togShowFloatingAwareness: false,
-        togAutoSlidePhotos: true
-      };
-      for (const [id, checked] of Object.entries(defaults)) {
-        const el = document.getElementById(id);
-        if (el) el.checked = checked;
-      }
-      const secInp = document.getElementById("setSlideSeconds");
-      if (secInp) secInp.value = 10;
-      setAutoColorEnabled(false);
-      const fb = document.getElementById("settingsFeedbackText");
-      if (fb) {
-        fb.className = "small text-warning";
-        fb.textContent = "Toggles reset to defaults — click Save All App Settings to apply.";
-      }
+      setAutoColorEnabled(Boolean(document.getElementById("togAutoColorCycle")?.checked));
     }
 
     function restartTipRotation(seconds) {
       if (tipTimerHandle) clearInterval(tipTimerHandle);
       const ms = Math.max(2000, (parseInt(seconds, 10) || 10) * 1000);
       tipTimerHandle = setInterval(() => cycleTip(1), ms);
+    }
+
+    function updateTipDisplay() {
+      const el = document.getElementById("rotatingTipText");
+      if (el && state.tips.length) {
+        el.textContent = state.tips[state.tipIndex % state.tips.length];
+      }
+    }
+
+    function cycleTip(delta) {
+      if (!state.tips.length) return;
+      state.tipIndex = (state.tipIndex + delta + state.tips.length) % state.tips.length;
+      updateTipDisplay();
     }
 
     function getSlideIntervalMs() {
@@ -2653,7 +508,6 @@
       }
 
       const uploadedUrls = [];
-
       try {
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
@@ -2829,9 +683,18 @@
     }
 
     function clearAllAwarenessSlides() {
-      if (!confirm("Remove all slideshow photos and descriptions?")) return;
-      syncEditorSlidesToFields([]);
       const fb = document.getElementById("settingsFeedbackText");
+      if (!state.pendingSlideClearConfirm) {
+        state.pendingSlideClearConfirm = true;
+        if (fb) {
+          fb.className = "small text-warning fw-semibold";
+          fb.textContent = "Click 'Clear All Slides' again within 5 seconds to confirm clearing all slides.";
+        }
+        setTimeout(() => { state.pendingSlideClearConfirm = false; }, 5000);
+        return;
+      }
+      state.pendingSlideClearConfirm = false;
+      syncEditorSlidesToFields([]);
       if (fb) {
         fb.className = "small text-warning";
         fb.textContent = "All slides cleared — click Save All App Settings to save.";
@@ -2911,8 +774,7 @@
       if (!awarenessSlidesList.length) return;
       awarenessSlideIdx = (awarenessSlideIdx + delta + awarenessSlidesList.length) % awarenessSlidesList.length;
       renderCurrentAwarenessSlide();
-      const autoSlide = Boolean(document.getElementById("togAutoSlidePhotos")?.checked);
-      startAwarenessSlideshow(autoSlide);
+      startAwarenessSlideshow(Boolean(document.getElementById("togAutoSlidePhotos")?.checked));
     }
 
     function openCurrentAwarenessInLightbox() {
@@ -2920,6 +782,64 @@
       const slide = awarenessSlidesList[awarenessSlideIdx % awarenessSlidesList.length];
       if (slide && slide.url && isSafeMediaUrl(slide.url)) {
         openChatImageLightbox(slide.url, slide.description || `Slide ${awarenessSlideIdx + 1}`);
+      }
+    }
+
+    function toggleAwarenessCard(forceState) {
+      const card = document.getElementById("awarenessFloatCard");
+      if (!card) return;
+      const shouldShow = typeof forceState === "boolean" ? forceState : card.style.display !== "block";
+      card.style.display = shouldShow ? "block" : "none";
+      if (shouldShow) renderCurrentAwarenessSlide();
+    }
+
+    function toggleBroadcastBody() {
+      const body = document.getElementById("broadcastVideoBody");
+      const btn = document.getElementById("toggleBroadcastBtn");
+      if (!body || !btn) return;
+      const hidden = body.classList.toggle("d-none");
+      btn.textContent = hidden ? "Show" : "Hide";
+    }
+
+    // ========================================================================
+    // 6. APP SETTINGS LOAD, SYNC & SAVE
+    // ========================================================================
+    function clearBroadcastVideoField() {
+      const inp = document.getElementById("setBroadcastVideoUrl");
+      const fileInp = document.getElementById("setBroadcastVideoFile");
+      if (inp) inp.value = "";
+      if (fileInp) fileInp.value = "";
+    }
+
+    function resetAllAppToggles() {
+      const defaults = {
+        togAutoColorCycle: false,
+        togShowAnalytics: true,
+        togShowStockAlerts: true,
+        togShowRequestTab: true,
+        togShowLiveCartBadge: true,
+        togShowChatReceiptsTab: true,
+        togShowHeaderCartBtn: true,
+        togShowWatchAd: true,
+        togShowVendorTags: true,
+        togShowAvailability: true,
+        togHideOutOfStock: false,
+        togAutoGeneratePin: true,
+        togShowRotatingTips: true,
+        togShowFloatingAwareness: false,
+        togAutoSlidePhotos: true
+      };
+      for (const [id, checked] of Object.entries(defaults)) {
+        const el = document.getElementById(id);
+        if (el) el.checked = checked;
+      }
+      const secInp = document.getElementById("setSlideSeconds");
+      if (secInp) secInp.value = 10;
+      setAutoColorEnabled(false);
+      const fb = document.getElementById("settingsFeedbackText");
+      if (fb) {
+        fb.className = "small text-warning";
+        fb.textContent = "Toggles reset to defaults — click Save All App Settings to apply.";
       }
     }
 
@@ -3011,29 +931,14 @@
       const slideSecsInp = document.getElementById("setSlideSeconds");
       if (slideSecsInp) slideSecsInp.value = slideSecs;
 
-      const headerCartBtn = document.getElementById("navCartBtn");
-      if (headerCartBtn) headerCartBtn.classList.toggle("d-none", !toggles.togShowHeaderCartBtn);
-
-      const chatBtn = document.getElementById("navChatBtn");
-      if (chatBtn) chatBtn.classList.toggle("d-none", !toggles.togShowChatReceiptsTab);
-
-      const bnavChatBtn = document.getElementById("bnavChatBtn");
-      if (bnavChatBtn) bnavChatBtn.classList.toggle("d-none", !toggles.togShowChatReceiptsTab);
-
-      const customReqCol = document.getElementById("customRequestCol");
-      if (customReqCol) customReqCol.classList.toggle("d-none", !toggles.togShowRequestTab);
-
-      const bnavRequestBtn = document.getElementById("bnavRequestBtn");
-      if (bnavRequestBtn) bnavRequestBtn.classList.toggle("d-none", !toggles.togShowRequestTab);
-
-      const analyticsRow = document.getElementById("analyticsKpiRow");
-      if (analyticsRow) analyticsRow.classList.toggle("d-none", !toggles.togShowAnalytics);
-
-      const alertsLine = document.getElementById("stockAlertsLine");
-      if (alertsLine) alertsLine.classList.toggle("d-none", !toggles.togShowStockAlerts);
-
-      const tipStrip = document.getElementById("rotatingTipStrip");
-      if (tipStrip) tipStrip.classList.toggle("d-none", !toggles.togShowRotatingTips);
+      document.getElementById("navCartBtn")?.classList.toggle("d-none", !toggles.togShowHeaderCartBtn);
+      document.getElementById("navChatBtn")?.classList.toggle("d-none", !toggles.togShowChatReceiptsTab);
+      document.getElementById("bnavChatBtn")?.classList.toggle("d-none", !toggles.togShowChatReceiptsTab);
+      document.getElementById("customRequestCol")?.classList.toggle("d-none", !toggles.togShowRequestTab);
+      document.getElementById("bnavRequestBtn")?.classList.toggle("d-none", !toggles.togShowRequestTab);
+      document.getElementById("analyticsKpiRow")?.classList.toggle("d-none", !toggles.togShowAnalytics);
+      document.getElementById("stockAlertsLine")?.classList.toggle("d-none", !toggles.togShowStockAlerts);
+      document.getElementById("rotatingTipStrip")?.classList.toggle("d-none", !toggles.togShowRotatingTips);
 
       const tipsRaw = extra.rotatingTips || "";
       const parsedTips = parsePipeOrLineList(tipsRaw);
@@ -3127,37 +1032,101 @@
       renderProductsGrid();
     }
 
-    function toggleBroadcastBody() {
-      const body = document.getElementById("broadcastVideoBody");
-      const btn = document.getElementById("toggleBroadcastBtn");
-      if (!body || !btn) return;
-      const hidden = body.classList.toggle("d-none");
-      btn.textContent = hidden ? "Show" : "Hide";
-    }
+    async function saveAppSettings(event) {
+      event.preventDefault();
+      const fb = document.getElementById("settingsFeedbackText");
+      const btn = document.getElementById("saveSettingsSubmitBtn");
+      const form = document.getElementById("appSettingsForm");
+      if (!form) return;
 
-    function updateTipDisplay() {
-      const el = document.getElementById("rotatingTipText");
-      if (el && state.tips.length) {
-        el.textContent = state.tips[state.tipIndex % state.tips.length];
+      if (btn) btn.disabled = true;
+      if (fb) {
+        fb.className = "small text-secondary";
+        fb.textContent = "Saving settings...";
+      }
+
+      try {
+        const autoColorEnabled = Boolean(document.getElementById("togAutoColorCycle")?.checked);
+        const slideSeconds = Math.min(120, Math.max(2, parseInt(document.getElementById("setSlideSeconds")?.value || "10", 10) || 10));
+        const slidesText = document.getElementById("setAwarenessSlides")?.value || "";
+        const descriptionsText = document.getElementById("setAwarenessDescriptions")?.value || "";
+        const bottomCaption = (document.getElementById("setAwarenessBottomCaption")?.value || "").trim();
+
+        const extraSettings = {
+          autoColorCycle: autoColorEnabled,
+          showAnalytics: Boolean(document.getElementById("togShowAnalytics")?.checked),
+          showStockAlerts: Boolean(document.getElementById("togShowStockAlerts")?.checked),
+          showRequestTab: Boolean(document.getElementById("togShowRequestTab")?.checked),
+          showLiveCartBadge: Boolean(document.getElementById("togShowLiveCartBadge")?.checked),
+          showChatReceiptsTab: Boolean(document.getElementById("togShowChatReceiptsTab")?.checked),
+          showHeaderCartBtn: Boolean(document.getElementById("togShowHeaderCartBtn")?.checked),
+          showWatchAd: Boolean(document.getElementById("togShowWatchAd")?.checked),
+          showVendorTags: Boolean(document.getElementById("togShowVendorTags")?.checked),
+          showAvailability: Boolean(document.getElementById("togShowAvailability")?.checked),
+          hideOutOfStock: Boolean(document.getElementById("togHideOutOfStock")?.checked),
+          autoGeneratePin: Boolean(document.getElementById("togAutoGeneratePin")?.checked),
+          showRotatingTips: Boolean(document.getElementById("togShowRotatingTips")?.checked),
+          showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
+          autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
+          secondsPerSlide: slideSeconds,
+          secondsPerTip: parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10,
+          rotatingTips: document.getElementById("setRotatingTips")?.value || "",
+          searchPlaceholder: document.getElementById("setSearchPlaceholder")?.value || "Search products, brands, or sponsors...",
+          bankDetails: document.getElementById("setBankDetails")?.value || "",
+          pinHelperMsg: document.getElementById("setPinHelperMsg")?.value || "",
+          pinFieldLabel: document.getElementById("setPinFieldLabel")?.value || "4-Digit Chat PIN (leave blank — auto)",
+          orderNotePlaceholder: document.getElementById("setOrderNotePlaceholder")?.value || "",
+          footerCopyright: document.getElementById("setFooterCopyright")?.value || "",
+          receiptFooter: document.getElementById("setReceiptFooter")?.value || "",
+          awarenessSlides: slidesText,
+          awarenessDescriptions: descriptionsText,
+          awarenessBottomCaption: bottomCaption
+        };
+
+        const fd = new FormData(form);
+        fd.append("extra_settings_json", JSON.stringify(extraSettings));
+
+        const res = await fetch("/api/settings", {
+          method: "POST",
+          headers: getStaffHeaders(),
+          body: fd
+        });
+        if (handleStaffUnauthorized(res)) return;
+        const data = await safeJson(res);
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not save settings");
+
+        if (data.settings) {
+          state.settings = { ...state.settings, ...data.settings };
+          state.settings.extra_settings = {
+            ...extraSettings,
+            ...(typeof data.settings.extra_settings === "object" ? data.settings.extra_settings : {})
+          };
+        } else {
+          state.settings.extra_settings = extraSettings;
+        }
+
+        const vidFileInp = document.getElementById("setBroadcastVideoFile");
+        if (vidFileInp) vidFileInp.value = "";
+
+        applySettingsToUI();
+        setAutoColorEnabled(autoColorEnabled);
+
+        if (fb) {
+          fb.className = "small text-success fw-semibold";
+          fb.textContent = "All settings saved!";
+        }
+      } catch (err) {
+        if (fb) {
+          fb.className = "small text-danger";
+          fb.textContent = err.message;
+        }
+      } finally {
+        if (btn) btn.disabled = false;
       }
     }
 
-    function cycleTip(delta) {
-      if (!state.tips.length) return;
-      state.tipIndex = (state.tipIndex + delta + state.tips.length) % state.tips.length;
-      updateTipDisplay();
-    }
-
-    function toggleAwarenessCard(forceState) {
-      const card = document.getElementById("awarenessFloatCard");
-      if (!card) return;
-      const shouldShow = typeof forceState === "boolean" ? forceState : card.style.display !== "block";
-      card.style.display = shouldShow ? "block" : "none";
-      if (shouldShow) renderCurrentAwarenessSlide();
-    }
-
     // ========================================================================
-    // SIDEBAR REGISTERED STORES & DEDICATED PARTNER STOREFRONT INTERFACE
+    // 7. SHOPS, NAVIGATION & VIEW SWITCHING
     // ========================================================================
     async function loadShops() {
       try {
@@ -3189,6 +1158,7 @@
       listEl.innerHTML = partnerShops.map(sh => {
         const isCurrent = state.selectedShopId === sh.slug;
         const cleanLoc = stripMarketLabel(sh.location || "Calabar") || "Calabar";
+        const safeSlug = escapeJsAttr(sh.slug);
         const avatarHtml = (sh.avatar_url && isSafeMediaUrl(sh.avatar_url))
           ? `<img src="${escapeHtml(sh.avatar_url)}" alt="" class="rounded" style="width:42px;height:42px;object-fit:cover;border:1px solid var(--border-subtle);" />`
           : `<div class="brand-icon-badge" style="width:42px;height:42px;">
@@ -3209,7 +1179,7 @@
                 ${sh.phone ? `<div class="text-secondary" style="font-size:0.74rem;">Contact: ${escapeHtml(sh.phone)}</div>` : ""}
               </div>
             </div>
-            <button type="button" class="btn btn-sm ${isCurrent ? "btn-info text-dark" : "btn-outline-warning"} fw-bold w-100" data-bs-dismiss="offcanvas" onclick="enterPartnerStorefront('${escapeHtml(sh.slug)}')">
+            <button type="button" class="btn btn-sm ${isCurrent ? "btn-info text-dark" : "btn-outline-warning"} fw-bold w-100" data-bs-dismiss="offcanvas" onclick="enterPartnerStorefront('${safeSlug}')">
               ${isCurrent ? "Currently Shopping Here" : `Shop / Buy with ${escapeHtml(sh.name)}`}
             </button>
           </div>
@@ -3272,7 +1242,7 @@
         heroFallback.classList.remove("d-none");
       }
 
-      if (hero) hero.classList.remove("d-none");
+      hero?.classList.remove("d-none");
 
       renderSidebarShopsList();
       applySettingsToUI();
@@ -3325,9 +1295,6 @@
       }
     }
 
-    // ========================================================================
-    // VIEW SWITCHING & HEADER STATE
-    // ========================================================================
     function syncHeaderState(inDashboard) {
       const badge = document.getElementById("staffSessionBadge");
       const loginBtn = document.getElementById("navLoginBtn");
@@ -3335,22 +1302,22 @@
       const logoutBtn = document.getElementById("navLogoutBtn");
       const storeBtn = document.getElementById("navStorefrontBtn");
 
-      if (storeBtn) storeBtn.classList.toggle("active", !inDashboard && state.selectedShopId === "main");
-      if (dashBtn) dashBtn.classList.toggle("active", inDashboard);
+      storeBtn?.classList.toggle("active", !inDashboard && state.selectedShopId === "main");
+      dashBtn?.classList.toggle("active", inDashboard);
 
       if (isStaffLoggedIn()) {
         if (badge) {
           badge.textContent = `${state.staff.username} (${state.staff.role})`;
           badge.classList.remove("d-none");
         }
-        if (loginBtn) loginBtn.classList.add("d-none");
-        if (dashBtn) dashBtn.classList.remove("d-none");
-        if (logoutBtn) logoutBtn.classList.remove("d-none");
+        loginBtn?.classList.add("d-none");
+        dashBtn?.classList.remove("d-none");
+        logoutBtn?.classList.remove("d-none");
       } else {
-        if (badge) badge.classList.add("d-none");
-        if (loginBtn) loginBtn.classList.remove("d-none");
-        if (dashBtn) dashBtn.classList.add("d-none");
-        if (logoutBtn) logoutBtn.classList.add("d-none");
+        badge?.classList.add("d-none");
+        loginBtn?.classList.remove("d-none");
+        dashBtn?.classList.add("d-none");
+        logoutBtn?.classList.add("d-none");
       }
     }
 
@@ -3398,8 +1365,7 @@
       const prodShopInp = document.getElementById("productShopIdInput");
       if (prodShopInp) prodShopInp.value = state.staffShopId === "all" ? "main" : state.staffShopId;
 
-      const ceoCard = document.getElementById("ceoPartnerShopsCard");
-      if (ceoCard) ceoCard.classList.toggle("d-none", !isSuperAdmin());
+      document.getElementById("ceoPartnerShopsCard")?.classList.toggle("d-none", !isSuperAdmin());
 
       const addWorkerBtn = document.getElementById("addWorkerBtn");
       if (addWorkerBtn) addWorkerBtn.disabled = !isSuperAdmin();
@@ -3460,10 +1426,8 @@
     }
 
     // ========================================================================
-    // STOREFRONT PRODUCTS
+    // 8. STOREFRONT CATALOG, CART, CHECKOUT & CUSTOM REQUESTS
     // ========================================================================
-    let activeAdvertProductId = null;
-
     function buildSponsorBadgeHtml(sponsorName) {
       const cleanSponsor = stripMarketLabel(sponsorName);
       if (!cleanSponsor) return "";
@@ -3546,6 +1510,7 @@
         const inStock = stockNum > 0;
         const hasImage = Boolean(p.image_url) && isSafeMediaUrl(p.image_url);
         const hasVideo = Boolean(p.video_url) && isSafeMediaUrl(p.video_url);
+        const safeId = escapeJsAttr(p.id);
 
         let mediaHtml = `<div class="text-secondary small py-4">No image</div>`;
         if (hasImage) {
@@ -3559,7 +1524,7 @@
           : "";
 
         const mediaSwitchHtml = showWatchAd
-          ? `<button type="button" class="media-switch-btn" onclick="openProductAdvertModal('${escapeHtml(p.id)}')">▶ Watch Ad</button>`
+          ? `<button type="button" class="media-switch-btn" onclick="openProductAdvertModal('${safeId}')">▶ Watch Ad</button>`
           : "";
 
         const mainLbl = escapeHtml(p.unit_main_label || "Carton");
@@ -3613,7 +1578,7 @@
                       <input id="cardQty_${escapeHtml(p.id)}" type="number" min="1" value="1" class="form-control form-control-sm dark-input" />
                     </div>
                     <div class="col-3">
-                      <button type="button" class="btn btn-sm btn-warning fw-bold w-100" ${inStock ? "" : "disabled"} onclick="addToCart('${escapeHtml(p.id)}')">
+                      <button type="button" class="btn btn-sm btn-warning fw-bold w-100" ${inStock ? "" : "disabled"} onclick="addToCart('${safeId}')">
                         Add
                       </button>
                     </div>
@@ -3641,8 +1606,7 @@
 
       const stockVal = Number(p.qty_cartons ?? p.stock ?? 0);
       const inStock = stockVal > 0;
-      const availEl = document.getElementById("advertModalAvail");
-      availEl.innerHTML = `
+      document.getElementById("advertModalAvail").innerHTML = `
         <span class="small text-secondary">Category: ${escapeHtml(p.category || "General")}</span>
         <span class="badge ms-2 ${inStock ? "text-bg-success" : "text-bg-danger"}">${inStock ? "In Stock" : "Out of Stock"}</span>
       `;
@@ -3765,8 +1729,7 @@
     function updateCartBadge() {
       const badge = document.getElementById("topCartBadge");
       const bottomCount = document.getElementById("bottomCartCount");
-      const extra = getExtraSettings();
-      const showBadge = extra.showLiveCartBadge !== false;
+      const showBadge = getExtraSettings().showLiveCartBadge !== false;
       const count = state.cart.reduce((sum, it) => sum + Number(it.qty || 1), 0);
       if (badge) {
         badge.textContent = String(count);
@@ -3876,9 +1839,6 @@
       }
     }
 
-    // ========================================================================
-    // CUSTOM REQUEST & WHATSAPP-STYLE CUSTOMER CHAT (SMART SCROLL)
-    // ========================================================================
     function openSpecialRequestModal() {
       const box = document.getElementById("specialRequestResultBox");
       if (box) box.innerHTML = "";
@@ -3930,6 +1890,9 @@
       }
     }
 
+    // ========================================================================
+    // 9. CUSTOMER CHAT PORTAL
+    // ========================================================================
     function openCustomerChatModal() {
       const partner = getActivePartnerShop();
       const titleEl = document.getElementById("customerChatModalTitle");
@@ -4049,7 +2012,7 @@
       const file = fileEl?.files?.[0] || null;
       if (!text && !file) return;
 
-      const tempPreviewUrl = file ? URL.createObjectURL(file) : "";
+      const tempPreviewUrl = file ? trackObjectUrl(file) : "";
       const optimisticMsg = {
         id: `opt_${Date.now()}`,
         sender: "Customer",
@@ -4075,6 +2038,7 @@
         const res = await fetch("/api/messages", { method: "POST", body: fd });
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Send failed");
+        revokeObjectUrl(tempPreviewUrl);
         await fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin, true);
       } catch (err) {
         if (stEl) {
@@ -4085,7 +2049,7 @@
     }
 
     // ========================================================================
-    // STAFF LOGIN & WORKSPACE DATA
+    // 10. STAFF AUTHENTICATION & WORKSPACE SYNC
     // ========================================================================
     function openStaffLoginModal() {
       const errEl = document.getElementById("loginErrorText");
@@ -4188,11 +2152,10 @@
     }
 
     // ========================================================================
-    // DIRECT ITEM NAME & BARCODE AUTO-STOCK (USER-CONTROLLED CATEGORY)
+    // 11. INVENTORY CRUD & AUTO-STOCK LOOKUP
     // ========================================================================
     function getChosenAutoStockCategory() {
-      const formCat = (document.getElementById("prodCategory")?.value || "").trim();
-      return formCat || "General";
+      return (document.getElementById("prodCategory")?.value || "").trim() || "General";
     }
 
     function clearStagedBatchUI(statusMsg = "") {
@@ -4200,7 +2163,7 @@
       const box = document.getElementById("autoStockBatchPreviewBox");
       const list = document.getElementById("autoStockBatchList");
       if (list) list.innerHTML = "";
-      if (box) box.classList.add("d-none");
+      box?.classList.add("d-none");
       const stEl = document.getElementById("autoStockBatchStatus");
       if (stEl && statusMsg !== null) {
         stEl.className = "small text-secondary mt-2";
@@ -4362,7 +2325,6 @@
 
     async function saveStagedBatchItems() {
       const checks = Array.from(document.querySelectorAll(".staged-item-check")).filter(c => c.checked);
-      const stEl = document.getElementById("autoStockBatchStatus");
       if (!checks.length) return;
 
       let saved = 0;
@@ -4399,9 +2361,6 @@
       await loadProducts(state.staffShopId || "main");
     }
 
-    // ========================================================================
-    // PRODUCT CRUD & INVENTORY TABLE
-    // ========================================================================
     function resetProductForm() {
       document.getElementById("productForm")?.reset();
       document.getElementById("action_mode").value = "create";
@@ -4414,7 +2373,7 @@
 
     function previewSelectedProductImage() {
       const file = document.getElementById("prodImageFile")?.files?.[0];
-      if (file) updateProductFormMediaPreview(URL.createObjectURL(file), file.name);
+      if (file) updateProductFormMediaPreview(trackObjectUrl(file), file.name);
     }
 
     function updateProductFormMediaPreview(imgUrl, label) {
@@ -4508,7 +2467,7 @@
     }
 
     async function deleteProductById(productId, name) {
-      if (!confirm(`Delete "${name}"?`)) return;
+      const fb = document.getElementById("productFormFeedback");
       try {
         const res = await fetch(`/api/products/${encodeURIComponent(productId)}`, {
           method: "DELETE",
@@ -4517,9 +2476,10 @@
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Delete failed");
+        if (fb) fb.innerHTML = `<span class="text-warning">Deleted "${escapeHtml(name)}".</span>`;
         await loadProducts(state.staffShopId || "main");
       } catch (err) {
-        alert(err.message);
+        if (fb) fb.innerHTML = `<span class="text-danger">${escapeHtml(err.message)}</span>`;
       }
     }
 
@@ -4538,6 +2498,8 @@
         const stock = Number(p.qty_cartons ?? p.stock ?? 0);
         const inStock = stock > 0;
         const sponsorClean = stripMarketLabel(p.vendor_name || "");
+        const safeId = escapeJsAttr(p.id);
+        const safeName = escapeJsAttr(p.name);
         const mediaTags = [
           p.image_url ? `<span class="badge text-bg-info text-dark">Photo</span>` : "",
           p.video_url ? `<span class="badge text-bg-warning text-dark">Video</span>` : ""
@@ -4557,8 +2519,8 @@
             <td>${Number(p.price_retail || 0) > 0 ? formatMoney(p.price_retail) : "-"}</td>
             <td>${mediaTags}</td>
             <td class="text-end text-nowrap">
-              <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="editProductById('${escapeHtml(p.id)}')">Edit</button>
-              <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteProductById('${escapeHtml(p.id)}', '${escapeHtml(p.name)}')">Del</button>
+              <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="editProductById('${safeId}')">Edit</button>
+              <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteProductById('${safeId}', '${safeName}')">Del</button>
             </td>
           </tr>
         `;
@@ -4581,7 +2543,7 @@
     }
 
     // ========================================================================
-    // POS, ORDERS, STAFF WHATSAPP CHAT, RECORDS, ANALYTICS & SETTINGS SAVE
+    // 12. POS SALES & ORDERS / STAFF WHATSAPP CHAT
     // ========================================================================
     function populatePosProductSelect() {
       const sel = document.getElementById("posProductSelect");
@@ -4627,6 +2589,7 @@
 
     async function submitPosSale(event) {
       event.preventDefault();
+      const fb = document.getElementById("posFeedbackBanner");
       const prodId = document.getElementById("posProductSelect")?.value || "";
       const unit = document.getElementById("posUnitSelect")?.value || "Carton";
       const qty = Math.max(1, parseFloat(document.getElementById("posQtyInput")?.value || "1") || 1);
@@ -4662,6 +2625,7 @@
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Sale failed");
 
+        if (fb) fb.innerHTML = `<span class="text-success">Sale recorded successfully.</span>`;
         const footerMsg = String(getExtraSettings().receiptFooter || "Thank you for your patronage!").trim();
         const rcpt = data.receipt || { item_name: itemName, unit_type: unit, qty, unit_price: unitPrice, total, customer_name: customerName, payment_source: paymentSource };
         document.getElementById("receiptPaperContent").innerHTML = `
@@ -4681,7 +2645,7 @@
         getModal("receiptModal")?.show();
         await refreshStaffWorkspace();
       } catch (err) {
-        alert(err.message);
+        if (fb) fb.innerHTML = `<span class="text-danger">${escapeHtml(err.message)}</span>`;
       }
     }
 
@@ -4724,7 +2688,7 @@
     function setOrderFilter(filterName, btnEl) {
       state.orderFilter = filterName;
       document.querySelectorAll("#staffOrdersChatTab [data-order-filter]").forEach(b => b.classList.remove("active"));
-      if (btnEl) btnEl.classList.add("active");
+      btnEl?.classList.add("active");
       renderStaffOrders();
     }
 
@@ -4739,6 +2703,8 @@
       list.innerHTML = filtered.length
         ? filtered.map(o => {
             const verified = String(o.status || "").toLowerCase() === "verified";
+            const safeOrderId = escapeJsAttr(o.id);
+            const safePhone = escapeJsAttr(o.contact_phone || "");
             const summary = Array.isArray(o.special_items) && o.special_items.length
               ? o.special_items.map(sp => sp.item || sp.name || "").join("; ")
               : (Array.isArray(o.items) ? o.items.map(it => `${it.qty} ${it.unit} ${it.name}`).join(", ") : "");
@@ -4753,9 +2719,9 @@
                 </div>
                 ${summary ? `<div class="small mt-1">${escapeHtml(summary)}</div>` : ""}
                 <div class="d-flex flex-wrap gap-1 mt-2">
-                  ${!verified ? `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="verifyStaffOrder('${escapeHtml(o.id)}')">Verify &amp; Receipt</button>` : ""}
-                  <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="focusStaffChatPhone('${escapeHtml(o.contact_phone || "")}')">Open Chat</button>
-                  <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteStaffOrder('${escapeHtml(o.id)}')">Delete</button>
+                  ${!verified ? `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="verifyStaffOrder('${safeOrderId}')">Verify &amp; Receipt</button>` : ""}
+                  <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="focusStaffChatPhone('${safePhone}')">Open Chat</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteStaffOrder('${safeOrderId}')">Delete</button>
                 </div>
               </div>`;
           }).join("")
@@ -4794,9 +2760,7 @@
       const val = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
       const lbl = document.getElementById("staffActiveChatTargetLabel");
       if (lbl) {
-        lbl.textContent = val
-          ? `Conversation with ${val}`
-          : "Viewing all store conversations";
+        lbl.textContent = val ? `Conversation with ${val}` : "Viewing all store conversations";
       }
     }
 
@@ -4847,7 +2811,7 @@
       list.innerHTML = threads.map(t => {
         const isSelected = activeDigits && (t.digits === activeDigits || t.digits.includes(activeDigits) || activeDigits.includes(t.digits));
         return `
-          <button type="button" class="wa-thread-item ${isSelected ? "active" : ""}" onclick="focusStaffChatPhone('${escapeHtml(t.phone)}')">
+          <button type="button" class="wa-thread-item ${isSelected ? "active" : ""}" onclick="focusStaffChatPhone('${escapeJsAttr(t.phone)}')">
             <div class="d-flex justify-content-between align-items-center gap-2">
               <strong class="small text-light">${escapeHtml(t.name)} • <span class="text-warning">${escapeHtml(t.phone)}</span></strong>
               <span style="font-size:0.68rem;" class="text-secondary">${escapeHtml(t.time)}</span>
@@ -4870,12 +2834,12 @@
         const qShop = encodeURIComponent(state.staffShopId || "main");
         await Promise.all([loadStaffOrders(qShop), loadStaffMessages(qShop, false)]);
       } catch (err) {
-        alert(err.message);
+        const lbl = document.getElementById("staffActiveChatTargetLabel");
+        if (lbl) lbl.textContent = err.message;
       }
     }
 
     async function deleteStaffOrder(orderId) {
-      if (!confirm("Delete this order?")) return;
       const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE", headers: getStaffHeaders() });
       if (handleStaffUnauthorized(res)) return;
       if (res.ok) await loadStaffOrders(encodeURIComponent(state.staffShopId || "main"));
@@ -4930,7 +2894,7 @@
       const file = document.getElementById("staffReplyProofFile")?.files?.[0] || null;
       if (!phone || (!text && !file)) return;
 
-      const tempPreviewUrl = file ? URL.createObjectURL(file) : "";
+      const tempPreviewUrl = file ? trackObjectUrl(file) : "";
       const optimisticMsg = {
         id: `opt_${Date.now()}`,
         sender: "Staff",
@@ -4960,6 +2924,7 @@
       const res = await fetch("/api/messages", { method: "POST", headers: getStaffHeaders(), body: fd });
       if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
+        revokeObjectUrl(tempPreviewUrl);
         await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
       }
     }
@@ -4971,13 +2936,27 @@
     }
 
     async function clearAllStaffChatPhotos() {
-      if (!confirm("Delete all proof photos in this shop?")) return;
+      const btn = document.getElementById("clearPhotosBtn");
+      if (!state.pendingPhotoClearConfirm) {
+        state.pendingPhotoClearConfirm = true;
+        if (btn) btn.textContent = "Confirm Clear?";
+        setTimeout(() => {
+          state.pendingPhotoClearConfirm = false;
+          if (btn) btn.textContent = "Clear Photos";
+        }, 4000);
+        return;
+      }
+      state.pendingPhotoClearConfirm = false;
+      if (btn) btn.textContent = "Clear Photos";
       const qShop = encodeURIComponent(state.staffShopId || "main");
       const res = await fetch(`/api/messages/photos?shop_id=${qShop}`, { method: "DELETE", headers: getStaffHeaders() });
       if (handleStaffUnauthorized(res)) return;
       if (res.ok) await loadStaffMessages(qShop, false);
     }
 
+    // ========================================================================
+    // 13. DEBTORS, EXPENSES, WORKERS, PARTNER ADMIN & ANALYTICS
+    // ========================================================================
     async function loadStaffDebtors(qShop) {
       try {
         const res = await fetch(`/api/debtors?shop_id=${qShop}`, { headers: getStaffHeaders() });
@@ -4992,13 +2971,14 @@
       box.innerHTML = state.debtors.length
         ? state.debtors.map(d => {
             const paid = String(d.status || "").toLowerCase() === "paid";
+            const safeId = escapeJsAttr(d.id);
             return `
               <div class="dark-subpanel small">
                 <div class="d-flex justify-content-between"><strong>${escapeHtml(d.customer)}</strong><span class="badge ${paid ? "text-bg-success" : "text-bg-danger"}">${escapeHtml(d.status || "unpaid")}</span></div>
                 <div class="text-secondary">${escapeHtml(d.phone || "")} • ${formatMoney(d.amount || 0)}</div>
                 <div class="d-flex gap-1 mt-1">
-                  ${!paid ? `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="markDebtorPaid('${escapeHtml(d.id)}')">Paid</button>` : ""}
-                  <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteDebtor('${escapeHtml(d.id)}')">Del</button>
+                  ${!paid ? `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="markDebtorPaid('${safeId}')">Paid</button>` : ""}
+                  <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteDebtor('${safeId}')">Del</button>
                 </div>
               </div>`;
           }).join("")
@@ -5055,7 +3035,7 @@
                 <strong>${escapeHtml(ex.category || "Operations")}</strong> • <span class="text-danger">${formatMoney(ex.amount || 0)}</span>
                 ${ex.note ? `<div class="text-secondary">${escapeHtml(ex.note)}</div>` : ""}
               </div>
-              <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteExpense('${escapeHtml(ex.id)}')">Del</button>
+              <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteExpense('${escapeJsAttr(ex.id)}')">Del</button>
             </div>`).join("")
         : `<div class="text-secondary small">No expenses.</div>`;
     }
@@ -5107,7 +3087,7 @@
                 <strong>${escapeHtml(w.name || w.username)}</strong> <span class="badge text-bg-secondary">${escapeHtml(w.role || "Staff")}</span>
                 <div class="text-secondary">@${escapeHtml(w.username || "")} • ${escapeHtml(w.shop_id || "main")}</div>
               </div>
-              ${isSuperAdmin() ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteWorker('${escapeHtml(w.id)}')">Del</button>` : ""}
+              ${isSuperAdmin() ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteWorker('${escapeJsAttr(w.id)}')">Del</button>` : ""}
             </div>`).join("")
         : `<div class="text-secondary small">No workers listed.</div>`;
     }
@@ -5142,28 +3122,33 @@
 
     function renderPartnerShopsAdminList() {
       const box = document.getElementById("partnerShopsAdminList");
-      if (!box) return;
-      const partners = state.shops.filter(s => s.slug !== "main");
-      box.innerHTML = partners.length
-        ? partners.map(sh => `
-            <div class="col-md-4">
-              <div class="dark-subpanel small d-flex justify-content-between align-items-start gap-2">
-                <div>
-                  <div class="fw-bold text-warning">${escapeHtml(sh.name)} (${escapeHtml(sh.slug)})</div>
-                  <div class="text-info">Location: ${escapeHtml(stripMarketLabel(sh.location || "Calabar"))}</div>
-                  <div class="text-secondary">Owner: ${escapeHtml(sh.owner_name || sh.owner_username || "-")}</div>
+      if (!box || !isSuperAdmin()) return;
+      const partnerShops = state.shops.filter(s => s.slug && s.slug !== "main");
+      box.innerHTML = partnerShops.length
+        ? partnerShops.map(sh => {
+            const cleanLoc = stripMarketLabel(sh.location || "Calabar") || "Calabar";
+            const safeSlug = escapeJsAttr(sh.slug);
+            return `
+              <div class="col-md-4">
+                <div class="dark-subpanel small">
+                  <div class="fw-bold text-warning">${escapeHtml(sh.name)}</div>
+                  <div class="text-secondary">Location: ${escapeHtml(cleanLoc)} • Slug: ${escapeHtml(sh.slug)}</div>
+                  <div class="d-flex flex-wrap gap-1 mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="enterPartnerStorefront('${safeSlug}')">View Store</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deletePartnerShop('${safeSlug}')">Remove</button>
+                  </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deletePartnerShop('${escapeHtml(sh.slug)}')">Del</button>
-              </div>
-            </div>`).join("")
+              </div>`;
+          }).join("")
         : `<div class="col-12 text-secondary small">No partner businesses registered yet.</div>`;
     }
 
-    async function deletePartnerShop(shopId) {
-      if (!confirm(`Delete partner business "${shopId}"?`)) return;
-      const res = await fetch(`/api/shops/${encodeURIComponent(shopId)}`, { method: "DELETE", headers: getStaffHeaders() });
+    async function deletePartnerShop(slug) {
+      if (!isSuperAdmin() || !slug || slug === "main") return;
+      const res = await fetch(`/api/shops/${encodeURIComponent(slug)}`, { method: "DELETE", headers: getStaffHeaders() });
       if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
+        if (state.selectedShopId === slug) await enterMainStorefront();
         await loadShops();
         renderPartnerShopsAdminList();
       }
@@ -5174,107 +3159,45 @@
         const res = await fetch(`/api/analytics?shop_id=${qShop}`, { headers: getStaffHeaders() });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
-        if (res.ok && data.analytics) {
-          const a = data.analytics;
-          document.getElementById("kpiRevenue").textContent = formatMoney(a.total_revenue || 0);
-          document.getElementById("kpiProfit").textContent = formatMoney(a.total_profit || 0);
-          document.getElementById("kpiExpenses").textContent = formatMoney(a.total_expenses || 0);
-          const cf = Number(a.net_cashflow || 0);
-          const cfEl = document.getElementById("kpiCashflow");
-          cfEl.textContent = formatMoney(cf);
-          cfEl.className = `fw-bold fs-6 mt-1 ${cf >= 0 ? "text-success" : "text-danger"}`;
+        if (res.ok) {
+          document.getElementById("kpiRevenue").textContent = formatMoney(data.total_revenue || 0);
+          document.getElementById("kpiProfit").textContent = formatMoney(data.gross_profit || 0);
+          document.getElementById("kpiExpenses").textContent = formatMoney(data.total_expenses || 0);
+          document.getElementById("kpiCashflow").textContent = formatMoney(data.net_cashflow || 0);
         }
       } catch {
-        // Ignore if role does not have analytics scope
+        // Ignore transient analytics errors
       }
     }
 
-    async function saveAppSettings(event) {
-      event.preventDefault();
-      const fb = document.getElementById("settingsFeedbackText");
-      const btn = document.getElementById("saveSettingsSubmitBtn");
-      if (btn) btn.disabled = true;
-      if (fb) {
-        fb.className = "small text-secondary";
-        fb.textContent = "Saving all settings...";
-      }
+    // ========================================================================
+    // 14. APPLICATION BOOTSTRAP
+    // ========================================================================
+    document.addEventListener("DOMContentLoaded", async () => {
+      applyColorTheme(COLOR_THEMES[0]);
+      addSpecialRequestRow();
+      updateTipDisplay();
+      restartTipRotation(10);
+      startLiveChatPolling();
 
-      const existingExtra = getExtraSettings();
-      const updatedExtra = {
-        ...existingExtra,
-        autoColorCycle: Boolean(document.getElementById("togAutoColorCycle")?.checked),
-        footerCopyright: (document.getElementById("setFooterCopyright")?.value || "").trim(),
-        receiptFooter: (document.getElementById("setReceiptFooter")?.value || "").trim(),
-        showAnalytics: Boolean(document.getElementById("togShowAnalytics")?.checked),
-        showStockAlerts: Boolean(document.getElementById("togShowStockAlerts")?.checked),
-        showRequestTab: Boolean(document.getElementById("togShowRequestTab")?.checked),
-        showLiveCartBadge: Boolean(document.getElementById("togShowLiveCartBadge")?.checked),
-        showChatReceiptsTab: Boolean(document.getElementById("togShowChatReceiptsTab")?.checked),
-        showHeaderCartBtn: Boolean(document.getElementById("togShowHeaderCartBtn")?.checked),
-        showWatchAd: Boolean(document.getElementById("togShowWatchAd")?.checked),
-        showVendorTags: Boolean(document.getElementById("togShowVendorTags")?.checked),
-        showAvailability: Boolean(document.getElementById("togShowAvailability")?.checked),
-        hideOutOfStock: Boolean(document.getElementById("togHideOutOfStock")?.checked),
-        searchPlaceholder: (document.getElementById("setSearchPlaceholder")?.value || "").trim(),
-        autoGeneratePin: Boolean(document.getElementById("togAutoGeneratePin")?.checked),
-        bankDetails: (document.getElementById("setBankDetails")?.value || "").trim(),
-        pinHelperMsg: (document.getElementById("setPinHelperMsg")?.value || "").trim(),
-        pinFieldLabel: (document.getElementById("setPinFieldLabel")?.value || "").trim(),
-        orderNotePlaceholder: (document.getElementById("setOrderNotePlaceholder")?.value || "").trim(),
-        showRotatingTips: Boolean(document.getElementById("togShowRotatingTips")?.checked),
-        secondsPerTip: Math.max(2, parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10),
-        rotatingTips: (document.getElementById("setRotatingTips")?.value || "").trim(),
-        showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
-        autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
-        secondsPerSlide: Math.min(120, Math.max(2, parseInt(document.getElementById("setSlideSeconds")?.value || "10", 10) || 10)),
-        awarenessSlides: (document.getElementById("setAwarenessSlides")?.value || "").trim(),
-        awarenessDescriptions: (document.getElementById("setAwarenessDescriptions")?.value || "").trim(),
-        awarenessBottomCaption: (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
-      };
+      document.getElementById("customerChatModal")?.addEventListener("shown.bs.modal", () => {
+        renderCustomerChatMessages(true);
+      });
 
-      const form = document.getElementById("appSettingsForm");
-      const fd = new FormData(form);
-      fd.set("extra_settings_json", JSON.stringify(updatedExtra));
-
-      const firstSlideUrl = parsePipeOrLineList(updatedExtra.awarenessSlides)[0] || "";
-      fd.set("awareness_image_url", firstSlideUrl);
-
-      if (!pendingAwarenessSlideFiles.length) {
-        fd.delete("awareness_image_file");
-      }
-
-      try {
-        const res = await fetch("/api/settings", {
-          method: "POST",
-          headers: getStaffHeaders(),
-          body: fd
-        });
-        if (handleStaffUnauthorized(res)) return;
-        const data = await safeJson(res);
-        if (!res.ok || data.ok === false) throw new Error(data.detail || "Save failed");
-
-        pendingAwarenessSlideFiles = [];
-        const awFile = document.getElementById("setAwarenessImageFile");
-        if (awFile) awFile.value = "";
-        const awStatus = document.getElementById("awarenessUploadStatus");
-        if (awStatus) awStatus.textContent = "";
-
-        state.settings = { ...state.settings, ...data.settings };
-        applySettingsToUI();
-
-        if (fb) {
-          fb.className = "small text-success fw-semibold";
-          fb.textContent = "All settings saved and active!";
+      document.getElementById("tab-orders-chat")?.addEventListener("shown.bs.tab", async () => {
+        renderStaffChatThreads();
+        renderStaffChatMessages(true);
+        if (isStaffLoggedIn()) {
+          await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
         }
-      } catch (err) {
-        if (fb) {
-          fb.className = "small text-danger";
-          fb.textContent = err.message;
-        }
-      } finally {
-        if (btn) btn.disabled = false;
-      }
-    }
+      });
+
+      await loadSettings();
+      await loadShops();
+      await enterMainStorefront();
+      updateCartBadge();
+      syncHeaderState(false);
+    });
   </script>
 </body>
 </html>

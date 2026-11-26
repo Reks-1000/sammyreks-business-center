@@ -1639,9 +1639,13 @@
                 </div>
               </div>
 
-              <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">6. Floating Awareness Photos &amp; Bottom Caption</div>
-                <div class="row g-2 mb-2">
+             <div class="dark-subpanel mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div class="fw-bold small text-warning">6. Floating Awareness Photos &amp; Bottom Caption</div>
+                  <span id="awarenessSlideCountBadge" class="badge text-bg-secondary">0 slides</span>
+                </div>
+
+                <div class="row g-2 mb-2 align-items-center">
                   <div class="col-sm-6 col-md-4">
                     <div class="form-check form-switch">
                       <input id="togShowFloatingAwareness" type="checkbox" class="form-check-input" />
@@ -1650,30 +1654,49 @@
                   </div>
                   <div class="col-sm-6 col-md-4">
                     <div class="form-check form-switch">
-                      <input id="togAutoSlidePhotos" type="checkbox" class="form-check-input" checked />
-                      <label for="togAutoSlidePhotos" class="form-check-label small">Auto-Slide Photos Every 3s</label>
+                      <input id="togAutoSlidePhotos" type="checkbox" class="form-check-input" checked onchange="startAwarenessSlideshow(this.checked)" />
+                      <label for="togAutoSlidePhotos" class="form-check-label small">Auto-Slide Photos</label>
                     </div>
                   </div>
+                  <div class="col-sm-6 col-md-4">
+                    <label for="setSecondsPerSlide" class="form-label small mb-1">Seconds Per Slide</label>
+                    <input id="setSecondsPerSlide" type="number" min="2" max="120" value="10" class="form-control form-control-sm dark-input" onchange="startAwarenessSlideshow(Boolean(document.getElementById('togAutoSlidePhotos')?.checked))" />
+                  </div>
                 </div>
+
                 <div class="row g-2 mb-2">
-                  <div class="col-md-8">
-                    <label for="setAwarenessSlides" class="form-label small mb-1">Image Links (One per line or separate with |)</label>
-                    <textarea id="setAwarenessSlides" rows="2" class="form-control form-control-sm dark-input"></textarea>
+                  <div class="col-md-5">
+                    <label for="newAwarenessSlideUrl" class="form-label small mb-1">New Slide Image Link</label>
+                    <input id="newAwarenessSlideUrl" type="text" class="form-control form-control-sm dark-input" placeholder="https://... or /uploads/..." />
                   </div>
                   <div class="col-md-4">
-                    <label for="setAwarenessImageFile" class="form-label small mb-1">Upload Awareness Photo</label>
-                    <input id="setAwarenessImageFile" name="awareness_image_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
+                    <label for="newAwarenessSlideDesc" class="form-label small mb-1">Slide Description</label>
+                    <input id="newAwarenessSlideDesc" type="text" class="form-control form-control-sm dark-input" placeholder="Caption for this slide..." />
+                  </div>
+                  <div class="col-md-3 d-flex align-items-end gap-1">
+                    <button type="button" class="btn btn-sm btn-warning fw-bold w-100" onclick="addAwarenessSlideFromQuickInputs()">
+                      + Add Slide
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAllAwarenessSlides()" title="Remove all slides">
+                      Clear
+                    </button>
                   </div>
                 </div>
-                <div class="row g-2">
-                  <div class="col-md-7">
-                    <label for="setAwarenessDescriptions" class="form-label small mb-1">Slide Descriptions</label>
-                    <input id="setAwarenessDescriptions" type="text" class="form-control form-control-sm dark-input" />
-                  </div>
-                  <div class="col-md-5">
-                    <label for="setAwarenessBottomCaption" class="form-label small mb-1">Bottom Caption</label>
-                    <input id="setAwarenessBottomCaption" type="text" class="form-control form-control-sm dark-input" />
-                  </div>
+
+                <div class="mb-2">
+                  <label for="setAwarenessImageFile" class="form-label small mb-1">Upload Awareness Photo (Added on Save)</label>
+                  <input id="setAwarenessImageFile" name="awareness_image_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
+                </div>
+
+                <div id="awarenessSlidesManagerList" class="d-flex flex-column gap-2 mb-2"></div>
+
+                <!-- Backing fields kept in sync automatically -->
+                <textarea id="setAwarenessSlides" rows="2" class="form-control form-control-sm dark-input d-none"></textarea>
+                <input id="setAwarenessDescriptions" type="text" class="form-control form-control-sm dark-input d-none" />
+
+                <div>
+                  <label for="setAwarenessBottomCaption" class="form-label small mb-1">Fallback / Bottom Caption</label>
+                  <input id="setAwarenessBottomCaption" type="text" class="form-control form-control-sm dark-input" oninput="startAwarenessSlideshow(Boolean(document.getElementById('togAutoSlidePhotos')?.checked))" />
                 </div>
               </div>
 

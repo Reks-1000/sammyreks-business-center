@@ -1639,7 +1639,7 @@
                 </div>
               </div>
 
-             <div class="dark-subpanel mb-3">
+              <div class="dark-subpanel mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-2">
                   <div class="fw-bold small text-warning">6. Floating Awareness Photos &amp; Bottom Caption</div>
                   <span id="awarenessSlideCountBadge" class="badge text-bg-secondary">0 slides</span>
@@ -1690,7 +1690,6 @@
 
                 <div id="awarenessSlidesManagerList" class="d-flex flex-column gap-2 mb-2"></div>
 
-                <!-- Backing fields kept in sync automatically -->
                 <textarea id="setAwarenessSlides" rows="2" class="form-control form-control-sm dark-input d-none"></textarea>
                 <input id="setAwarenessDescriptions" type="text" class="form-control form-control-sm dark-input d-none" />
 
@@ -2578,6 +2577,105 @@
       tipTimerHandle = setInterval(() => cycleTip(1), ms);
     }
 
+    function getSlideIntervalSeconds() {
+      const inpVal = parseInt(document.getElementById("setSecondsPerSlide")?.value || "", 10);
+      if (inpVal >= 2) return inpVal;
+      const savedVal = parseInt(getExtraSettings().secondsPerSlide || "", 10);
+      return savedVal >= 2 ? savedVal : 10;
+    }
+
+    function syncAwarenessBackingFields() {
+      const urlsEl = document.getElementById("setAwarenessSlides");
+      const descsEl = document.getElementById("setAwarenessDescriptions");
+      const badgeEl = document.getElementById("awarenessSlideCountBadge");
+      if (urlsEl) {
+        urlsEl.value = awarenessSlidesList.map(s => s.url).join("\n");
+      }
+      if (descsEl) {
+        descsEl.value = awarenessSlidesList.map(s => String(s.caption || "").replace(/\|/g, "/")).join(" | ");
+      }
+      if (badgeEl) {
+        badgeEl.textContent = `${awarenessSlidesList.length} slide${awarenessSlidesList.length === 1 ? "" : "s"}`;
+      }
+    }
+
+    function renderAwarenessSlidesManager() {
+      syncAwarenessBackingFields();
+      const listEl = document.getElementById("awarenessSlidesManagerList");
+      if (!listEl) return;
+
+      if (!awarenessSlidesList.length) {
+        listEl.innerHTML = `<div class="small text-secondary p-2 rounded" style="background:#0b1220;border:1px dashed var(--border-subtle);">No slides added. Paste a link and click <strong>+ Add Slide</strong>, or upload a photo.</div>`;
+        return;
+      }
+
+      listEl.innerHTML = awarenessSlidesList.map((slide, idx) => {
+        const safeUrl = isSafeMediaUrl(slide.url) ? escapeHtml(slide.url) : "";
+        const thumbHtml = safeUrl
+          ? `<img src="${safeUrl}" alt="Slide ${idx + 1}" class="rounded" style="width:46px;height:46px;object-fit:contain;background:#050912;border:1px solid var(--border-subtle);flex-shrink:0;" />`
+          : `<div class="rounded d-flex align-items-center justify-content-center text-secondary small" style="width:46px;height:46px;background:#050912;border:1px solid var(--border-subtle);flex-shrink:0;">#${idx + 1}</div>`;
+
+        return `
+          <div class="p-2 rounded d-flex align-items-center gap-2" style="background:#0b1220;border:1px solid var(--border-subtle);">
+            ${thumbHtml}
+            <div class="flex-grow-1 min-w-0">
+              <div class="small text-info text-truncate">Slide ${idx + 1}: ${escapeHtml(slide.url)}</div>
+              <input
+                type="text"
+                class="form-control form-control-sm dark-input mt-1"
+                value="${escapeHtml(slide.caption || "")}"
+                placeholder="Description for slide ${idx + 1}..."
+                oninput="updateAwarenessSlideCaption(${idx}, this.value)"
+              />
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" onclick="deleteAwarenessSlide(${idx})">
+              Delete
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function updateAwarenessSlideCaption(idx, val) {
+      if (!awarenessSlidesList[idx]) return;
+      awarenessSlidesList[idx].caption = val;
+      syncAwarenessBackingFields();
+      startAwarenessSlideshow(Boolean(document.getElementById("togAutoSlidePhotos")?.checked));
+    }
+
+    function addAwarenessSlideFromQuickInputs() {
+      const urlInp = document.getElementById("newAwarenessSlideUrl");
+      const descInp = document.getElementById("newAwarenessSlideDesc");
+      const urlVal = (urlInp?.value || "").trim();
+      const descVal = (descInp?.value || "").trim();
+      if (!urlVal) return;
+
+      awarenessSlidesList.push({
+        url: urlVal,
+        caption: descVal || (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
+      });
+      if (urlInp) urlInp.value = "";
+      if (descInp) descInp.value = "";
+      renderAwarenessSlidesManager();
+      startAwarenessSlideshow(Boolean(document.getElementById("togAutoSlidePhotos")?.checked));
+    }
+
+    function deleteAwarenessSlide(idx) {
+      awarenessSlidesList.splice(idx, 1);
+      if (awarenessSlideIdx >= awarenessSlidesList.length) awarenessSlideIdx = 0;
+      renderAwarenessSlidesManager();
+      startAwarenessSlideshow(Boolean(document.getElementById("togAutoSlidePhotos")?.checked));
+    }
+
+    function clearAllAwarenessSlides() {
+      awarenessSlidesList = [];
+      awarenessSlideIdx = 0;
+      const fileInp = document.getElementById("setAwarenessImageFile");
+      if (fileInp) fileInp.value = "";
+      renderAwarenessSlidesManager();
+      startAwarenessSlideshow(false);
+    }
+
     function startAwarenessSlideshow(autoSlide) {
       if (slideTimerHandle) {
         clearInterval(slideTimerHandle);
@@ -2587,8 +2685,15 @@
       const bodyEl = document.getElementById("awarenessCardBody");
       if (!imgEl || !bodyEl) return;
 
+      const bottomDefault = (document.getElementById("setAwarenessBottomCaption")?.value || getExtraSettings().awarenessBottomCaption || "").trim();
+
       const renderSlide = () => {
-        if (!awarenessSlidesList.length) return;
+        if (!awarenessSlidesList.length) {
+          imgEl.removeAttribute("src");
+          imgEl.style.display = "none";
+          bodyEl.textContent = bottomDefault;
+          return;
+        }
         const idx = awarenessSlideIdx % awarenessSlidesList.length;
         const slide = awarenessSlidesList[idx];
         if (isSafeMediaUrl(slide.url)) {
@@ -2598,17 +2703,16 @@
           imgEl.removeAttribute("src");
           imgEl.style.display = "none";
         }
-        if (slide.caption) bodyEl.textContent = slide.caption;
+        bodyEl.textContent = slide.caption || bottomDefault;
       };
 
-      if (awarenessSlidesList.length) {
-        renderSlide();
-        if (autoSlide && awarenessSlidesList.length > 1) {
-          slideTimerHandle = setInterval(() => {
-            awarenessSlideIdx = (awarenessSlideIdx + 1) % awarenessSlidesList.length;
-            renderSlide();
-          }, 3000);
-        }
+      renderSlide();
+      if (autoSlide && awarenessSlidesList.length > 1) {
+        const intervalMs = getSlideIntervalSeconds() * 1000;
+        slideTimerHandle = setInterval(() => {
+          awarenessSlideIdx = (awarenessSlideIdx + 1) % awarenessSlidesList.length;
+          renderSlide();
+        }, intervalMs);
       }
     }
 
@@ -2760,24 +2864,28 @@
       const notesInp = document.getElementById("checkoutNotes");
       if (notesInp && extra.orderNotePlaceholder) notesInp.placeholder = extra.orderNotePlaceholder;
 
-      const slideUrls = parsePipeOrLineList(extra.awarenessSlides || s.awareness_image_url || "");
+      const rawSlideUrls = extra.awarenessSlides !== undefined
+        ? parsePipeOrLineList(extra.awarenessSlides)
+        : parsePipeOrLineList(s.awareness_image_url || "");
+      const uploadedUrl = String(s.awareness_image_url || "").trim();
+      if (uploadedUrl && isSafeMediaUrl(uploadedUrl) && !rawSlideUrls.includes(uploadedUrl)) {
+        rawSlideUrls.push(uploadedUrl);
+      }
       const slideDescs = parsePipeOrLineList(extra.awarenessDescriptions || "");
-      awarenessSlidesList = slideUrls.map((url, i) => ({
+      const bottomCaption = extra.awarenessBottomCaption || "";
+
+      awarenessSlidesList = rawSlideUrls.map((url, i) => ({
         url,
-        caption: slideDescs[i] || extra.awarenessBottomCaption || ""
+        caption: slideDescs[i] || ""
       }));
       awarenessSlideIdx = 0;
 
-      const bottomCaption = extra.awarenessBottomCaption || "";
       const bodyEl = document.getElementById("awarenessCardBody");
       if (bodyEl) bodyEl.textContent = bottomCaption;
 
       const toggleBtn = document.getElementById("toggleAwarenessBtn");
       const hasAwareness = Boolean(awarenessSlidesList.length || bottomCaption);
       if (toggleBtn) toggleBtn.classList.toggle("d-none", !hasAwareness);
-
-      startAwarenessSlideshow(toggles.togAutoSlidePhotos);
-      toggleAwarenessCard(!partner && toggles.togShowFloatingAwareness);
 
       const inputs = {
         setBusinessName: bizName,
@@ -2794,14 +2902,17 @@
         setOrderNotePlaceholder: extra.orderNotePlaceholder || "",
         setSecondsPerTip: extra.secondsPerTip ?? 10,
         setRotatingTips: tipsRaw,
-        setAwarenessSlides: extra.awarenessSlides || (s.awareness_image_url || ""),
-        setAwarenessDescriptions: extra.awarenessDescriptions || "",
+        setSecondsPerSlide: extra.secondsPerSlide ?? 10,
         setAwarenessBottomCaption: bottomCaption
       };
       for (const [id, val] of Object.entries(inputs)) {
         const el = document.getElementById(id);
         if (el) el.value = val;
       }
+
+      renderAwarenessSlidesManager();
+      startAwarenessSlideshow(toggles.togAutoSlidePhotos);
+      toggleAwarenessCard(!partner && toggles.togShowFloatingAwareness);
 
       const searchInp = document.getElementById("storeSearchInput");
       if (searchInp && inputs.setSearchPlaceholder) {
@@ -3610,7 +3721,7 @@
           box.innerHTML = `<div class="alert alert-success py-2 small mb-0">Sent! Ref: <strong>${escapeHtml(data.payment_ref)}</strong> • PIN: <strong>${escapeHtml(data.customer_pin)}</strong></div>`;
         }
       } catch (err) {
-        if (box) box.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${escapeHtml(err.message)}</div>`;
+        if (box) resBox.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${escapeHtml(err.message)}</div>`;
       }
     }
 
@@ -4876,6 +4987,19 @@
         fb.textContent = "Saving all settings...";
       }
 
+      const pendingUrl = (document.getElementById("newAwarenessSlideUrl")?.value || "").trim();
+      const pendingDesc = (document.getElementById("newAwarenessSlideDesc")?.value || "").trim();
+      if (pendingUrl) {
+        awarenessSlidesList.push({
+          url: pendingUrl,
+          caption: pendingDesc || (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
+        });
+        document.getElementById("newAwarenessSlideUrl").value = "";
+        document.getElementById("newAwarenessSlideDesc").value = "";
+      }
+      syncAwarenessBackingFields();
+
+      const slideIntervalSec = getSlideIntervalSeconds();
       const existingExtra = getExtraSettings();
       const updatedExtra = {
         ...existingExtra,
@@ -4903,6 +5027,7 @@
         rotatingTips: document.getElementById("setRotatingTips")?.value || "",
         showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
         autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
+        secondsPerSlide: slideIntervalSec,
         awarenessSlides: document.getElementById("setAwarenessSlides")?.value || "",
         awarenessDescriptions: document.getElementById("setAwarenessDescriptions")?.value || "",
         awarenessBottomCaption: (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
@@ -4933,7 +5058,25 @@
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Save failed");
 
         if (data.settings) {
-          state.settings = { ...state.settings, ...data.settings };
+          const serverSettings = { ...data.settings };
+          const newlyUploadedUrl = String(serverSettings.awareness_image_url || "").trim();
+          const finalSlides = [...awarenessSlidesList];
+          if (awFile && newlyUploadedUrl && !finalSlides.some(s => s.url === newlyUploadedUrl)) {
+            finalSlides.push({
+              url: newlyUploadedUrl,
+              caption: pendingDesc || updatedExtra.awarenessBottomCaption
+            });
+          }
+          if (!finalSlides.length) {
+            serverSettings.awareness_image_url = "";
+          }
+          updatedExtra.awarenessSlides = finalSlides.map(s => s.url).join("\n");
+          updatedExtra.awarenessDescriptions = finalSlides.map(s => String(s.caption || "").replace(/\|/g, "/")).join(" | ");
+          serverSettings.extra_settings = { ...(serverSettings.extra_settings || {}), ...updatedExtra };
+          state.settings = { ...state.settings, ...serverSettings };
+          if (document.getElementById("setAwarenessImageFile")) {
+            document.getElementById("setAwarenessImageFile").value = "";
+          }
           applySettingsToUI();
         }
         if (fb) {

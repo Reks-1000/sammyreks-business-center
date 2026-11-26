@@ -34,6 +34,27 @@
       transition: background-color 0.45s ease, color 0.35s ease;
     }
 
+    /* Scattered Brand Logo Background Watermark */
+    #scatteredBrandBg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-repeat: repeat;
+      background-position: 0 0;
+      opacity: 0.06;
+      transition: opacity 0.35s ease;
+    }
+
+    .app-header,
+    .gold-notice-bar,
+    .container-fluid,
+    .fixed-bottom-nav,
+    .awareness-popup {
+      position: relative;
+      z-index: 1;
+    }
+
     /* Top Header */
     .app-header {
       background: var(--bg-header);
@@ -671,6 +692,7 @@
   </style>
 </head>
 <body>
+  <div id="scatteredBrandBg" aria-hidden="true"></div>
 
   <!-- TOP NAVIGATION HEADER -->
   <header class="app-header">
@@ -1094,11 +1116,11 @@
                     </div>
 
                     <div class="col-md-6">
-                      <label for="prodImageUrl" class="form-label small mb-1">Product Image URL</label>
+                      <label for="prodImageUrl" class="form-label small mb-1">Product Image URL (or Paste Link)</label>
                       <input id="prodImageUrl" name="image_url" type="text" class="form-control form-control-sm dark-input" placeholder="Existing image preserved if blank" />
                     </div>
                     <div class="col-md-6">
-                      <label for="prodImageFile" class="form-label small mb-1">Upload New Image</label>
+                      <label for="prodImageFile" class="form-label small mb-1">Upload or Paste (Ctrl+V) Image</label>
                       <input id="prodImageFile" name="image_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" onchange="previewSelectedProductImage()" />
                     </div>
 
@@ -1310,8 +1332,8 @@
                     <div class="d-flex flex-column gap-2">
                       <input id="staffReplyPhone" type="text" class="form-control form-control-sm dark-input" placeholder="Customer phone number *" required />
                       <div class="wa-composer-row">
-                        <input id="staffReplyText" type="text" class="form-control dark-input wa-composer-input" placeholder="Write a message..." />
-                        <label for="staffReplyProofFile" class="wa-add-img-btn" title="Add image to chat">
+                        <input id="staffReplyText" type="text" class="form-control dark-input wa-composer-input" placeholder="Write a message or paste an image..." />
+                        <label for="staffReplyProofFile" class="wa-add-img-btn" title="Upload or paste image into chat">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                             <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -1430,7 +1452,7 @@
                   <input id="pSetPhone" name="phone" type="text" class="form-control form-control-sm dark-input" />
                 </div>
                 <div class="col-md-6">
-                  <label for="pSetAvatarFile" class="form-label small mb-1">Update Business Logo / Photo</label>
+                  <label for="pSetAvatarFile" class="form-label small mb-1">Upload or Paste (Ctrl+V) Logo / Photo</label>
                   <input id="pSetAvatarFile" name="avatar_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
                 </div>
                 <div class="col-12">
@@ -1454,7 +1476,7 @@
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
               <div>
                 <h6 class="fw-bold mb-0" style="color:var(--gold);">Main App &amp; Storefront Settings</h6>
-                <div class="small text-secondary">Control main app identity, auto-color theme cycling, notice banner, broadcast video, and storefront options.</div>
+                <div class="small text-secondary">Control main app identity, auto-color theme cycling, scattered logo background, notice banner, broadcast video, and storefront options.</div>
               </div>
               <button type="button" class="btn btn-sm btn-outline-warning" onclick="resetAllAppToggles()">
                 Reset All Toggles
@@ -1463,7 +1485,7 @@
 
             <form id="appSettingsForm" onsubmit="saveAppSettings(event)" enctype="multipart/form-data">
               <div class="dark-subpanel mb-3">
-                <div class="fw-bold small text-warning mb-2">1. Main App Identity, Auto-Color Theme &amp; Broadcast</div>
+                <div class="fw-bold small text-warning mb-2">1. Main App Identity, Auto-Color Theme, Scattered Logo &amp; Broadcast</div>
                 <div class="row g-2 mb-2">
                   <div class="col-md-5">
                     <label for="setBusinessName" class="form-label small mb-1">Main Business Name</label>
@@ -1485,6 +1507,35 @@
                     <label for="togAutoColorCycle" class="form-check-label small fw-bold text-warning">
                       Enable Auto-Color Theme Cycling (Cycles Ocean, Seafoam, Sunset, Royal &amp; Gold palettes every 10s; reverts when OFF)
                     </label>
+                  </div>
+                </div>
+
+                <div class="p-2 px-3 rounded mb-2" style="background:#0b1220;border:1px solid var(--border-subtle);">
+                  <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                    <div class="form-check form-switch mb-0">
+                      <input id="togScatterBrandLogo" type="checkbox" class="form-check-input" onchange="previewScatteredBrandBg()" />
+                      <label for="togScatterBrandLogo" class="form-check-label small fw-bold text-warning">
+                        Scatter Brand Logo on App Background
+                      </label>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="clearScatteredBrandLogo()">
+                      Clear Logo
+                    </button>
+                  </div>
+
+                  <div class="row g-2 align-items-end">
+                    <div class="col-md-5">
+                      <label for="setScatterLogoFile" class="form-label small mb-1">Upload or Paste (Ctrl+V) Logo</label>
+                      <input id="setScatterLogoFile" type="file" accept="image/*" class="form-control form-control-sm dark-input" onchange="handleScatterLogoFileSelect(event)" />
+                    </div>
+                    <div class="col-md-4">
+                      <label for="setScatterLogoUrl" class="form-label small mb-1">OR Brand Logo Link</label>
+                      <input id="setScatterLogoUrl" type="text" class="form-control form-control-sm dark-input" placeholder="https://... or /uploads/..." oninput="previewScatteredBrandBg()" />
+                    </div>
+                    <div class="col-md-3">
+                      <label for="setScatterLogoOpacity" class="form-label small mb-1">Watermark Opacity (<span id="scatterOpacityLabel">6%</span>)</label>
+                      <input id="setScatterLogoOpacity" type="range" min="2" max="18" value="6" class="form-range" oninput="previewScatteredBrandBg()" />
+                    </div>
                   </div>
                 </div>
 
@@ -1684,7 +1735,7 @@
                 </div>
 
                 <div class="mb-2">
-                  <label for="setAwarenessImageFile" class="form-label small mb-1">Upload Awareness Photo (Added on Save)</label>
+                  <label for="setAwarenessImageFile" class="form-label small mb-1">Upload or Paste (Ctrl+V) Awareness Photo (Added on Save)</label>
                   <input id="setAwarenessImageFile" name="awareness_image_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
                 </div>
 
@@ -1853,8 +1904,8 @@
                 <input name="phone" type="text" class="form-control form-control-sm dark-input" />
               </div>
               <div class="col-md-4">
-                <label class="form-label small">Store Logo / Photo</label>
-                <input name="avatar_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
+                <label class="form-label small">Store Logo / Photo (Upload or Paste)</label>
+                <input id="regShopAvatarFile" name="avatar_file" type="file" accept="image/*" class="form-control form-control-sm dark-input" />
               </div>
               <div class="col-12">
                 <label class="form-label small">Store Bank / Payment Details</label>
@@ -1981,7 +2032,7 @@
           <div class="wa-chat-board">
             <div class="wa-chat-topbar">
               <span id="customerChatSessionBadge" class="badge text-bg-secondary">Locked</span>
-              <span class="small text-secondary">Tap any receipt or image to enlarge in-app</span>
+              <span class="small text-secondary">Paste or upload photos • Tap any image to enlarge</span>
             </div>
 
             <div id="customerChatBox" class="wa-chat-messages"></div>
@@ -1994,8 +2045,8 @@
                 </span>
               </div>
               <div class="wa-composer-row">
-                <input id="custMsgText" type="text" class="form-control dark-input wa-composer-input" placeholder="Write a message or payment note..." />
-                <label for="custMsgProofFile" class="wa-add-img-btn" title="Add image to chat">
+                <input id="custMsgText" type="text" class="form-control dark-input wa-composer-input" placeholder="Write a message or paste an image..." />
+                <label for="custMsgProofFile" class="wa-add-img-btn" title="Upload or paste image into chat">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
                     <circle cx="8.5" cy="8.5" r="1.5"></circle>
@@ -2233,6 +2284,7 @@
       const s = String(url || "").trim();
       if (!s) return false;
       if (s.startsWith("/")) return true;
+      if (/^data:image\/(png|jpeg|jpg|gif|webp);base64,/i.test(s)) return true;
       return /^https?:\/\//i.test(s);
     }
 
@@ -2307,6 +2359,143 @@
       const s = state.settings || {};
       return (typeof s.extra_settings === "object" && s.extra_settings) ? s.extra_settings : {};
     }
+
+    // ========================================================================
+    // UNIVERSAL COPY-PASTE IMAGE SUPPORT (LAPTOPS & PHONES)
+    // ========================================================================
+    function extractImageFileFromClipboard(clipboardData) {
+      if (!clipboardData) return null;
+
+      if (clipboardData.items && clipboardData.items.length) {
+        for (const item of clipboardData.items) {
+          if (item.kind === "file" && /^image\//i.test(item.type || "")) {
+            const file = item.getAsFile();
+            if (file) {
+              const ext = (item.type.split("/")[1] || "png").replace(/[^a-z0-9]/gi, "").toLowerCase() || "png";
+              const name = file.name && file.name !== "image.png" ? file.name : `pasted-image-${Date.now()}.${ext}`;
+              return new File([file], name, { type: file.type || item.type || "image/png" });
+            }
+          }
+        }
+      }
+
+      if (clipboardData.files && clipboardData.files.length) {
+        for (const f of clipboardData.files) {
+          if (/^image\//i.test(f.type || "")) {
+            return f;
+          }
+        }
+      }
+
+      return null;
+    }
+
+    function assignFileToInput(inputEl, file) {
+      if (!inputEl || !file) return false;
+      try {
+        if (typeof DataTransfer !== "undefined") {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          inputEl.files = dt.files;
+        }
+      } catch {
+        // Fallback when direct assignment to input.files is restricted by browser
+      }
+      inputEl.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    }
+
+    function resolvePasteTarget(event) {
+      const active = document.activeElement;
+      const custModalOpen = document.getElementById("customerChatModal")?.classList.contains("show");
+      const regModalOpen = document.getElementById("registerShopModal")?.classList.contains("show");
+
+      if (custModalOpen || active?.closest("#customerSendMessageForm")) {
+        return { kind: "file", inputId: "custMsgProofFile" };
+      }
+      if (active?.closest("#staffReplyForm")) {
+        return { kind: "file", inputId: "staffReplyProofFile" };
+      }
+      if (regModalOpen || active?.closest("#registerShopForm")) {
+        return { kind: "file", inputId: "regShopAvatarFile" };
+      }
+      if (active?.closest("#partnerOwnSettingsForm")) {
+        return { kind: "file", inputId: "pSetAvatarFile" };
+      }
+      if (active?.closest("[id*='Scatter'], #setScatterLogoFile, #setScatterLogoUrl")) {
+        return { kind: "scatter", inputId: "setScatterLogoFile", urlId: "setScatterLogoUrl" };
+      }
+      if (active?.closest("#productForm")) {
+        return { kind: "product", inputId: "prodImageFile", urlId: "prodImageUrl" };
+      }
+      if (active?.closest("[id*='Awareness'], #newAwarenessSlideUrl, #setAwarenessImageFile")) {
+        return { kind: "awareness", inputId: "setAwarenessImageFile", urlId: "newAwarenessSlideUrl" };
+      }
+
+      const staffTabEl = document.getElementById("staffOrdersChatTab");
+      if (staffTabEl && staffTabEl.classList.contains("show") && isStaffLoggedIn()) {
+        return { kind: "file", inputId: "staffReplyProofFile" };
+      }
+      const invTabEl = document.getElementById("inventoryTab");
+      if (invTabEl && invTabEl.classList.contains("show") && isStaffLoggedIn()) {
+        return { kind: "product", inputId: "prodImageFile", urlId: "prodImageUrl" };
+      }
+      return null;
+    }
+
+    function showPasteFeedback(target, label) {
+      if (!target) return;
+      if (target.inputId === "setScatterLogoFile") {
+        const fb = document.getElementById("settingsFeedbackText");
+        if (fb) {
+          fb.className = "small text-success";
+          fb.textContent = `Pasted image: ${label}`;
+        }
+      } else if (target.inputId === "prodImageFile") {
+        const fb = document.getElementById("productFormFeedback");
+        if (fb) {
+          fb.innerHTML = `<span class="text-success">Pasted image: ${escapeHtml(label)}</span>`;
+        }
+      } else if (target.inputId === "custMsgProofFile") {
+        const st = document.getElementById("custChatAuthStatus");
+        if (st && state.customerChat.unlocked) {
+          st.className = "small text-info mb-2";
+          st.textContent = `Pasted image ready to send: ${label}`;
+        }
+      }
+    }
+
+    document.addEventListener("paste", (event) => {
+      const clipboard = event.clipboardData || window.clipboardData;
+      if (!clipboard) return;
+
+      const target = resolvePasteTarget(event);
+      const pastedFile = extractImageFileFromClipboard(clipboard);
+
+      if (pastedFile && target) {
+        event.preventDefault();
+        const fileInp = document.getElementById(target.inputId);
+        if (fileInp) {
+          assignFileToInput(fileInp, pastedFile);
+          showPasteFeedback(target, pastedFile.name);
+        }
+        return;
+      }
+
+      // Mobile / clipboard-link fallback: if user pastes an image URL into a text/URL input
+      const active = document.activeElement;
+      const text = (clipboard.getData("text/plain") || "").trim();
+      const isTextInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA") && active.type !== "file" && active.type !== "password";
+      if (isTextInput && isSafeMediaUrl(text)) {
+        if (active.id === "setScatterLogoUrl") {
+          const tog = document.getElementById("togScatterBrandLogo");
+          if (tog) tog.checked = true;
+          setTimeout(() => previewScatteredBrandBg(), 0);
+        } else if (active.id === "prodImageUrl") {
+          setTimeout(() => updateProductFormMediaPreview(text, text), 0);
+        }
+      }
+    });
 
     // ========================================================================
     // IN-APP LIGHTBOX & WHATSAPP BUBBLE RENDERER (USED IN BOTH CHATS)
@@ -2449,6 +2638,129 @@
     }
 
     // ========================================================================
+    // SCATTERED BRAND LOGO BACKGROUND WATERMARK
+    // ========================================================================
+    let scatterTileCacheKey = "";
+
+    function buildScatteredTileDataUrl(imgEl, tileSize = 340) {
+      const canvas = document.createElement("canvas");
+      canvas.width = tileSize;
+      canvas.height = tileSize;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return "";
+
+      const placements = [
+        { x: 0.22, y: 0.22, scale: 0.25, angle: -0.22 },
+        { x: 0.76, y: 0.30, scale: 0.21, angle: 0.26 },
+        { x: 0.48, y: 0.68, scale: 0.24, angle: -0.14 },
+        { x: 0.85, y: 0.84, scale: 0.19, angle: 0.18 },
+        { x: 0.14, y: 0.82, scale: 0.18, angle: 0.24 }
+      ];
+
+      const natW = imgEl.naturalWidth || 200;
+      const natH = imgEl.naturalHeight || 200;
+      const aspect = natW / Math.max(1, natH);
+
+      for (const p of placements) {
+        const drawW = tileSize * p.scale;
+        const drawH = drawW / aspect;
+        ctx.save();
+        ctx.translate(tileSize * p.x, tileSize * p.y);
+        ctx.rotate(p.angle);
+        ctx.drawImage(imgEl, -drawW / 2, -drawH / 2, drawW, drawH);
+        ctx.restore();
+      }
+      return canvas.toDataURL("image/png");
+    }
+
+    function applyScatteredBrandBg(enabled, logoSrc, opacityPct = 6) {
+      const layer = document.getElementById("scatteredBrandBg");
+      if (!layer) return;
+
+      const clampedOpacity = Math.min(18, Math.max(2, Number(opacityPct) || 6));
+      layer.style.opacity = String(clampedOpacity / 100);
+
+      if (!enabled || !logoSrc) {
+        layer.style.backgroundImage = "none";
+        scatterTileCacheKey = "";
+        return;
+      }
+
+      const key = `${logoSrc.slice(0, 120)}_${logoSrc.length}`;
+      if (scatterTileCacheKey === key && layer.style.backgroundImage && layer.style.backgroundImage !== "none") {
+        return;
+      }
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        try {
+          const tileUrl = buildScatteredTileDataUrl(img, 340);
+          if (tileUrl) {
+            layer.style.backgroundImage = `url("${tileUrl}")`;
+            layer.style.backgroundSize = "340px 340px";
+            scatterTileCacheKey = key;
+            return;
+          }
+        } catch {
+          // Fallback if cross-origin canvas tainting occurs
+        }
+        layer.style.backgroundImage = `url("${logoSrc.replace(/"/g, '\\"')}")`;
+        layer.style.backgroundSize = "120px auto";
+        scatterTileCacheKey = key;
+      };
+      img.onerror = () => {
+        layer.style.backgroundImage = "none";
+      };
+      img.src = logoSrc;
+    }
+
+    function handleScatterLogoFileSelect(event) {
+      const file = event.target?.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 240;
+          const scale = Math.min(1, maxDim / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+          const c = document.createElement("canvas");
+          c.width = Math.max(1, Math.round((img.naturalWidth || 200) * scale));
+          c.height = Math.max(1, Math.round((img.naturalHeight || 200) * scale));
+          c.getContext("2d")?.drawImage(img, 0, 0, c.width, c.height);
+          const compactDataUrl = c.toDataURL("image/png");
+
+          const urlInp = document.getElementById("setScatterLogoUrl");
+          const tog = document.getElementById("togScatterBrandLogo");
+          if (urlInp) urlInp.value = compactDataUrl;
+          if (tog) tog.checked = true;
+          previewScatteredBrandBg();
+        };
+        img.src = String(reader.result || "");
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearScatteredBrandLogo() {
+      const fileInp = document.getElementById("setScatterLogoFile");
+      const urlInp = document.getElementById("setScatterLogoUrl");
+      const tog = document.getElementById("togScatterBrandLogo");
+      if (fileInp) fileInp.value = "";
+      if (urlInp) urlInp.value = "";
+      if (tog) tog.checked = false;
+      applyScatteredBrandBg(false, "", 6);
+    }
+
+    function previewScatteredBrandBg() {
+      const enabled = Boolean(document.getElementById("togScatterBrandLogo")?.checked);
+      const logoSrc = (document.getElementById("setScatterLogoUrl")?.value || "").trim();
+      const opacityVal = Number(document.getElementById("setScatterLogoOpacity")?.value || 6);
+      const lbl = document.getElementById("scatterOpacityLabel");
+      if (lbl) lbl.textContent = `${opacityVal}%`;
+      applyScatteredBrandBg(enabled, logoSrc, opacityVal);
+    }
+
+    // ========================================================================
     // ADMIN-CONTROLLED 10-SECOND AUTO COLOR CYCLER
     // ========================================================================
     function applyColorTheme(themeObj) {
@@ -2544,6 +2856,7 @@
     function resetAllAppToggles() {
       const defaults = {
         togAutoColorCycle: false,
+        togScatterBrandLogo: false,
         togShowAnalytics: true,
         togShowStockAlerts: true,
         togShowRequestTab: true,
@@ -2564,6 +2877,7 @@
         if (el) el.checked = checked;
       }
       setAutoColorEnabled(false);
+      previewScatteredBrandBg();
       const fb = document.getElementById("settingsFeedbackText");
       if (fb) {
         fb.className = "small text-warning";
@@ -2605,7 +2919,7 @@
       if (!listEl) return;
 
       if (!awarenessSlidesList.length) {
-        listEl.innerHTML = `<div class="small text-secondary p-2 rounded" style="background:#0b1220;border:1px dashed var(--border-subtle);">No slides added. Paste a link and click <strong>+ Add Slide</strong>, or upload a photo.</div>`;
+        listEl.innerHTML = `<div class="small text-secondary p-2 rounded" style="background:#0b1220;border:1px dashed var(--border-subtle);">No slides added. Paste a link and click <strong>+ Add Slide</strong>, or upload/paste a photo.</div>`;
         return;
       }
 
@@ -2738,6 +3052,19 @@
       setAutoColorEnabled(autoColorOn);
       const autoColorChk = document.getElementById("togAutoColorCycle");
       if (autoColorChk) autoColorChk.checked = autoColorOn;
+
+      const scatterOn = Boolean(extra.scatterBrandLogo);
+      const scatterUrl = String(extra.scatterBrandLogoUrl || "").trim();
+      const scatterOpacity = Number(extra.scatterBrandLogoOpacity || 6);
+      const scatterChk = document.getElementById("togScatterBrandLogo");
+      const scatterUrlInp = document.getElementById("setScatterLogoUrl");
+      const scatterOpInp = document.getElementById("setScatterLogoOpacity");
+      const scatterOpLbl = document.getElementById("scatterOpacityLabel");
+      if (scatterChk) scatterChk.checked = scatterOn;
+      if (scatterUrlInp) scatterUrlInp.value = scatterUrl;
+      if (scatterOpInp) scatterOpInp.value = String(scatterOpacity);
+      if (scatterOpLbl) scatterOpLbl.textContent = `${scatterOpacity}%`;
+      applyScatteredBrandBg(scatterOn, scatterUrl, scatterOpacity);
 
       const bizName = s.business_name || "Sammyreks Business Center";
       document.title = partner ? `Shop with ${partner.name} — ${bizName}` : bizName;
@@ -3816,7 +4143,7 @@
         return;
       }
       if (!state.customerChat.messages.length) {
-        box.innerHTML = `<div data-empty-chat="1" class="text-secondary small text-center py-5">No messages yet. Send a message or add an image below.</div>`;
+        box.innerHTML = `<div data-empty-chat="1" class="text-secondary small text-center py-5">No messages yet. Send a message or add/paste an image below.</div>`;
         return;
       }
       box.innerHTML = state.customerChat.messages
@@ -4890,14 +5217,11 @@
       if (!box) return;
       box.innerHTML = state.workers.length
         ? state.workers.map(w => `
-            <div class="dark-subpanel small d-flex justify-content-between align-items-center gap-2">
-              <div>
-                <strong>${escapeHtml(w.name || w.username)}</strong> <span class="badge text-bg-secondary">${escapeHtml(w.role || "Staff")}</span>
-                <div class="text-secondary">@${escapeHtml(w.username || "")} • ${escapeHtml(w.shop_id || "main")}</div>
-              </div>
+            <div class="dark-subpanel small d-flex justify-content-between align-items-center">
+              <div><strong>${escapeHtml(w.name)}</strong> <span class="text-secondary">(${escapeHtml(w.role || "Staff")})</span></div>
               ${isSuperAdmin() ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteWorker('${escapeHtml(w.id)}')">Del</button>` : ""}
             </div>`).join("")
-        : `<div class="text-secondary small">No workers listed.</div>`;
+        : `<div class="text-secondary small">No staff accounts.</div>`;
     }
 
     async function submitWorkerForm(event) {
@@ -4910,14 +5234,16 @@
           name: document.getElementById("workerName").value.trim(),
           username: document.getElementById("workerUsername").value.trim(),
           role: document.getElementById("workerRole").value.trim() || "Staff",
-          password: document.getElementById("workerPassword").value,
-          shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main")
+          password: document.getElementById("workerPassword").value
         })
       });
       if (handleStaffUnauthorized(res)) return;
-      if (res.ok) {
+      const data = await safeJson(res);
+      if (res.ok && data.ok !== false) {
         document.getElementById("workerForm").reset();
         await loadStaffWorkers();
+      } else {
+        alert(data.detail || "Could not add worker");
       }
     }
 
@@ -4930,28 +5256,31 @@
 
     function renderPartnerShopsAdminList() {
       const box = document.getElementById("partnerShopsAdminList");
-      if (!box) return;
-      const partners = state.shops.filter(s => s.slug !== "main");
-      box.innerHTML = partners.length
-        ? partners.map(sh => `
-            <div class="col-md-4">
-              <div class="dark-subpanel small d-flex justify-content-between align-items-start gap-2">
-                <div>
-                  <div class="fw-bold text-warning">${escapeHtml(sh.name)} (${escapeHtml(sh.slug)})</div>
-                  <div class="text-info">Location: ${escapeHtml(stripMarketLabel(sh.location || "Calabar"))}</div>
-                  <div class="text-secondary">Owner: ${escapeHtml(sh.owner_name || sh.owner_username || "-")}</div>
+      if (!box || !isSuperAdmin()) return;
+      const list = state.shops.filter(s => s.slug && s.slug !== "main");
+      box.innerHTML = list.length
+        ? list.map(s => {
+            const cleanLoc = stripMarketLabel(s.location || "Calabar") || "Calabar";
+            return `
+              <div class="col-md-6">
+                <div class="dark-subpanel small d-flex justify-content-between align-items-center">
+                  <div>
+                    <div class="fw-bold">${escapeHtml(s.name)} <span class="text-info">(${escapeHtml(s.slug)})</span></div>
+                    <div class="text-secondary">Location: ${escapeHtml(cleanLoc)} • Owner: ${escapeHtml(s.owner_username || "-")}</div>
+                  </div>
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="deletePartnerShop('${escapeHtml(s.slug)}')">Remove</button>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deletePartnerShop('${escapeHtml(sh.slug)}')">Del</button>
-              </div>
-            </div>`).join("")
-        : `<div class="col-12 text-secondary small">No partner businesses registered yet.</div>`;
+              </div>`;
+          }).join("")
+        : `<div class="col-12 small text-secondary">No partner shops registered yet.</div>`;
     }
 
-    async function deletePartnerShop(shopId) {
-      if (!confirm(`Delete partner business "${shopId}"?`)) return;
-      const res = await fetch(`/api/shops/${encodeURIComponent(shopId)}`, { method: "DELETE", headers: getStaffHeaders() });
+    async function deletePartnerShop(slug) {
+      if (!isSuperAdmin() || !confirm(`Remove partner shop "${slug}"?`)) return;
+      const res = await fetch(`/api/shops/${encodeURIComponent(slug)}`, { method: "DELETE", headers: getStaffHeaders() });
       if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
+        if (state.staffShopId === slug) state.staffShopId = "main";
         await loadShops();
         renderPartnerShopsAdminList();
       }
@@ -4962,18 +5291,14 @@
         const res = await fetch(`/api/analytics?shop_id=${qShop}`, { headers: getStaffHeaders() });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
-        if (res.ok && data.analytics) {
-          const a = data.analytics;
-          document.getElementById("kpiRevenue").textContent = formatMoney(a.total_revenue || 0);
-          document.getElementById("kpiProfit").textContent = formatMoney(a.total_profit || 0);
-          document.getElementById("kpiExpenses").textContent = formatMoney(a.total_expenses || 0);
-          const cf = Number(a.net_cashflow || 0);
-          const cfEl = document.getElementById("kpiCashflow");
-          cfEl.textContent = formatMoney(cf);
-          cfEl.className = `fw-bold fs-6 mt-1 ${cf >= 0 ? "text-success" : "text-danger"}`;
+        if (res.ok) {
+          document.getElementById("kpiRevenue").textContent = formatMoney(data.revenue || 0);
+          document.getElementById("kpiProfit").textContent = formatMoney(data.gross_profit || 0);
+          document.getElementById("kpiExpenses").textContent = formatMoney(data.expenses || 0);
+          document.getElementById("kpiCashflow").textContent = formatMoney(data.net_cashflow || 0);
         }
       } catch {
-        // Ignore if role does not have analytics scope
+        // Keep current values on transient network error
       }
     }
 
@@ -4984,70 +5309,72 @@
       if (btn) btn.disabled = true;
       if (fb) {
         fb.className = "small text-secondary";
-        fb.textContent = "Saving all settings...";
+        fb.textContent = "Saving settings...";
       }
-
-      const pendingUrl = (document.getElementById("newAwarenessSlideUrl")?.value || "").trim();
-      const pendingDesc = (document.getElementById("newAwarenessSlideDesc")?.value || "").trim();
-      if (pendingUrl) {
-        awarenessSlidesList.push({
-          url: pendingUrl,
-          caption: pendingDesc || (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
-        });
-        document.getElementById("newAwarenessSlideUrl").value = "";
-        document.getElementById("newAwarenessSlideDesc").value = "";
-      }
-      syncAwarenessBackingFields();
-
-      const slideIntervalSec = getSlideIntervalSeconds();
-      const existingExtra = getExtraSettings();
-      const updatedExtra = {
-        ...existingExtra,
-        autoColorCycle: Boolean(document.getElementById("togAutoColorCycle")?.checked),
-        footerCopyright: (document.getElementById("setFooterCopyright")?.value || "").trim(),
-        receiptFooter: (document.getElementById("setReceiptFooter")?.value || "").trim(),
-        showAnalytics: Boolean(document.getElementById("togShowAnalytics")?.checked),
-        showStockAlerts: Boolean(document.getElementById("togShowStockAlerts")?.checked),
-        showRequestTab: Boolean(document.getElementById("togShowRequestTab")?.checked),
-        showLiveCartBadge: Boolean(document.getElementById("togShowLiveCartBadge")?.checked),
-        showChatReceiptsTab: Boolean(document.getElementById("togShowChatReceiptsTab")?.checked),
-        showHeaderCartBtn: Boolean(document.getElementById("togShowHeaderCartBtn")?.checked),
-        showWatchAd: Boolean(document.getElementById("togShowWatchAd")?.checked),
-        showVendorTags: Boolean(document.getElementById("togShowVendorTags")?.checked),
-        showAvailability: Boolean(document.getElementById("togShowAvailability")?.checked),
-        hideOutOfStock: Boolean(document.getElementById("togHideOutOfStock")?.checked),
-        searchPlaceholder: (document.getElementById("setSearchPlaceholder")?.value || "").trim(),
-        autoGeneratePin: Boolean(document.getElementById("togAutoGeneratePin")?.checked),
-        bankDetails: (document.getElementById("setBankDetails")?.value || "").trim(),
-        pinHelperMsg: (document.getElementById("setPinHelperMsg")?.value || "").trim(),
-        pinFieldLabel: (document.getElementById("setPinFieldLabel")?.value || "").trim(),
-        orderNotePlaceholder: (document.getElementById("setOrderNotePlaceholder")?.value || "").trim(),
-        showRotatingTips: Boolean(document.getElementById("togShowRotatingTips")?.checked),
-        secondsPerTip: parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10,
-        rotatingTips: document.getElementById("setRotatingTips")?.value || "",
-        showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
-        autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
-        secondsPerSlide: slideIntervalSec,
-        awarenessSlides: document.getElementById("setAwarenessSlides")?.value || "",
-        awarenessDescriptions: document.getElementById("setAwarenessDescriptions")?.value || "",
-        awarenessBottomCaption: (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
-      };
-
-      const fd = new FormData();
-      fd.append("business_name", (document.getElementById("setBusinessName")?.value || "Sammyreks Business Center").trim());
-      fd.append("tagline", (document.getElementById("setTagline")?.value || "").trim());
-      fd.append("active_notice", (document.getElementById("setActiveNotice")?.value || "").trim());
-      fd.append("broadcast_video_url", (document.getElementById("setBroadcastVideoUrl")?.value || "").trim());
-      fd.append("currency", (document.getElementById("setCurrency")?.value || "₦").trim() || "₦");
-      fd.append("extra_settings", JSON.stringify(updatedExtra));
-
-      const vidFile = document.getElementById("setBroadcastVideoFile")?.files?.[0];
-      if (vidFile) fd.append("broadcast_video_file", vidFile);
-
-      const awFile = document.getElementById("setAwarenessImageFile")?.files?.[0];
-      if (awFile) fd.append("awareness_image_file", awFile);
 
       try {
+        const form = document.getElementById("appSettingsForm");
+        const fd = new FormData(form);
+
+        const quickUrl = (document.getElementById("newAwarenessSlideUrl")?.value || "").trim();
+        const quickDesc = (document.getElementById("newAwarenessSlideDesc")?.value || "").trim();
+        if (quickUrl) {
+          awarenessSlidesList.push({
+            url: quickUrl,
+            caption: quickDesc || (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
+          });
+          document.getElementById("newAwarenessSlideUrl").value = "";
+          document.getElementById("newAwarenessSlideDesc").value = "";
+          renderAwarenessSlidesManager();
+        } else {
+          syncAwarenessBackingFields();
+        }
+
+        const awarenessFile = document.getElementById("setAwarenessImageFile")?.files?.[0];
+        if (awarenessFile) {
+          fd.set("awareness_image_file", awarenessFile);
+        }
+
+        const scatterOn = Boolean(document.getElementById("togScatterBrandLogo")?.checked);
+        const scatterLogoUrl = (document.getElementById("setScatterLogoUrl")?.value || "").trim();
+        const scatterLogoOpacity = Number(document.getElementById("setScatterLogoOpacity")?.value || 6);
+        const autoColorCycle = Boolean(document.getElementById("togAutoColorCycle")?.checked);
+
+        const extraPayload = {
+          autoColorCycle,
+          scatterBrandLogo: scatterOn,
+          scatterBrandLogoUrl: scatterLogoUrl,
+          scatterBrandLogoOpacity: scatterLogoOpacity,
+          footerCopyright: (document.getElementById("setFooterCopyright")?.value || "").trim(),
+          receiptFooter: (document.getElementById("setReceiptFooter")?.value || "").trim(),
+          showAnalytics: Boolean(document.getElementById("togShowAnalytics")?.checked),
+          showStockAlerts: Boolean(document.getElementById("togShowStockAlerts")?.checked),
+          showRequestTab: Boolean(document.getElementById("togShowRequestTab")?.checked),
+          showLiveCartBadge: Boolean(document.getElementById("togShowLiveCartBadge")?.checked),
+          showChatReceiptsTab: Boolean(document.getElementById("togShowChatReceiptsTab")?.checked),
+          showHeaderCartBtn: Boolean(document.getElementById("togShowHeaderCartBtn")?.checked),
+          showWatchAd: Boolean(document.getElementById("togShowWatchAd")?.checked),
+          showVendorTags: Boolean(document.getElementById("togShowVendorTags")?.checked),
+          showAvailability: Boolean(document.getElementById("togShowAvailability")?.checked),
+          hideOutOfStock: Boolean(document.getElementById("togHideOutOfStock")?.checked),
+          searchPlaceholder: (document.getElementById("setSearchPlaceholder")?.value || "").trim(),
+          autoGeneratePin: Boolean(document.getElementById("togAutoGeneratePin")?.checked),
+          bankDetails: (document.getElementById("setBankDetails")?.value || "").trim(),
+          pinHelperMsg: (document.getElementById("setPinHelperMsg")?.value || "").trim(),
+          pinFieldLabel: (document.getElementById("setPinFieldLabel")?.value || "").trim(),
+          orderNotePlaceholder: (document.getElementById("setOrderNotePlaceholder")?.value || "").trim(),
+          showRotatingTips: Boolean(document.getElementById("togShowRotatingTips")?.checked),
+          secondsPerTip: Math.max(2, parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10),
+          rotatingTips: (document.getElementById("setRotatingTips")?.value || "").trim(),
+          showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
+          autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
+          secondsPerSlide: Math.max(2, parseInt(document.getElementById("setSecondsPerSlide")?.value || "10", 10) || 10),
+          awarenessSlides: (document.getElementById("setAwarenessSlides")?.value || "").trim(),
+          awarenessDescriptions: (document.getElementById("setAwarenessDescriptions")?.value || "").trim(),
+          awarenessBottomCaption: (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
+        };
+        fd.append("extra_settings_json", JSON.stringify(extraPayload));
+
         const res = await fetch("/api/settings", {
           method: "POST",
           headers: getStaffHeaders(),
@@ -5055,33 +5382,22 @@
         });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
-        if (!res.ok || data.ok === false) throw new Error(data.detail || "Save failed");
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not save settings");
 
-        if (data.settings) {
-          const serverSettings = { ...data.settings };
-          const newlyUploadedUrl = String(serverSettings.awareness_image_url || "").trim();
-          const finalSlides = [...awarenessSlidesList];
-          if (awFile && newlyUploadedUrl && !finalSlides.some(s => s.url === newlyUploadedUrl)) {
-            finalSlides.push({
-              url: newlyUploadedUrl,
-              caption: pendingDesc || updatedExtra.awarenessBottomCaption
-            });
+        state.settings = {
+          ...state.settings,
+          ...(data.settings || {}),
+          extra_settings: {
+            ...extraPayload,
+            ...((data.settings && data.settings.extra_settings) || {})
           }
-          if (!finalSlides.length) {
-            serverSettings.awareness_image_url = "";
-          }
-          updatedExtra.awarenessSlides = finalSlides.map(s => s.url).join("\n");
-          updatedExtra.awarenessDescriptions = finalSlides.map(s => String(s.caption || "").replace(/\|/g, "/")).join(" | ");
-          serverSettings.extra_settings = { ...(serverSettings.extra_settings || {}), ...updatedExtra };
-          state.settings = { ...state.settings, ...serverSettings };
-          if (document.getElementById("setAwarenessImageFile")) {
-            document.getElementById("setAwarenessImageFile").value = "";
-          }
-          applySettingsToUI();
-        }
+        };
+        const awFileInp = document.getElementById("setAwarenessImageFile");
+        if (awFileInp) awFileInp.value = "";
+        applySettingsToUI();
         if (fb) {
           fb.className = "small text-success fw-semibold";
-          fb.textContent = "All app settings saved.";
+          fb.textContent = "All settings saved!";
         }
       } catch (err) {
         if (fb) {

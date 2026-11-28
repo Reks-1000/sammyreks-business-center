@@ -3468,20 +3468,55 @@
       startAwarenessSlideshow(Boolean(document.getElementById("togAutoSlidePhotos")?.checked));
     }
 
-    function deleteAwarenessSlide(idx) {
-      awarenessSlidesList.splice(idx, 1);
-      if (awarenessSlideIdx >= awarenessSlidesList.length) awarenessSlideIdx = 0;
-      renderAwarenessSlidesManager();
-      startAwarenessSlideshow(Boolean(document.getElementById("togAutoSlidePhotos")?.checked));
+    async function deleteAwarenessSlide(idx) {
+      const slide = awarenessSlidesList[idx];
+      if (!slide) return;
+      if (!isSuperAdmin()) return alert("Only Super Admin (CEO) can delete awareness slides.");
+      try {
+        const res = await fetch("/api/settings/delete-slide", {
+          method: "POST",
+          headers: getStaffHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify({ url: slide.url, index: idx })
+        });
+        if (handleStaffUnauthorized(res)) return;
+        const data = await safeJson(res);
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not delete slide");
+        awarenessSlidesList.splice(idx, 1);
+        awarenessSlideIdx = awarenessSlidesList.length ? Math.min(awarenessSlideIdx, awarenessSlidesList.length - 1) : 0;
+        if (data.settings) state.settings = { ...state.settings, ...data.settings };
+        renderAwarenessSlidesManager();
+        startAwarenessSlideshow(Boolean(document.getElementById("togAutoSlidePhotos")?.checked));
+        const fb = document.getElementById("settingsFeedbackText");
+        if (fb) { fb.className = "small text-success fw-semibold"; fb.textContent = "Slide deleted permanently."; }
+      } catch (err) {
+        alert(err.message || "Could not delete slide. Please try again.");
+      }
     }
 
-    function clearAllAwarenessSlides() {
-      awarenessSlidesList = [];
-      awarenessSlideIdx = 0;
-      const fileInp = document.getElementById("setAwarenessImageFile");
-      if (fileInp) fileInp.value = "";
-      renderAwarenessSlidesManager();
-      startAwarenessSlideshow(false);
+    async function clearAllAwarenessSlides() {
+      if (!isSuperAdmin()) return alert("Only Super Admin (CEO) can clear awareness slides.");
+      if (!awarenessSlidesList.length) return;
+      if (!confirm("Delete all awareness slides? This cannot be undone.")) return;
+      try {
+        const res = await fetch("/api/settings/clear-slide", {
+          method: "POST",
+          headers: getStaffHeaders()
+        });
+        if (handleStaffUnauthorized(res)) return;
+        const data = await safeJson(res);
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not clear slides");
+        awarenessSlidesList = [];
+        awarenessSlideIdx = 0;
+        const fileInp = document.getElementById("setAwarenessImageFile");
+        if (fileInp) fileInp.value = "";
+        if (data.settings) state.settings = { ...state.settings, ...data.settings };
+        renderAwarenessSlidesManager();
+        startAwarenessSlideshow(false);
+        const fb = document.getElementById("settingsFeedbackText");
+        if (fb) { fb.className = "small text-success fw-semibold"; fb.textContent = "All awareness slides deleted."; }
+      } catch (err) {
+        alert(err.message || "Could not clear slides. Please try again.");
+      }
     }
 
     function startAwarenessSlideshow(autoSlide) {
@@ -5732,14 +5767,74 @@
         return;
       }
       box.innerHTML = state.workers.map(w => `
-        <div class="dark-subpanel d-flex justify-content-between align-items-center">
-          <div>
+        <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2">
+          <div class="min-w-0">
             <div class="fw-bold small">${escapeHtml(w.name)}</div>
             <div class="text-secondary" style="font-size:0.75rem;">@${escapeHtml(w.username)} • ${escapeHtml(w.role)}</div>
           </div>
-          <span class="badge text-bg-secondary">${escapeHtml(w.shop_id || "main")}</span>
+          <div class="d-flex align-items-center gap-1 flex-shrink-0">
+            <span class="badge text-bg-secondary">${escapeHtml(w.shop_id || "main")}</span>
+            ${isSuperAdmin() ? `
+              <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="editStaffWorker('${escapeHtml(w.id)}')">Edit</button>
+              <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteStaffWorker('${escapeHtml(w.id)}')">Remove</button>
+            ` : ""}
+          </div>
         </div>
       `).join("");
+    }
+
+    async function editStaffWorker(workerId) {
+      if (!isSuperAdmin()) return alert("Only Super Admin (CEO) can edit staff accounts.");
+      const worker = state.workers.find(w => w.id === workerId);
+      if (!worker) return alert("Staff account not found. Refresh the staff list and try again.");
+      const name = prompt("Staff / owner name:", worker.name || "");
+      if (name === null) return;
+      const username = prompt("Login username:", worker.username || "");
+      if (username === null) return;
+      const role = prompt("Role (Staff, Manager, Admin, ShopOwner):", worker.role || "Staff");
+      if (role === null) return;
+      const password = prompt("New password (leave blank to keep the current password):", "");
+      if (password === null) return;
+      const payload = { name: name.trim(), username: username.trim(), role: role.trim(), shop_id: worker.shop_id || "main" };
+      if (password.trim()) payload.password = password.trim();
+      try {
+        const res = await fetch(`/api/workers/${encodeURIComponent(workerId)}`, {
+          method: "PUT",
+          headers: getStaffHeaders({ "Content-Type": "application/json" }),
+          body: JSON.stringify(payload)
+        });
+        if (handleStaffUnauthorized(res)) return;
+        const data = await safeJson(res);
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not update staff account");
+        await Promise.all([loadStaffWorkers(), loadShops()]);
+        renderPartnerShopsAdminList();
+        alert("Account updated successfully.");
+      } catch (err) {
+        alert(err.message || "Could not update account.");
+      }
+    }
+
+    async function deleteStaffWorker(workerId) {
+      if (!isSuperAdmin()) return alert("Only Super Admin (CEO) can remove staff accounts.");
+      const worker = state.workers.find(w => w.id === workerId);
+      if (!worker) return alert("Staff account not found.");
+      const ownerWarning = String(worker.role || "").toUpperCase() === "SHOPOWNER"
+        ? "\n\nThe shop will remain registered, but its owner login will be removed."
+        : "";
+      if (!confirm(`Remove the account for ${worker.name} (@${worker.username})?${ownerWarning}`)) return;
+      try {
+        const res = await fetch(`/api/workers/${encodeURIComponent(workerId)}`, {
+          method: "DELETE",
+          headers: getStaffHeaders()
+        });
+        if (handleStaffUnauthorized(res)) return;
+        const data = await safeJson(res);
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not remove staff account");
+        await Promise.all([loadStaffWorkers(), loadShops()]);
+        renderPartnerShopsAdminList();
+      } catch (err) {
+        alert(err.message || "Could not remove account.");
+      }
     }
 
     async function submitWorkerForm(event) {
@@ -5778,16 +5873,79 @@
         return `
           <div class="col-md-6">
             <div class="dark-subpanel h-100 d-flex justify-content-between align-items-start gap-2">
-              <div>
+              <div class="min-w-0">
                 <div class="fw-bold small text-warning">${escapeHtml(s.name)} <span class="text-secondary">(${escapeHtml(s.slug)})</span></div>
                 <div class="small text-info">Location: ${escapeHtml(cleanLoc)}</div>
                 <div class="text-secondary" style="font-size:0.75rem;">Owner: ${escapeHtml(s.owner_name || "-")} (@${escapeHtml(s.owner_username || "-")})</div>
+                <div class="d-flex flex-wrap gap-1 mt-2">
+                  <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="openStoreQrModal('${escapeHtml(s.slug)}')">QR</button>
+                  ${isSuperAdmin() ? `
+                    <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="editPartnerShop('${escapeHtml(s.slug)}')">Edit shop</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deletePartnerShop('${escapeHtml(s.slug)}')">Delete shop</button>
+                  ` : ""}
+                </div>
               </div>
-              <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="openStoreQrModal('${escapeHtml(s.slug)}')">QR</button>
             </div>
           </div>
         `;
       }).join("");
+    }
+
+    async function editPartnerShop(shopSlug) {
+      if (!isSuperAdmin()) return alert("Only Super Admin (CEO) can edit partner shops.");
+      const shop = state.shops.find(s => s.slug === shopSlug);
+      if (!shop) return alert("Partner shop not found.");
+      const name = prompt("Business name:", shop.name || "");
+      if (name === null) return;
+      const location = prompt("Business location:", shop.location || "");
+      if (location === null) return;
+      const phone = prompt("Business phone:", shop.phone || "");
+      if (phone === null) return;
+      const tagline = prompt("Business tagline:", shop.tagline || "");
+      if (tagline === null) return;
+      const bankDetails = prompt("Bank / transfer details:", shop.bank_details || "");
+      if (bankDetails === null) return;
+      const fd = new FormData();
+      fd.append("name", name.trim());
+      fd.append("location", location.trim());
+      fd.append("phone", phone.trim());
+      fd.append("tagline", tagline.trim());
+      fd.append("bank_details", bankDetails.trim());
+      try {
+        const res = await fetch(`/api/shops/${encodeURIComponent(shopSlug)}`, {
+          method: "POST",
+          headers: getStaffHeaders(),
+          body: fd
+        });
+        if (handleStaffUnauthorized(res)) return;
+        const data = await safeJson(res);
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not update shop");
+        await loadShops();
+        renderPartnerShopsAdminList();
+        alert("Partner shop updated successfully.");
+      } catch (err) {
+        alert(err.message || "Could not update shop.");
+      }
+    }
+
+    async function deletePartnerShop(shopSlug) {
+      if (!isSuperAdmin()) return alert("Only Super Admin (CEO) can delete partner shops.");
+      const shop = state.shops.find(s => s.slug === shopSlug);
+      const shopName = shop?.name || shopSlug;
+      if (!confirm(`Permanently delete ${shopName}?\n\nThis removes the shop and all staff/owner login accounts assigned to it. Sales and order records are not deleted.`)) return;
+      try {
+        const res = await fetch(`/api/shops/${encodeURIComponent(shopSlug)}`, {
+          method: "DELETE",
+          headers: getStaffHeaders()
+        });
+        if (handleStaffUnauthorized(res)) return;
+        const data = await safeJson(res);
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not delete shop");
+        await Promise.all([loadShops(), loadStaffWorkers()]);
+        renderPartnerShopsAdminList();
+      } catch (err) {
+        alert(err.message || "Could not delete shop.");
+      }
     }
 
     async function loadStaffAnalytics(qShop) {
@@ -5875,7 +6033,7 @@
         fd.append("broadcast_video_url", (document.getElementById("setBroadcastVideoUrl")?.value || "").trim());
         fd.append("awareness_image_url", awarenessSlidesList.length ? awarenessSlidesList[0].url : "");
         fd.append("clear_awareness_image", awarenessSlidesList.length === 0 ? "1" : "0");
-        fd.append("extra_settings_json", JSON.stringify(extraPayload));
+        fd.append("extra_settings", JSON.stringify(extraPayload));
 
         const vidFile = document.getElementById("setBroadcastVideoFile")?.files?.[0];
         if (vidFile) fd.append("broadcast_video_file", vidFile);

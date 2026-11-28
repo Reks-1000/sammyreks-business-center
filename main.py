@@ -208,7 +208,6 @@ def _client_ip(request: Request) -> str:
 
 
 def _check_failed_pin_burst(key: str, max_failures: int = 30, window_seconds: int = 60) -> None:
-    """Gentle burst guard against automated brute-force PIN guessing without blocking normal use."""
     now = time.time()
     recent = [t for t in _failed_pin_buckets[key] if now - t < window_seconds]
     _failed_pin_buckets[key] = recent
@@ -963,7 +962,7 @@ async def auto_stock_by_barcode(
 async def auto_stock_by_names(request: Request):
     require_staff(request)
     payload = await request.json()
-    raw_names = payload.get("product_names") or []
+    raw_names = payload.get("product_names") if "product_names" in payload else payload.get("names")
     if isinstance(raw_names, str):
         names_list = [s.strip() for s in re.split(r"[,;\r\n]+", raw_names) if s.strip()]
     elif isinstance(raw_names, list):
@@ -1357,13 +1356,28 @@ async def create_order(request: Request):
         for it in items:
             if not isinstance(it, dict):
                 continue
+            it_id = str(it.get("product_id") or it.get("id") or "").strip()
             it_name = str(it.get("name") or "Item").strip()
             it_unit = str(it.get("unit") or "Unit").strip()
             it_qty = max(0.01, float(it.get("qty") or 1))
-            it_total = max(0.0, float(it.get("total_price") or 0.0))
+            raw_unit_price = it.get("unit_price") if it.get("unit_price") is not None else it.get("price")
+            if it.get("total_price") is not None:
+                it_total = max(0.0, float(it.get("total_price") or 0.0))
+                it_unit_price = float(raw_unit_price) if raw_unit_price is not None else (it_total / it_qty)
+            else:
+                it_unit_price = max(0.0, float(raw_unit_price or 0.0))
+                it_total = it_unit_price * it_qty
             total_sum += it_total
             item_parts.append(f"{it_qty} {it_unit}(s) of {it_name}")
-            sanitized_items.append({**it, "name": it_name, "unit": it_unit, "qty": it_qty, "total_price": it_total})
+            sanitized_items.append({
+                **it,
+                "product_id": it_id,
+                "name": it_name,
+                "unit": it_unit,
+                "qty": it_qty,
+                "unit_price": it_unit_price,
+                "total_price": it_total,
+            })
         items_str = ", ".join(item_parts) if item_parts else "Cart Order"
         note_str = f" Note: {notes}" if notes else ""
         order_type = "Cart Order"
@@ -1465,8 +1479,15 @@ async def verify_order(order_id: str, request: Request):
         for it in items:
             it_name = html.escape(str(it.get("name") or "Item"))
             it_unit = html.escape(str(it.get("unit") or "Unit"))
+            it_qty_num = max(0.0, float(it.get("qty") or 1))
             it_qty = html.escape(str(it.get("qty") or 1))
-            it_total = float(it.get("total_price") or 0.0)
+            if it.get("total_price") is not None:
+                it_total = float(it.get("total_price") or 0.0)
+            else:
+                unit_p = float(
+                    it.get("unit_price") if it.get("unit_price") is not None else (it.get("price") or 0.0)
+                )
+                it_total = unit_p * it_qty_num
             total_val += it_total
             lines_html += (
                 f"<p style='margin:2px 0;'>{it_qty} {it_unit}(s) of {it_name} &mdash; "
@@ -1627,6 +1648,7 @@ async def post_message(
     clean_phone = phone.strip()
     clean_text = text.strip()
     clean_sender = sender.strip() or "Customer"
+    clean_pin = pin.strip()
 
     if not clean_phone:
         raise HTTPException(status_code=400, detail="Phone number is required")
@@ -1638,7 +1660,7 @@ async def post_message(
         target_shop = normalize_shop_id(shop_id)
         burst_key = f"msg:{_client_ip(request)}:{target_shop}:{clean_phone}"
         _check_failed_pin_burst(burst_key)
-        if not _customer_pin_authorized(clean_phone, pin, shop_id=target_shop):
+        if not _customer_pin_authorized(clean_phone, clean_pin, shop_id=target_shop):
             _record_failed_pin(burst_key)
             raise HTTPException(status_code=401, detail="Unlock your chat with your phone number and PIN or Order Ref first")
         _clear_failed_pins(burst_key)
@@ -1665,9 +1687,9 @@ async def post_message(
         "proof_public_id": proof_public_id or "",
         "timestamp": now_str(),
     }
-    if pin.strip():
-        msg_doc["customer_pin_hash"] = hash_pin(pin.strip())
-        msg_doc["payment_ref_hash"] = hash_pin(pin.strip())
+    if clean_pin and _customer_pin_authorized(clean_phone, clean_pin, shop_id=target_shop):
+        msg_doc["customer_pin_hash"] = hash_pin(clean_pin)
+        msg_doc["payment_ref_hash"] = hash_pin(clean_pin)
 
     msg_id = uuid.uuid4().hex
     db.collection("messages").document(msg_id).set(msg_doc)

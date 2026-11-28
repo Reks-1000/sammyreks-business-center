@@ -465,6 +465,8 @@
     .wa-chat-messages {
       flex: 1 1 auto;
       overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
       padding: 12px;
       display: flex;
       flex-direction: column;
@@ -2960,7 +2962,7 @@
     });
 
     // ========================================================================
-    // IN-APP LIGHTBOX & WHATSAPP BUBBLE RENDERER (USED IN BOTH CHATS)
+    // IN-APP LIGHTBOX & WHATSAPP BUBBLE RENDERER (SCROLL-SAFE)
     // ========================================================================
     function openChatImageLightbox(url, caption = "Attachment Preview") {
       if (!url || !isSafeMediaUrl(url)) return;
@@ -2971,6 +2973,32 @@
       if (title) title.textContent = caption;
       if (orig) orig.href = url;
       getModal("chatImageLightboxModal")?.show();
+    }
+
+    function isNearChatBottom(box, threshold = 80) {
+      if (!box) return true;
+      return box.scrollHeight - box.scrollTop - box.clientHeight <= threshold;
+    }
+
+    function renderChatListIntoBox(box, items, renderItemFn, emptyHtml, forceBottom = false) {
+      if (!box) return;
+      const prevScrollTop = box.scrollTop;
+      const prevScrollHeight = box.scrollHeight;
+      const wasNearBottom = isNearChatBottom(box);
+
+      if (!items || !items.length) {
+        box.innerHTML = emptyHtml;
+        return;
+      }
+
+      box.innerHTML = items.map(renderItemFn).join("");
+
+      if (forceBottom || wasNearBottom) {
+        box.scrollTop = box.scrollHeight;
+      } else {
+        const heightDiff = box.scrollHeight - prevScrollHeight;
+        box.scrollTop = Math.max(0, prevScrollTop + Math.max(0, heightDiff));
+      }
     }
 
     function renderWhatsAppBubble(msg, perspective = "customer", canDeletePhoto = false) {
@@ -3088,13 +3116,13 @@
         const custModalEl = document.getElementById("customerChatModal");
         const custModalOpen = Boolean(custModalEl && custModalEl.classList.contains("show"));
         if (custModalOpen && state.customerChat.unlocked && state.customerChat.phone && state.customerChat.pin) {
-          await fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin, true);
+          await fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin, true, false);
         }
 
         const staffTabEl = document.getElementById("staffOrdersChatTab");
         const staffTabActive = Boolean(staffTabEl && staffTabEl.classList.contains("show") && isStaffLoggedIn());
         if (staffTabActive) {
-          await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
+          await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true, false);
         }
       }, 3000);
     }
@@ -3282,7 +3310,7 @@
       startLiveChatPolling();
 
       document.getElementById("customerChatModal")?.addEventListener("shown.bs.modal", () => {
-        renderCustomerChatMessages();
+        renderCustomerChatMessages(true);
       });
 
       document.getElementById("storeQrModal")?.addEventListener("hidden.bs.modal", () => {
@@ -3291,9 +3319,9 @@
 
       document.getElementById("tab-orders-chat")?.addEventListener("shown.bs.tab", async () => {
         renderStaffChatThreads();
-        renderStaffChatMessages();
+        renderStaffChatMessages(true);
         if (isStaffLoggedIn()) {
-          await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
+          await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true, false);
         }
       });
 
@@ -4477,7 +4505,7 @@
     }
 
     // ========================================================================
-    // CUSTOM REQUEST & WHATSAPP-STYLE CUSTOMER CHAT (IMMEDIATE RENDERING)
+    // CUSTOM REQUEST & WHATSAPP-STYLE CUSTOMER CHAT (SCROLL-SAFE)
     // ========================================================================
     function openSpecialRequestModal() {
       const box = document.getElementById("specialRequestResultBox");
@@ -4541,9 +4569,9 @@
       if (pEl && state.customerChat.phone) pEl.value = state.customerChat.phone;
       if (pinEl && state.customerChat.pin) pinEl.value = state.customerChat.pin;
       getModal("customerChatModal")?.show();
-      requestAnimationFrame(() => renderCustomerChatMessages());
+      requestAnimationFrame(() => renderCustomerChatMessages(true));
       if (state.customerChat.phone && state.customerChat.pin) {
-        fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin);
+        fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin, false, true);
       }
     }
 
@@ -4551,10 +4579,10 @@
       event.preventDefault();
       const phone = (document.getElementById("custChatPhone")?.value || "").trim();
       const pin = (document.getElementById("custChatPin")?.value || "").trim();
-      await fetchCustomerChatMessages(phone, pin);
+      await fetchCustomerChatMessages(phone, pin, false, true);
     }
 
-    async function fetchCustomerChatMessages(phone, pin, silent = false) {
+    async function fetchCustomerChatMessages(phone, pin, silent = false, forceBottom = false) {
       const stEl = document.getElementById("custChatAuthStatus");
       const badge = document.getElementById("customerChatSessionBadge");
       try {
@@ -4579,7 +4607,7 @@
               stEl.className = "small text-danger mb-2";
               stEl.textContent = data.detail || "Invalid phone number or PIN/Ref.";
             }
-            renderCustomerChatMessages();
+            renderCustomerChatMessages(false);
           }
           return;
         }
@@ -4603,7 +4631,7 @@
           stEl.className = "small text-success mb-2";
           stEl.textContent = `Unlocked chat for ${phone}`;
         }
-        renderCustomerChatMessages();
+        renderCustomerChatMessages(forceBottom);
       } catch (err) {
         if (!silent && stEl) {
           stEl.className = "small text-danger mb-2";
@@ -4612,7 +4640,7 @@
       }
     }
 
-    function renderCustomerChatMessages() {
+    function renderCustomerChatMessages(forceBottom = false) {
       const box = document.getElementById("customerChatBox");
       if (!box) return;
       if (!state.customerChat.unlocked) {
@@ -4620,14 +4648,13 @@
         box.innerHTML = `<div data-empty-chat="1" class="text-secondary small text-center py-5">${escapeHtml(helper || "Enter your phone number and PIN or Reference Code above to open your chat thread.")}</div>`;
         return;
       }
-      if (!state.customerChat.messages.length) {
-        box.innerHTML = `<div data-empty-chat="1" class="text-secondary small text-center py-5">No messages yet. Send a message or add/paste an image below.</div>`;
-        return;
-      }
-      box.innerHTML = state.customerChat.messages
-        .map(m => renderWhatsAppBubble(m, "customer", false))
-        .join("");
-      box.scrollTop = box.scrollHeight;
+      renderChatListIntoBox(
+        box,
+        state.customerChat.messages,
+        m => renderWhatsAppBubble(m, "customer", false),
+        `<div data-empty-chat="1" class="text-secondary small text-center py-5">No messages yet. Send a message or add/paste an image below.</div>`,
+        forceBottom
+      );
     }
 
     async function sendCustomerChatMessage(event) {
@@ -4672,7 +4699,7 @@
         const res = await fetch("/api/messages", { method: "POST", body: fd });
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Send failed");
-        await fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin, true);
+        await fetchCustomerChatMessages(state.customerChat.phone, state.customerChat.pin, true, true);
       } catch (err) {
         if (stEl) {
           stEl.className = "small text-danger mb-2";
@@ -4773,7 +4800,7 @@
       await Promise.all([
         loadProducts(state.staffShopId || "main"),
         loadStaffOrders(qShop),
-        loadStaffMessages(qShop),
+        loadStaffMessages(qShop, true, false),
         loadStaffSales(qShop),
         loadStaffDebtors(qShop),
         loadStaffExpenses(qShop),
@@ -5292,23 +5319,19 @@
       }
       const tbody = document.getElementById("recentSalesTbody");
       if (!tbody) return;
-      tbody.innerHTML = state.sales.length
-        ? state.sales.slice(0, 25).map(s => `
-            <tr>
-              <td style="font-size:0.75rem;"><div>${escapeHtml(s.payment_ref || "")}</div><div class="text-secondary">${escapeHtml(s.timestamp || "")}</div></td>
-              <td>${escapeHtml(s.item_name || "")}</td>
-              <td>${Number(s.qty || 1)} ${escapeHtml(s.unit_type || "")}</td>
-              <td class="text-warning fw-semibold">${formatMoney(s.total || 0)}</td>
-              <td>${escapeHtml(s.payment_source || "Cash")}</td>
-            </tr>`).join("")
-        : `<tr><td colspan="5" class="text-center text-secondary py-3">No recent sales.</td></tr>`;
-    }
-
-    function setOrderFilter(filterName, btnEl) {
-      state.orderFilter = filterName;
-      document.querySelectorAll("[data-order-filter]").forEach(b => b.classList.remove("active"));
-      if (btnEl) btnEl.classList.add("active");
-      renderStaffOrders();
+      if (!state.sales.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-secondary py-3">No recent sales.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = state.sales.slice(0, 25).map(s => `
+        <tr>
+          <td class="small">${escapeHtml(s.timestamp || s.payment_ref || "")}</td>
+          <td>${escapeHtml(s.item_name || "")}</td>
+          <td>${escapeHtml(s.qty)} ${escapeHtml(s.unit_type || "")}</td>
+          <td class="text-warning fw-semibold">${formatMoney(s.total)}</td>
+          <td><span class="badge text-bg-secondary">${escapeHtml(s.payment_source || "Cash")}</span></td>
+        </tr>
+      `).join("");
     }
 
     async function loadStaffOrders(qShop) {
@@ -5323,172 +5346,83 @@
       renderStaffOrders();
     }
 
+    function setOrderFilter(filterName, btnEl) {
+      state.orderFilter = filterName;
+      document.querySelectorAll("[data-order-filter]").forEach(b => b.classList.remove("active"));
+      if (btnEl) btnEl.classList.add("active");
+      renderStaffOrders();
+    }
+
     function renderStaffOrders() {
       const box = document.getElementById("staffOrdersList");
       const badge = document.getElementById("pendingOrdersNavBadge");
       if (!box) return;
 
-      const pendingCount = state.orders.filter(o => o.status === "Pending").length;
+      const pendingCount = state.orders.filter(o => (o.status || "Pending") !== "Verified").length;
       if (badge) badge.textContent = String(pendingCount);
 
-      const list = state.orders.filter(o => state.orderFilter === "All" || o.status === state.orderFilter);
+      const list = state.orders.filter(o => {
+        if (state.orderFilter === "All") return true;
+        return (o.status || "Pending") === state.orderFilter;
+      });
+
       if (!list.length) {
         box.innerHTML = `<div class="text-secondary small text-center py-3">No orders in this view.</div>`;
         return;
       }
 
       box.innerHTML = list.map(o => {
-        const isPending = o.status === "Pending";
-        const phone = o.contact_phone || o.phone || "";
+        const verified = o.status === "Verified";
         return `
           <div class="dark-subpanel">
-            <div class="d-flex justify-content-between align-items-start gap-2">
+            <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
               <div>
-                <div class="fw-bold small">${escapeHtml(o.customer || "Customer")} <span class="text-secondary">(${escapeHtml(phone)})</span></div>
-                <div class="text-secondary" style="font-size:0.75rem;">Ref: <strong>${escapeHtml(o.payment_ref || "")}</strong> • PIN: <strong>${escapeHtml(o.customer_pin || "")}</strong> • Shop: ${escapeHtml(o.shop_id || "main")}</div>
+                <span class="fw-bold small text-warning">${escapeHtml(o.customer || "Customer")}</span>
+                <span class="small text-secondary ms-1">(${escapeHtml(o.contact_phone || "")})</span>
               </div>
-              <span class="badge ${isPending ? "text-bg-warning text-dark" : "text-bg-success"}">${escapeHtml(o.status || "Pending")}</span>
+              <span class="badge ${verified ? "text-bg-success" : "text-bg-warning text-dark"}">${escapeHtml(o.status || "Pending")}</span>
             </div>
-            <div class="small mt-1" style="color:var(--gold);">Total: ${formatMoney(o.total_amount || 0)}</div>
+            <div class="small text-secondary mb-1">Ref: <strong class="text-light">${escapeHtml(o.payment_ref)}</strong> • Total: <strong class="text-warning">${formatMoney(o.total)}</strong></div>
             <div class="d-flex flex-wrap gap-1 mt-2">
-              ${isPending ? `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="verifyStaffOrder('${escapeHtml(o.id)}')">Verify &amp; Issue Receipt</button>` : ""}
-              <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="selectStaffChatPhone('${escapeHtml(phone)}')">Open Chat</button>
-              <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteStaffOrder('${escapeHtml(o.id)}')">Delete</button>
+              ${!verified ? `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="verifyOrder('${escapeHtml(o.id)}')">Verify &amp; Issue Receipt</button>` : ""}
+              <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="selectStaffChatThread('${escapeHtml(o.contact_phone || "")}')">Open Chat</button>
+              <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteOrderById('${escapeHtml(o.id)}')">Delete</button>
             </div>
           </div>
         `;
       }).join("");
     }
 
-    async function verifyStaffOrder(orderId) {
+    async function verifyOrder(orderId) {
       try {
-        const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/verify`, { method: "POST", headers: getStaffHeaders() });
+        const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/verify`, {
+          method: "POST",
+          headers: getStaffHeaders()
+        });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
-        if (!res.ok || data.ok === false) throw new Error(data.detail || "Verify failed");
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Verification failed");
         await refreshStaffWorkspace();
       } catch (err) {
         alert(err.message);
       }
     }
 
-    async function deleteStaffOrder(orderId) {
+    async function deleteOrderById(orderId) {
       if (!confirm("Delete this order?")) return;
       try {
-        const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE", headers: getStaffHeaders() });
+        const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+          method: "DELETE",
+          headers: getStaffHeaders()
+        });
         if (handleStaffUnauthorized(res)) return;
-        const data = await safeJson(res);
-        if (!res.ok || data.ok === false) throw new Error(data.detail || "Delete failed");
         await refreshStaffWorkspace();
       } catch (err) {
         alert(err.message);
       }
     }
 
-    function selectStaffChatPhone(phone) {
-      const clean = String(phone || "").trim();
-      const filterEl = document.getElementById("staffChatPhoneFilter");
-      const replyPhoneEl = document.getElementById("staffReplyPhone");
-      if (filterEl) filterEl.value = clean;
-      if (replyPhoneEl) replyPhoneEl.value = clean;
-      updateStaffActiveChatLabel();
-      renderStaffChatThreads();
-      renderStaffChatMessages();
-    }
-
-    function clearStaffThreadSelection() {
-      const filterEl = document.getElementById("staffChatPhoneFilter");
-      if (filterEl) filterEl.value = "";
-      updateStaffActiveChatLabel();
-      renderStaffChatThreads();
-      renderStaffChatMessages();
-    }
-
-    function onStaffPhoneFilterChange() {
-      const filterEl = document.getElementById("staffChatPhoneFilter");
-      const replyPhoneEl = document.getElementById("staffReplyPhone");
-      if (filterEl && replyPhoneEl && filterEl.value.trim()) {
-        replyPhoneEl.value = filterEl.value.trim();
-      }
-      updateStaffActiveChatLabel();
-      renderStaffChatThreads();
-      renderStaffChatMessages();
-    }
-
-    function updateStaffActiveChatLabel() {
-      const lbl = document.getElementById("staffActiveChatTargetLabel");
-      const filterVal = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
-      if (!lbl) return;
-      lbl.textContent = filterVal
-        ? `Conversation with ${filterVal}`
-        : "Viewing all store conversations";
-    }
-
-    function getFilteredStaffMessages() {
-      const filterVal = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
-      const filterDigits = normalizePhoneDigits(filterVal);
-      if (!filterVal) return state.staffMessages;
-
-      return state.staffMessages.filter(m => {
-        const msgPhone = String(m.customer_phone || "").trim();
-        const msgDigits = normalizePhoneDigits(msgPhone);
-        return (
-          msgPhone.toLowerCase().includes(filterVal.toLowerCase()) ||
-          (filterDigits && msgDigits.includes(filterDigits))
-        );
-      });
-    }
-
-    function renderStaffChatThreads() {
-      const threadsEl = document.getElementById("staffChatThreadsList");
-      if (!threadsEl) return;
-
-      const activeFilter = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
-      const activeDigits = normalizePhoneDigits(activeFilter);
-
-      const map = new Map();
-      for (const m of state.staffMessages) {
-        const rawPhone = String(m.customer_phone || "").trim();
-        const key = normalizePhoneDigits(rawPhone) || rawPhone.toLowerCase() || "general";
-        if (!map.has(key)) {
-          map.set(key, {
-            phone: rawPhone || "Customer",
-            lastText: String(m.message || (m.proof_url ? "Sent an image" : "")),
-            lastTime: m.timestamp || "",
-            count: 0
-          });
-        }
-        const entry = map.get(key);
-        entry.count += 1;
-        entry.lastText = String(m.message || (m.proof_url ? "Sent an image" : entry.lastText));
-        entry.lastTime = m.timestamp || entry.lastTime;
-      }
-
-      const threads = Array.from(map.values());
-      if (!threads.length) {
-        threadsEl.innerHTML = `<div class="small text-secondary">No active customer chats yet.</div>`;
-        return;
-      }
-
-      threadsEl.innerHTML = threads.map(th => {
-        const thDigits = normalizePhoneDigits(th.phone);
-        const isSelected = Boolean(activeFilter) && (
-          th.phone.toLowerCase() === activeFilter.toLowerCase() ||
-          (activeDigits && thDigits === activeDigits)
-        );
-        return `
-          <button type="button" class="wa-thread-item ${isSelected ? "active" : ""}" onclick="selectStaffChatPhone('${escapeHtml(th.phone)}')">
-            <div class="d-flex justify-content-between align-items-center gap-2">
-              <span class="fw-bold small text-light">${escapeHtml(th.phone)}</span>
-              <span class="badge text-bg-secondary">${th.count}</span>
-            </div>
-            <div class="text-secondary text-truncate" style="font-size:0.75rem;">${escapeHtml(th.lastText || "Attachment")}</div>
-          </button>
-        `;
-      }).join("");
-    }
-
-    async function loadStaffMessages(qShop, silent = false) {
+    async function loadStaffMessages(qShop, silent = false, forceBottom = false) {
       try {
         const res = await fetch(`/api/messages?shop_id=${qShop}`, { headers: getStaffHeaders() });
         if (handleStaffUnauthorized(res)) return;
@@ -5498,45 +5432,149 @@
           state.staffMessages = data.messages.length >= state.staffMessages.length - pendingOpts.length
             ? data.messages
             : [...data.messages, ...pendingOpts];
+        } else if (!silent) {
+          state.staffMessages = [];
         }
       } catch {
         if (!silent) state.staffMessages = [];
       }
-      updateStaffActiveChatLabel();
       renderStaffChatThreads();
-      renderStaffChatMessages();
+      renderStaffChatMessages(forceBottom);
     }
 
-    function renderStaffChatMessages() {
+    function getFilteredStaffMessages() {
+      const filterPhone = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+      const targetDigits = normalizePhoneDigits(filterPhone);
+      if (!targetDigits) return state.staffMessages;
+      return state.staffMessages.filter(m => {
+        const msgDigits = normalizePhoneDigits(m.customer_phone || "");
+        return msgDigits === targetDigits || msgDigits.includes(targetDigits) || targetDigits.includes(msgDigits);
+      });
+    }
+
+    function onStaffPhoneFilterChange() {
+      const filterPhone = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+      const replyPhoneInp = document.getElementById("staffReplyPhone");
+      if (replyPhoneInp && filterPhone) {
+        replyPhoneInp.value = filterPhone;
+      }
+      updateStaffChatTargetHeader();
+      renderStaffChatThreads();
+      renderStaffChatMessages(false);
+    }
+
+    function updateStaffChatTargetHeader() {
+      const filterPhone = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+      const lbl = document.getElementById("staffActiveChatTargetLabel");
+      if (!lbl) return;
+      if (filterPhone) {
+        lbl.textContent = `Active thread: ${filterPhone}`;
+      } else {
+        lbl.textContent = "Viewing all store conversations";
+      }
+    }
+
+    function selectStaffChatThread(phone) {
+      const cleanPhone = String(phone || "").trim();
+      const filterInp = document.getElementById("staffChatPhoneFilter");
+      const replyInp = document.getElementById("staffReplyPhone");
+      if (filterInp) filterInp.value = cleanPhone;
+      if (replyInp && cleanPhone) replyInp.value = cleanPhone;
+      updateStaffChatTargetHeader();
+      renderStaffChatThreads();
+      renderStaffChatMessages(true);
+    }
+
+    function clearStaffThreadSelection() {
+      const filterInp = document.getElementById("staffChatPhoneFilter");
+      if (filterInp) filterInp.value = "";
+      updateStaffChatTargetHeader();
+      renderStaffChatThreads();
+      renderStaffChatMessages(false);
+    }
+
+    function renderStaffChatThreads() {
+      const threadsBox = document.getElementById("staffChatThreadsList");
+      if (!threadsBox) return;
+
+      const selectedDigits = normalizePhoneDigits(document.getElementById("staffChatPhoneFilter")?.value || "");
+      const threadMap = new Map();
+
+      for (const m of state.staffMessages) {
+        const rawPhone = String(m.customer_phone || "").trim();
+        const digits = normalizePhoneDigits(rawPhone) || rawPhone || "unknown";
+        if (!threadMap.has(digits)) {
+          threadMap.set(digits, {
+            phone: rawPhone || "Customer",
+            digits,
+            lastMessage: m.message || (m.proof_url ? "[Photo Attachment]" : ""),
+            lastTime: m.timestamp || "",
+            count: 1
+          });
+        } else {
+          const entry = threadMap.get(digits);
+          entry.count += 1;
+          entry.lastMessage = m.message || (m.proof_url ? "[Photo Attachment]" : entry.lastMessage);
+          entry.lastTime = m.timestamp || entry.lastTime;
+        }
+      }
+
+      const threads = Array.from(threadMap.values());
+      if (!threads.length) {
+        threadsBox.innerHTML = `<div class="small text-secondary">No active customer chats yet.</div>`;
+        return;
+      }
+
+      threadsBox.innerHTML = threads.map(th => {
+        const isActive = Boolean(selectedDigits && th.digits === selectedDigits);
+        return `
+          <button type="button" class="wa-thread-item ${isActive ? "active" : ""}" onclick="selectStaffChatThread('${escapeHtml(th.phone)}')">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+              <span class="fw-bold small text-warning">${escapeHtml(th.phone)}</span>
+              <span class="badge text-bg-secondary">${th.count}</span>
+            </div>
+            <div class="small text-light text-truncate mt-1">${escapeHtml(th.lastMessage || "Open conversation")}</div>
+            <div class="text-secondary" style="font-size:0.68rem;">${escapeHtml(th.lastTime)}</div>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function renderStaffChatMessages(forceBottom = false) {
+      updateStaffChatTargetHeader();
       const box = document.getElementById("staffChatMessagesBox");
       if (!box) return;
       const list = getFilteredStaffMessages();
-      if (!list.length) {
-        box.innerHTML = `<div data-empty-chat="1" class="text-secondary small text-center py-5">No chat messages yet.</div>`;
-        return;
-      }
-      box.innerHTML = list
-        .map(m => renderWhatsAppBubble(m, "staff", true))
-        .join("");
-      box.scrollTop = box.scrollHeight;
+      renderChatListIntoBox(
+        box,
+        list,
+        m => renderWhatsAppBubble(m, "staff", true),
+        `<div data-empty-chat="1" class="text-secondary small text-center py-5">No chat messages yet.</div>`,
+        forceBottom
+      );
     }
 
     async function sendStaffChatReply(event) {
       event.preventDefault();
-      const phone = (document.getElementById("staffReplyPhone")?.value || "").trim();
+      const phoneEl = document.getElementById("staffReplyPhone");
       const txtEl = document.getElementById("staffReplyText");
       const fileEl = document.getElementById("staffReplyProofFile");
+      const filterEl = document.getElementById("staffChatPhoneFilter");
+
+      const phone = (phoneEl?.value || filterEl?.value || "").trim();
       const text = (txtEl?.value || "").trim();
       const file = fileEl?.files?.[0] || null;
       if (!phone || (!text && !file)) return;
 
-      const tempUrl = file ? URL.createObjectURL(file) : "";
+      if (phoneEl && !phoneEl.value) phoneEl.value = phone;
+
+      const tempPreviewUrl = file ? URL.createObjectURL(file) : "";
       const optimisticMsg = {
         id: `opt_${Date.now()}`,
         sender: "Staff",
         customer_phone: phone,
         message: text,
-        proof_url: tempUrl,
+        proof_url: tempPreviewUrl,
         timestamp: formatNowTime()
       };
       state.staffMessages.push(optimisticMsg);
@@ -5553,37 +5591,51 @@
       if (file) fd.append("proof_file", file);
 
       try {
-        const res = await fetch("/api/messages", { method: "POST", headers: getStaffHeaders(), body: fd });
+        const res = await fetch("/api/messages", {
+          method: "POST",
+          headers: getStaffHeaders(),
+          body: fd
+        });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Reply failed");
-        await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
+        await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true, true);
       } catch (err) {
         alert(err.message);
       }
     }
 
-    async function deleteSingleChatPhoto(msgId) {
+    async function deleteSingleChatPhoto(messageId) {
+      if (!confirm("Remove this photo attachment from chat?")) return;
       try {
-        const res = await fetch(`/api/messages/${encodeURIComponent(msgId)}/photo`, { method: "DELETE", headers: getStaffHeaders() });
+        const res = await fetch(`/api/messages/${encodeURIComponent(messageId)}/photo`, {
+          method: "DELETE",
+          headers: getStaffHeaders()
+        });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not remove photo");
-        await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true);
+        await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true, false);
       } catch (err) {
         alert(err.message);
       }
     }
 
     async function clearAllStaffChatPhotos() {
-      if (!confirm("Delete all chat photos for the current shop view?")) return;
-      const qShop = encodeURIComponent(state.staffShopId || "main");
+      const filterPhone = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+      const targetMsg = filterPhone ? `Remove photo attachments for ${filterPhone}?` : "Remove all photo attachments in this store's chat?";
+      if (!confirm(targetMsg)) return;
       try {
-        const res = await fetch(`/api/messages/photos?shop_id=${qShop}`, { method: "DELETE", headers: getStaffHeaders() });
+        const q = new URLSearchParams({ shop_id: state.staffShopId || "main" });
+        if (filterPhone) q.set("phone", filterPhone);
+        const res = await fetch(`/api/messages/photos?${q.toString()}`, {
+          method: "DELETE",
+          headers: getStaffHeaders()
+        });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
-        if (!res.ok || data.ok === false) throw new Error(data.detail || "Clear photos failed");
-        await loadStaffMessages(qShop, true);
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not clear photos");
+        await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"), true, false);
       } catch (err) {
         alert(err.message);
       }
@@ -5604,46 +5656,39 @@
         ? state.debtors.map(d => `
             <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2">
               <div>
-                <div class="fw-bold small">${escapeHtml(d.customer_name || "")} <span class="text-secondary">(${escapeHtml(d.phone || "")})</span></div>
-                <div class="small text-warning">Balance: ${formatMoney(d.balance_due ?? d.amount_owed ?? 0)}</div>
+                <div class="fw-bold small">${escapeHtml(d.customer_name)} <span class="badge ${d.status === "Settled" ? "text-bg-success" : "text-bg-warning text-dark"}">${escapeHtml(d.status || "Unpaid")}</span></div>
+                <div class="text-secondary" style="font-size:0.75rem;">${escapeHtml(d.phone)} • Balance: ${formatMoney(d.balance_due)}</div>
               </div>
-              <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" onclick="settleDebtor('${escapeHtml(d.id)}')">Settle</button>
-            </div>`).join("")
+              ${d.status !== "Settled" ? `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="settleDebtor('${escapeHtml(d.id)}')">Settle</button>` : ""}
+            </div>
+          `).join("")
         : `<div class="text-secondary small">No debtors recorded.</div>`;
     }
 
     async function submitDebtorForm(event) {
       event.preventDefault();
-      try {
-        const res = await fetch("/api/debtors", {
-          method: "POST",
-          headers: getStaffHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({
-            shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main"),
-            customer_name: document.getElementById("debtorCustomer")?.value.trim(),
-            phone: document.getElementById("debtorPhone")?.value.trim(),
-            amount_owed: parseFloat(document.getElementById("debtorAmount")?.value || "0") || 0,
-            items_bought: document.getElementById("debtorItems")?.value.trim()
-          })
-        });
-        if (handleStaffUnauthorized(res)) return;
-        const data = await safeJson(res);
-        if (!res.ok || data.ok === false) throw new Error(data.detail || "Failed");
+      const fd = new FormData();
+      fd.append("shop_id", state.staffShopId === "all" ? "main" : (state.staffShopId || "main"));
+      fd.append("customer_name", document.getElementById("debtorCustomer")?.value.trim() || "");
+      fd.append("phone", document.getElementById("debtorPhone")?.value.trim() || "");
+      fd.append("amount_owed", document.getElementById("debtorAmount")?.value || "0");
+      fd.append("items_bought", document.getElementById("debtorItems")?.value.trim() || "");
+
+      const res = await fetch("/api/debtors", { method: "POST", headers: getStaffHeaders(), body: fd });
+      if (handleStaffUnauthorized(res)) return;
+      if (res.ok) {
         document.getElementById("debtorForm")?.reset();
-        await loadStaffDebtors(encodeURIComponent(state.staffShopId || "main"));
-      } catch (err) {
-        alert(err.message);
+        await refreshStaffWorkspace();
       }
     }
 
     async function settleDebtor(debtorId) {
-      try {
-        const res = await fetch(`/api/debtors/${encodeURIComponent(debtorId)}/settle`, { method: "POST", headers: getStaffHeaders() });
-        if (handleStaffUnauthorized(res)) return;
-        await refreshStaffWorkspace();
-      } catch (err) {
-        alert(err.message);
-      }
+      const res = await fetch(`/api/debtors/${encodeURIComponent(debtorId)}/settle`, {
+        method: "POST",
+        headers: getStaffHeaders()
+      });
+      if (handleStaffUnauthorized(res)) return;
+      if (res.ok) await refreshStaffWorkspace();
     }
 
     async function loadStaffExpenses(qShop) {
@@ -5658,51 +5703,31 @@
       const box = document.getElementById("expensesList");
       if (!box) return;
       box.innerHTML = state.expenses.length
-        ? state.expenses.map(ex => `
-            <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2">
+        ? state.expenses.map(e => `
+            <div class="dark-subpanel d-flex justify-content-between align-items-center">
               <div>
-                <div class="fw-bold small">${escapeHtml(ex.category || "Operations")}</div>
-                <div class="text-secondary" style="font-size:0.75rem;">${escapeHtml(ex.note || "")}</div>
+                <div class="fw-bold small">${escapeHtml(e.category || "Operations")}</div>
+                <div class="text-secondary" style="font-size:0.75rem;">${escapeHtml(e.note || "")}</div>
               </div>
-              <div class="d-flex align-items-center gap-2">
-                <span class="small text-danger fw-bold">${formatMoney(ex.amount || 0)}</span>
-                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteExpense('${escapeHtml(ex.id)}')">×</button>
-              </div>
-            </div>`).join("")
+              <span class="text-danger fw-bold small">${formatMoney(e.amount)}</span>
+            </div>
+          `).join("")
         : `<div class="text-secondary small">No expenses recorded.</div>`;
     }
 
     async function submitExpenseForm(event) {
       event.preventDefault();
-      try {
-        const res = await fetch("/api/expenses", {
-          method: "POST",
-          headers: getStaffHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({
-            shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main"),
-            category: document.getElementById("expenseCategory")?.value.trim() || "Operations",
-            amount: parseFloat(document.getElementById("expenseAmount")?.value || "0") || 0,
-            note: document.getElementById("expenseNote")?.value.trim()
-          })
-        });
-        if (handleStaffUnauthorized(res)) return;
-        const data = await safeJson(res);
-        if (!res.ok || data.ok === false) throw new Error(data.detail || "Failed");
-        document.getElementById("expenseForm")?.reset();
-        await loadStaffExpenses(encodeURIComponent(state.staffShopId || "main"));
-        await loadStaffAnalytics(encodeURIComponent(state.staffShopId || "main"));
-      } catch (err) {
-        alert(err.message);
-      }
-    }
+      const fd = new FormData();
+      fd.append("shop_id", state.staffShopId === "all" ? "main" : (state.staffShopId || "main"));
+      fd.append("category", document.getElementById("expenseCategory")?.value.trim() || "Operations");
+      fd.append("amount", document.getElementById("expenseAmount")?.value || "0");
+      fd.append("note", document.getElementById("expenseNote")?.value.trim() || "");
 
-    async function deleteExpense(expenseId) {
-      try {
-        const res = await fetch(`/api/expenses/${encodeURIComponent(expenseId)}`, { method: "DELETE", headers: getStaffHeaders() });
-        if (handleStaffUnauthorized(res)) return;
+      const res = await fetch("/api/expenses", { method: "POST", headers: getStaffHeaders(), body: fd });
+      if (handleStaffUnauthorized(res)) return;
+      if (res.ok) {
+        document.getElementById("expenseForm")?.reset();
         await refreshStaffWorkspace();
-      } catch (err) {
-        alert(err.message);
       }
     }
 
@@ -5719,79 +5744,81 @@
       if (!box) return;
       box.innerHTML = state.workers.length
         ? state.workers.map(w => `
-            <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2">
+            <div class="dark-subpanel d-flex justify-content-between align-items-center">
               <div>
-                <div class="fw-bold small">${escapeHtml(w.name || w.username)}</div>
-                <div class="text-secondary" style="font-size:0.74rem;">@${escapeHtml(w.username || "")} • ${escapeHtml(w.role || "Staff")}</div>
+                <div class="fw-bold small">${escapeHtml(w.name)}</div>
+                <div class="text-secondary" style="font-size:0.74rem;">@${escapeHtml(w.username)} • ${escapeHtml(w.role)} (${escapeHtml(w.shop_id || "main")})</div>
               </div>
-              ${isSuperAdmin() && w.username !== state.staff.username
-                ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteWorker('${escapeHtml(w.id)}')">Del</button>`
-                : ""}
-            </div>`).join("")
-        : `<div class="text-secondary small">No staff accounts.</div>`;
+              ${isSuperAdmin() && w.username !== state.staff.username ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteWorker('${escapeHtml(w.id)}')">Del</button>` : ""}
+            </div>
+          `).join("")
+        : `<div class="text-secondary small">No staff members listed.</div>`;
     }
 
     async function submitWorkerForm(event) {
       event.preventDefault();
-      if (!isSuperAdmin()) {
-        alert("Only Super Admin (CEO) can add staff accounts.");
-        return;
-      }
-      try {
-        const res = await fetch("/api/workers", {
-          method: "POST",
-          headers: getStaffHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({
-            name: document.getElementById("workerName")?.value.trim(),
-            username: document.getElementById("workerUsername")?.value.trim(),
-            role: document.getElementById("workerRole")?.value.trim() || "Staff",
-            password: document.getElementById("workerPassword")?.value || "1234",
-            shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main")
-          })
-        });
-        if (handleStaffUnauthorized(res)) return;
-        const data = await safeJson(res);
-        if (!res.ok || data.ok === false) throw new Error(data.detail || "Failed");
+      if (!isSuperAdmin()) return;
+      const fd = new FormData();
+      fd.append("name", document.getElementById("workerName")?.value.trim() || "");
+      fd.append("username", document.getElementById("workerUsername")?.value.trim() || "");
+      fd.append("role", document.getElementById("workerRole")?.value.trim() || "Staff");
+      fd.append("password", document.getElementById("workerPassword")?.value || "");
+      fd.append("shop_id", state.staffShopId === "all" ? "main" : (state.staffShopId || "main"));
+
+      const res = await fetch("/api/workers", { method: "POST", headers: getStaffHeaders(), body: fd });
+      if (handleStaffUnauthorized(res)) return;
+      if (res.ok) {
         document.getElementById("workerForm")?.reset();
         await loadStaffWorkers();
-      } catch (err) {
-        alert(err.message);
       }
     }
 
     async function deleteWorker(workerId) {
-      if (!confirm("Remove this staff account?")) return;
-      try {
-        const res = await fetch(`/api/workers/${encodeURIComponent(workerId)}`, { method: "DELETE", headers: getStaffHeaders() });
-        if (handleStaffUnauthorized(res)) return;
-        await loadStaffWorkers();
-      } catch (err) {
-        alert(err.message);
-      }
+      const res = await fetch(`/api/workers/${encodeURIComponent(workerId)}`, {
+        method: "DELETE",
+        headers: getStaffHeaders()
+      });
+      if (handleStaffUnauthorized(res)) return;
+      if (res.ok) await loadStaffWorkers();
     }
 
     function renderPartnerShopsAdminList() {
       const box = document.getElementById("partnerShopsAdminList");
       if (!box || !isSuperAdmin()) return;
-      const partnerShops = state.shops.filter(s => s.slug && s.slug !== "main");
-      box.innerHTML = partnerShops.length
-        ? partnerShops.map(s => {
+      const list = state.shops.filter(s => s.slug && s.slug !== "main");
+      box.innerHTML = list.length
+        ? list.map(s => {
             const cleanLoc = stripMarketLabel(s.location || "Calabar") || "Calabar";
             return `
               <div class="col-md-6">
                 <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2">
                   <div>
-                    <div class="fw-bold small">${escapeHtml(s.name)} <span class="badge text-bg-secondary">${escapeHtml(s.slug)}</span></div>
-                    <div class="text-secondary" style="font-size:0.74rem;">Location: ${escapeHtml(cleanLoc)} • Owner: ${escapeHtml(s.owner_username || "-")}</div>
+                    <div class="fw-bold small text-warning">${escapeHtml(s.name)} <span class="text-secondary">(${escapeHtml(s.slug)})</span></div>
+                    <div class="small text-info">Location: ${escapeHtml(cleanLoc)}</div>
+                    <div class="text-secondary" style="font-size:0.74rem;">Owner: @${escapeHtml(s.owner_username || "")}</div>
                   </div>
                   <div class="d-flex gap-1">
-                    <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="openStoreQrModal('${escapeHtml(s.slug)}')">QR</button>
-                    <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="enterPartnerStorefront('${escapeHtml(s.slug)}')">Open</button>
+                    <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="openStoreQrModal('${escapeHtml(s.slug)}')">QR</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deletePartnerShop('${escapeHtml(s.slug)}', '${escapeHtml(s.name)}')">Del</button>
                   </div>
                 </div>
-              </div>`;
+              </div>
+            `;
           }).join("")
-        : `<div class="col-12 small text-secondary">No registered partner shops yet.</div>`;
+        : `<div class="col-12 small text-secondary">No partner shops registered yet.</div>`;
+    }
+
+    async function deletePartnerShop(slug, name) {
+      if (!confirm(`Delete partner shop "${name}"?`)) return;
+      const res = await fetch(`/api/shops/${encodeURIComponent(slug)}`, {
+        method: "DELETE",
+        headers: getStaffHeaders()
+      });
+      if (handleStaffUnauthorized(res)) return;
+      if (res.ok) {
+        await loadShops();
+        renderPartnerShopsAdminList();
+      }
     }
 
     async function loadStaffAnalytics(qShop) {
@@ -5799,16 +5826,15 @@
         const res = await fetch(`/api/analytics?shop_id=${qShop}`, { headers: getStaffHeaders() });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
-        if (res.ok && data.summary) {
-          document.getElementById("kpiRevenue").textContent = formatMoney(data.summary.total_revenue || 0);
-          document.getElementById("kpiProfit").textContent = formatMoney(data.summary.gross_profit || 0);
-          document.getElementById("kpiExpenses").textContent = formatMoney(data.summary.total_expenses || 0);
-          document.getElementById("kpiCashflow").textContent = formatMoney(data.summary.net_cashflow || 0);
+        if (res.ok) {
+          document.getElementById("kpiRevenue").textContent = formatMoney(data.revenue);
+          document.getElementById("kpiProfit").textContent = formatMoney(data.profit);
+          document.getElementById("kpiExpenses").textContent = formatMoney(data.expenses);
+          document.getElementById("kpiCashflow").textContent = formatMoney(data.net_cashflow);
         }
       } catch {
-        // Ignore transient analytics error
+        // Ignore
       }
-      renderStockAlerts();
     }
 
     async function saveAppSettings(event) {
@@ -5822,22 +5848,17 @@
       }
 
       try {
-        const form = document.getElementById("appSettingsForm");
-        const fd = new FormData(form);
+        syncAwarenessBackingFields();
+        const scatterOn = Boolean(document.getElementById("togScatterBrandLogo")?.checked);
+        const scatterUrl = (document.getElementById("setScatterLogoUrl")?.value || "").trim();
+        const scatterOpacity = Number(document.getElementById("setScatterLogoOpacity")?.value || 6);
+        const autoColorOn = Boolean(document.getElementById("togAutoColorCycle")?.checked);
 
-        const autoColorCycle = Boolean(document.getElementById("togAutoColorCycle")?.checked);
-        const scatterBrandLogo = Boolean(document.getElementById("togScatterBrandLogo")?.checked);
-        const scatterBrandLogoUrl = (document.getElementById("setScatterLogoUrl")?.value || "").trim();
-        const scatterBrandLogoOpacity = Number(document.getElementById("setScatterLogoOpacity")?.value || 6);
-
-        const extraObj = {
-          ...getExtraSettings(),
-          autoColorCycle,
-          scatterBrandLogo,
-          scatterBrandLogoUrl,
-          scatterBrandLogoOpacity,
-          footerCopyright: document.getElementById("setFooterCopyright")?.value || "",
-          receiptFooter: document.getElementById("setReceiptFooter")?.value || "",
+        const extraPayload = {
+          autoColorCycle: autoColorOn,
+          scatterBrandLogo: scatterOn,
+          scatterBrandLogoUrl: scatterUrl,
+          scatterBrandLogoOpacity: scatterOpacity,
           showAnalytics: Boolean(document.getElementById("togShowAnalytics")?.checked),
           showStockAlerts: Boolean(document.getElementById("togShowStockAlerts")?.checked),
           showRequestTab: Boolean(document.getElementById("togShowRequestTab")?.checked),
@@ -5848,24 +5869,38 @@
           showVendorTags: Boolean(document.getElementById("togShowVendorTags")?.checked),
           showAvailability: Boolean(document.getElementById("togShowAvailability")?.checked),
           hideOutOfStock: Boolean(document.getElementById("togHideOutOfStock")?.checked),
-          searchPlaceholder: document.getElementById("setSearchPlaceholder")?.value || "",
           autoGeneratePin: Boolean(document.getElementById("togAutoGeneratePin")?.checked),
+          showRotatingTips: Boolean(document.getElementById("togShowRotatingTips")?.checked),
+          showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
+          autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
+          searchPlaceholder: document.getElementById("setSearchPlaceholder")?.value || "",
           bankDetails: document.getElementById("setBankDetails")?.value || "",
           pinHelperMsg: document.getElementById("setPinHelperMsg")?.value || "",
           pinFieldLabel: document.getElementById("setPinFieldLabel")?.value || "",
           orderNotePlaceholder: document.getElementById("setOrderNotePlaceholder")?.value || "",
-          showRotatingTips: Boolean(document.getElementById("togShowRotatingTips")?.checked),
           secondsPerTip: parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10,
           rotatingTips: document.getElementById("setRotatingTips")?.value || "",
-          showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
-          autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
           secondsPerSlide: parseInt(document.getElementById("setSecondsPerSlide")?.value || "10", 10) || 10,
-          awarenessSlides: awarenessSlidesList.map(s => s.url).join("\n"),
-          awarenessDescriptions: awarenessSlidesList.map(s => String(s.caption || "").replace(/\|/g, "/")).join(" | "),
-          awarenessBottomCaption: document.getElementById("setAwarenessBottomCaption")?.value || ""
+          awarenessSlides: document.getElementById("setAwarenessSlides")?.value || "",
+          awarenessDescriptions: document.getElementById("setAwarenessDescriptions")?.value || "",
+          awarenessBottomCaption: document.getElementById("setAwarenessBottomCaption")?.value || "",
+          footerCopyright: document.getElementById("setFooterCopyright")?.value || "",
+          receiptFooter: document.getElementById("setReceiptFooter")?.value || ""
         };
 
-        fd.append("extra_settings_json", JSON.stringify(extraObj));
+        const fd = new FormData();
+        fd.append("business_name", document.getElementById("setBusinessName")?.value || "Sammyreks Business Center");
+        fd.append("tagline", document.getElementById("setTagline")?.value || "");
+        fd.append("currency", document.getElementById("setCurrency")?.value || "₦");
+        fd.append("active_notice", document.getElementById("setActiveNotice")?.value || "");
+        fd.append("broadcast_video_url", document.getElementById("setBroadcastVideoUrl")?.value || "");
+        fd.append("extra_settings_json", JSON.stringify(extraPayload));
+
+        const bVidFile = document.getElementById("setBroadcastVideoFile")?.files?.[0];
+        if (bVidFile) fd.append("broadcast_video_file", bVidFile);
+
+        const awImgFile = document.getElementById("setAwarenessImageFile")?.files?.[0];
+        if (awImgFile) fd.append("awareness_image_file", awImgFile);
 
         const res = await fetch("/api/settings", {
           method: "POST",
@@ -5874,23 +5909,17 @@
         });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
-        if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not save settings");
+        if (!res.ok || data.ok === false) throw new Error(data.detail || "Save settings failed");
 
         if (data.settings) {
           state.settings = { ...state.settings, ...data.settings };
-          if (!state.settings.extra_settings || typeof state.settings.extra_settings !== "object") {
-            state.settings.extra_settings = extraObj;
-          } else {
-            state.settings.extra_settings = { ...extraObj, ...state.settings.extra_settings };
-          }
-          const awFileInp = document.getElementById("setAwarenessImageFile");
-          if (awFileInp) awFileInp.value = "";
           applySettingsToUI();
         }
-
+        const awFileInp = document.getElementById("setAwarenessImageFile");
+        if (awFileInp) awFileInp.value = "";
         if (fb) {
           fb.className = "small text-success fw-semibold";
-          fb.textContent = "All settings saved and applied!";
+          fb.textContent = "Settings saved and applied!";
         }
       } catch (err) {
         if (fb) {

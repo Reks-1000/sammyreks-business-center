@@ -643,6 +643,29 @@
       font-size: 0.76rem;
     }
 
+    /* QR Code Cards */
+    .qr-code-card {
+      background: var(--bg-surface-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .qr-canvas-frame {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin: 6px auto;
+    }
+
     /* Staff Tabs & Tables */
     .nav-pills .nav-link {
       color: #cbd5e1;
@@ -689,10 +712,31 @@
       font-family: "Courier New", Courier, monospace;
       font-size: 0.84rem;
     }
+
+    /* Dedicated Print Sheet for Store QR / Barcodes */
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #qrPrintOverlay,
+      #qrPrintOverlay * {
+        visibility: visible !important;
+      }
+      #qrPrintOverlay {
+        position: fixed !important;
+        inset: 0 !important;
+        background: #ffffff !important;
+        color: #111111 !important;
+        padding: 16px !important;
+        z-index: 99999 !important;
+        display: block !important;
+      }
+    }
   </style>
 </head>
 <body>
   <div id="scatteredBrandBg" aria-hidden="true"></div>
+  <div id="qrPrintOverlay" class="d-none"></div>
 
   <!-- TOP NAVIGATION HEADER -->
   <header class="app-header">
@@ -735,6 +779,10 @@
           + Register Your Business
         </button>
 
+        <button id="navQrCodesBtn" type="button" class="hdr-pill-btn hdr-btn-gold" onclick="openStoreQrModal('all')">
+          Store QR / Scan
+        </button>
+
         <button id="navCartBtn" type="button" class="hdr-pill-btn hdr-btn-cyan" onclick="openCartModal()">
           Cart <span id="topCartBadge" class="badge rounded-pill text-bg-warning text-dark ms-1">0</span>
         </button>
@@ -765,7 +813,7 @@
     <div class="offcanvas-header border-bottom border-secondary-subtle">
       <div>
         <h5 class="offcanvas-title fw-bold text-warning mb-0" id="registeredShopsSidebarLabel">Registered Stores</h5>
-        <div class="small text-secondary">Select a store near your location to shop directly</div>
+        <div class="small text-secondary">Select a store or open its printable QR code</div>
       </div>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
     </div>
@@ -778,9 +826,14 @@
         <div class="small text-secondary mb-2">
           Location: <strong class="text-light">Calabar</strong>
         </div>
-        <button type="button" class="btn btn-sm btn-warning fw-bold w-100" data-bs-dismiss="offcanvas" onclick="enterMainStorefront()">
-          Open Main Storefront
-        </button>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-sm btn-warning fw-bold flex-grow-1" data-bs-dismiss="offcanvas" onclick="enterMainStorefront()">
+            Open Storefront
+          </button>
+          <button type="button" class="btn btn-sm btn-outline-info fw-bold" data-bs-dismiss="offcanvas" onclick="openStoreQrModal('main')">
+            QR Code
+          </button>
+        </div>
       </div>
 
       <div class="border-top border-secondary-subtle pt-2">
@@ -842,6 +895,9 @@
           </div>
 
           <div class="d-flex flex-wrap gap-2">
+            <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="openStoreQrModal(state.selectedShopId)">
+              Shop QR Code
+            </button>
             <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="offcanvas" data-bs-target="#registeredShopsSidebar">
               Switch Store
             </button>
@@ -896,6 +952,9 @@
             <div id="staffContextSubtitle" class="small text-secondary">Signed in</div>
           </div>
           <div class="d-flex flex-wrap align-items-center gap-2">
+            <button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick="openStoreQrModal('all')">
+              Store QR Codes
+            </button>
             <div id="ceoShopFilterWrap" class="d-none align-items-center gap-2">
               <label for="staffShopSelector" class="small text-secondary mb-0">Portfolio:</label>
               <select id="staffShopSelector" class="form-select form-select-sm dark-select" style="width:auto;" onchange="onStaffShopChanged()">
@@ -1423,7 +1482,10 @@
           <div id="ceoPartnerShopsCard" class="dark-panel d-none">
             <div class="d-flex justify-content-between align-items-center mb-2">
               <h6 class="fw-bold mb-0" style="color:var(--gold);">Registered Partner Shops (Super Admin)</h6>
-              <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="openRegisterShopModal()">+ Register New Shop</button>
+              <div class="d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-info fw-bold" onclick="openStoreQrModal('all')">Print All Store QR Codes</button>
+                <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="openRegisterShopModal()">+ Register New Shop</button>
+              </div>
             </div>
             <div id="partnerShopsAdminList" class="row g-2"></div>
           </div>
@@ -1432,9 +1494,14 @@
         <!-- TAB 5: SETTINGS -->
         <div class="tab-pane fade" id="settingsTab" role="tabpanel">
           <div id="partnerShopConfigPanel" class="dark-panel d-none">
-            <div class="mb-3">
-              <h6 class="fw-bold mb-0 text-info">Your Business Storefront Configuration</h6>
-              <div class="small text-secondary">Configure your own store name, location, bank account details, and banner. Your store runs independently from the main app.</div>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+              <div>
+                <h6 class="fw-bold mb-0 text-info">Your Business Storefront Configuration</h6>
+                <div class="small text-secondary">Configure your store name, location, bank details, and printable shop QR code.</div>
+              </div>
+              <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="openStoreQrModal(state.staff.shop_id)">
+                Your Shop QR Code
+              </button>
             </div>
 
             <form id="partnerOwnSettingsForm" onsubmit="savePartnerOwnSettings(event)" enctype="multipart/form-data">
@@ -1777,6 +1844,11 @@
         <span>Stores</span>
       </button>
 
+      <button id="bnavQrBtn" type="button" class="bottom-nav-btn" onclick="openStoreQrModal('all')">
+        <span>📷</span>
+        <span>QR / Scan</span>
+      </button>
+
       <button id="bnavCartBtn" type="button" class="bottom-nav-btn" onclick="openCartModal()">
         <span>🛒 Cart (<span id="bottomCartCount">0</span>)</span>
         <span>Checkout</span>
@@ -1785,11 +1857,6 @@
       <button id="bnavChatBtn" type="button" class="bottom-nav-btn" onclick="openCustomerChatModal()">
         <span>💬</span>
         <span>Chat/Receipt</span>
-      </button>
-
-      <button id="bnavRequestBtn" type="button" class="bottom-nav-btn" onclick="openSpecialRequestModal()">
-        <span>📝</span>
-        <span>Request</span>
       </button>
     </div>
   </nav>
@@ -1803,6 +1870,61 @@
     <img id="awarenessCardImg" src="" alt="Awareness" style="display:none;" />
     <div class="p-3 small">
       <p id="awarenessCardBody" class="mb-0"></p>
+    </div>
+  </div>
+
+  <!-- MODAL: PRINTABLE STORE QR CODES & LIVE CAMERA SCANNER -->
+  <div class="modal fade" id="storeQrModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title fw-bold text-warning mb-0">Store QR Codes &amp; Camera Scanner</h5>
+            <div class="small text-secondary">Print QR codes for Main App or individual shops, or scan a code directly</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" onclick="stopQrCameraScanner()"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Live Camera Scanner Bar -->
+          <div class="dark-subpanel mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+              <div>
+                <div class="fw-bold small text-info">Scan a Store or Product QR / Barcode</div>
+                <div id="qrScanStatusText" class="small text-secondary">Point your phone or laptop camera at any printed store QR code</div>
+              </div>
+              <div class="d-flex gap-2">
+                <button id="startQrCamBtn" type="button" class="btn btn-sm btn-info fw-bold text-dark" onclick="startQrCameraScanner()">
+                  Start Camera Scan
+                </button>
+                <button id="stopQrCamBtn" type="button" class="btn btn-sm btn-outline-danger d-none" onclick="stopQrCameraScanner()">
+                  Stop Camera
+                </button>
+              </div>
+            </div>
+            <div id="qrCameraWrap" class="mt-2 d-none text-center">
+              <video id="qrScannerVideo" class="rounded border border-info w-100" style="max-height:240px;background:#000;object-fit:cover;" playsinline muted></video>
+            </div>
+          </div>
+
+          <!-- Printable QR Cards Header -->
+          <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+            <span id="qrFilterLabel" class="fw-bold small text-warning">All Storefront QR Codes</span>
+            <div class="d-flex gap-2">
+              <button id="showAllQrBtn" type="button" class="btn btn-sm btn-outline-secondary text-light d-none" onclick="openStoreQrModal('all')">
+                Show All Stores
+              </button>
+              <button type="button" class="btn btn-sm btn-warning fw-bold" onclick="printStoreQrSheet()">
+                Print QR Sheet
+              </button>
+            </div>
+          </div>
+
+          <div id="storeQrCardsGrid" class="row g-2"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal" onclick="stopQrCameraScanner()">Close</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1875,7 +1997,7 @@
         </div>
         <div class="modal-body">
           <div id="registerShopNotice" class="small text-secondary mb-3">
-            Registered businesses appear in the Stores sidebar with their exact location so nearby customers can shop directly on their dedicated store page.
+            Registered businesses appear in the Stores sidebar and automatically get their own dedicated QR code and storefront link.
           </div>
           <form id="registerShopForm" onsubmit="submitPartnerShop(event)" enctype="multipart/form-data">
             <div class="row g-2">
@@ -2130,6 +2252,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"></script>
   <script>
     const COLOR_THEMES = [
       {
@@ -2220,6 +2343,9 @@
       products: [],
       shops: [],
       cart: [],
+      qrFilterSlug: "all",
+      qrCameraStream: null,
+      qrCameraTimer: null,
       settings: {
         business_name: "Sammyreks Business Center",
         currency: "₦",
@@ -2255,8 +2381,8 @@
         timer: null
       },
       tips: [
-        "Open Stores in the top-left or bottom bar to shop directly with registered businesses near your location.",
-        "Choose Retail Unit, Pack, or Carton and tap Add to Cart.",
+        "Tap Store QR / Scan to open or print QR codes for the Main App or any individual partner shop.",
+        "Open Stores in the top-left to shop directly with registered businesses near your location.",
         "Submit an order to get a Reference Code & PIN for Order Chat / Receipt."
       ],
       tipIndex: 0
@@ -2358,6 +2484,296 @@
     function getExtraSettings() {
       const s = state.settings || {};
       return (typeof s.extra_settings === "object" && s.extra_settings) ? s.extra_settings : {};
+    }
+
+    // ========================================================================
+    // PRINTABLE STORE QR CODES (MAIN & INDIVIDUAL SHOPS) + LIVE CAMERA SCANNER
+    // ========================================================================
+    function buildStoreUrl(shopSlug = "main") {
+      const base = `${window.location.origin}${window.location.pathname}`;
+      const cleanSlug = String(shopSlug || "main").trim() || "main";
+      return `${base}?shop=${encodeURIComponent(cleanSlug)}`;
+    }
+
+    function syncUrlShopParam(shopSlug = "main") {
+      try {
+        const url = new URL(window.location.href);
+        if (!shopSlug || shopSlug === "main") {
+          url.searchParams.delete("shop");
+        } else {
+          url.searchParams.set("shop", shopSlug);
+        }
+        window.history.replaceState({}, "", url.toString());
+      } catch {
+        // Ignore if history API is restricted
+      }
+    }
+
+    async function applyUrlShopDeepLink() {
+      const params = new URLSearchParams(window.location.search);
+      const requestedShop = (params.get("shop") || "").trim();
+      if (!requestedShop || requestedShop === "main") {
+        await enterMainStorefront();
+        return;
+      }
+      const matched = state.shops.find(s => s.slug === requestedShop);
+      if (matched) {
+        await enterPartnerStorefront(matched.slug);
+      } else {
+        await enterMainStorefront();
+      }
+    }
+
+    function getPrintableStoreTargets(filterSlug = "all") {
+      const allTargets = [
+        {
+          slug: "main",
+          name: state.settings.business_name || "Sammyreks Business Center",
+          location: "Main App Storefront"
+        },
+        ...state.shops
+          .filter(sh => sh.slug && sh.slug !== "main")
+          .map(sh => ({
+            slug: sh.slug,
+            name: sh.name,
+            location: stripMarketLabel(sh.location || "Calabar") || "Calabar"
+          }))
+      ];
+      if (!filterSlug || filterSlug === "all") return allTargets;
+      const single = allTargets.filter(t => t.slug === filterSlug);
+      return single.length ? single : allTargets;
+    }
+
+    function drawQrIntoCanvas(canvas, text, size = 148) {
+      if (!canvas) return;
+      canvas.width = size;
+      canvas.height = size;
+      if (window.QRCode && typeof window.QRCode.toCanvas === "function") {
+        window.QRCode.toCanvas(canvas, text, { width: size, margin: 1, color: { dark: "#0f172a", light: "#ffffff" } }, () => {});
+      }
+    }
+
+    function openStoreQrModal(filterSlug = "all") {
+      state.qrFilterSlug = filterSlug || "all";
+      renderStoreQrCards();
+      getModal("storeQrModal")?.show();
+    }
+
+    function renderStoreQrCards() {
+      const grid = document.getElementById("storeQrCardsGrid");
+      const filterLabel = document.getElementById("qrFilterLabel");
+      const showAllBtn = document.getElementById("showAllQrBtn");
+      if (!grid) return;
+
+      const targets = getPrintableStoreTargets(state.qrFilterSlug);
+      const isSingle = state.qrFilterSlug && state.qrFilterSlug !== "all" && targets.length === 1;
+
+      if (filterLabel) {
+        filterLabel.textContent = isSingle
+          ? `Dedicated Store QR Code: ${targets[0].name}`
+          : `All Storefront QR Codes (${targets.length})`;
+      }
+      if (showAllBtn) {
+        showAllBtn.classList.toggle("d-none", !isSingle);
+      }
+
+      const colClass = isSingle ? "col-12 col-md-8 mx-auto" : "col-sm-6 col-md-4";
+      grid.innerHTML = targets.map(t => {
+        const storeUrl = buildStoreUrl(t.slug);
+        return `
+          <div class="${colClass}">
+            <div class="qr-code-card">
+              <div>
+                <span class="badge ${t.slug === "main" ? "text-bg-warning text-dark" : "text-bg-info text-dark"} mb-1">
+                  ${t.slug === "main" ? "Main Storefront" : "Partner Shop"}
+                </span>
+                <div class="fw-bold small text-light">${escapeHtml(t.name)}</div>
+                <div class="text-secondary" style="font-size:0.74rem;">${escapeHtml(t.location)}</div>
+                <div class="qr-canvas-frame">
+                  <canvas id="qrCanvas_${escapeHtml(t.slug)}" width="148" height="148"></canvas>
+                </div>
+                <div class="text-break text-secondary mt-1" style="font-size:0.68rem;">${escapeHtml(storeUrl)}</div>
+              </div>
+              <div class="d-flex gap-1 mt-2">
+                <button type="button" class="btn btn-sm btn-outline-warning flex-grow-1 py-0" onclick="copyStoreLink('${escapeHtml(t.slug)}', this)">
+                  Copy Link
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-info flex-grow-1 py-0" data-bs-dismiss="modal" onclick="enterStoreFromQr('${escapeHtml(t.slug)}')">
+                  Open Store
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      for (const t of targets) {
+        const canvas = document.getElementById(`qrCanvas_${t.slug}`);
+        drawQrIntoCanvas(canvas, buildStoreUrl(t.slug), isSingle ? 190 : 148);
+      }
+    }
+
+    async function copyStoreLink(slug, btnEl) {
+      const url = buildStoreUrl(slug);
+      try {
+        await navigator.clipboard.writeText(url);
+        if (btnEl) {
+          const prev = btnEl.textContent;
+          btnEl.textContent = "Copied!";
+          setTimeout(() => { btnEl.textContent = prev; }, 1500);
+        }
+      } catch {
+        prompt("Copy this store link:", url);
+      }
+    }
+
+    async function enterStoreFromQr(slug) {
+      stopQrCameraScanner();
+      if (!slug || slug === "main") {
+        await enterMainStorefront();
+      } else {
+        await enterPartnerStorefront(slug);
+      }
+    }
+
+    function printStoreQrSheet() {
+      const overlay = document.getElementById("qrPrintOverlay");
+      if (!overlay) {
+        window.print();
+        return;
+      }
+
+      const targets = getPrintableStoreTargets(state.qrFilterSlug);
+      overlay.innerHTML = `
+        <div style="font-family:Segoe UI,Arial,sans-serif;max-width:860px;margin:0 auto;">
+          <h3 style="margin:0 0 4px 0;font-weight:800;">${escapeHtml(state.settings.business_name || "Sammyreks Business Center")} — Scan to Shop</h3>
+          <p style="margin:0 0 16px 0;font-size:13px;color:#444;">Scan any QR code with your phone camera to open the storefront directly.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;">
+            ${targets.map(t => `
+              <div style="border:2px solid #111;border-radius:12px;padding:14px;text-align:center;page-break-inside:avoid;">
+                <div style="font-weight:800;font-size:15px;margin-bottom:2px;">${escapeHtml(t.name)}</div>
+                <div style="font-size:12px;color:#333;margin-bottom:8px;">${escapeHtml(t.location)}</div>
+                <canvas id="printQrCanvas_${escapeHtml(t.slug)}" width="170" height="170" style="display:block;margin:0 auto;"></canvas>
+                <div style="font-size:10px;color:#444;word-break:break-all;margin-top:8px;">${escapeHtml(buildStoreUrl(t.slug))}</div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+      overlay.classList.remove("d-none");
+
+      for (const t of targets) {
+        const c = document.getElementById(`printQrCanvas_${t.slug}`);
+        drawQrIntoCanvas(c, buildStoreUrl(t.slug), 170);
+      }
+
+      setTimeout(() => {
+        window.print();
+        overlay.classList.add("d-none");
+        overlay.innerHTML = "";
+      }, 150);
+    }
+
+    async function startQrCameraScanner() {
+      const statusEl = document.getElementById("qrScanStatusText");
+      const wrap = document.getElementById("qrCameraWrap");
+      const video = document.getElementById("qrScannerVideo");
+      const startBtn = document.getElementById("startQrCamBtn");
+      const stopBtn = document.getElementById("stopQrCamBtn");
+
+      if (!("BarcodeDetector" in window)) {
+        if (statusEl) {
+          statusEl.className = "small text-warning";
+          statusEl.textContent = "Your browser does not support in-page camera scanning — use your phone's default Camera app to scan any printed QR code directly.";
+        }
+        return;
+      }
+
+      try {
+        stopQrCameraScanner();
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+        state.qrCameraStream = stream;
+        if (video) {
+          video.srcObject = stream;
+          await video.play();
+        }
+        wrap?.classList.remove("d-none");
+        startBtn?.classList.add("d-none");
+        stopBtn?.classList.remove("d-none");
+        if (statusEl) {
+          statusEl.className = "small text-success";
+          statusEl.textContent = "Camera active — hold a store QR code or barcode in front of the lens...";
+        }
+
+        const detector = new window.BarcodeDetector({ formats: ["qr_code", "code_128", "ean_13", "upc_a"] });
+        state.qrCameraTimer = setInterval(async () => {
+          if (!video || video.readyState < 2) return;
+          try {
+            const codes = await detector.detect(video);
+            if (codes && codes.length) {
+              const rawVal = String(codes[0].rawValue || "").trim();
+              if (rawVal) {
+                await handleScannedCodeValue(rawVal);
+              }
+            }
+          } catch {
+            // Ignore single-frame detection errors
+          }
+        }, 450);
+      } catch (err) {
+        if (statusEl) {
+          statusEl.className = "small text-danger";
+          statusEl.textContent = `Camera permission error: ${err.message}`;
+        }
+      }
+    }
+
+    function stopQrCameraScanner() {
+      if (state.qrCameraTimer) {
+        clearInterval(state.qrCameraTimer);
+        state.qrCameraTimer = null;
+      }
+      if (state.qrCameraStream) {
+        state.qrCameraStream.getTracks().forEach(t => t.stop());
+        state.qrCameraStream = null;
+      }
+      const video = document.getElementById("qrScannerVideo");
+      if (video) {
+        video.pause();
+        video.srcObject = null;
+      }
+      document.getElementById("qrCameraWrap")?.classList.add("d-none");
+      document.getElementById("startQrCamBtn")?.classList.remove("d-none");
+      document.getElementById("stopQrCamBtn")?.classList.add("d-none");
+    }
+
+    async function handleScannedCodeValue(rawVal) {
+      stopQrCameraScanner();
+      try {
+        const parsed = new URL(rawVal);
+        const shopParam = (parsed.searchParams.get("shop") || "").trim();
+        if (shopParam) {
+          getModal("storeQrModal")?.hide();
+          await enterStoreFromQr(shopParam);
+          return;
+        }
+      } catch {
+        // Not a URL — check if it matches a shop slug directly or product barcode
+      }
+
+      const matchedShop = state.shops.find(s => s.slug === rawVal);
+      if (matchedShop || rawVal === "main") {
+        getModal("storeQrModal")?.hide();
+        await enterStoreFromQr(rawVal);
+        return;
+      }
+
+      const searchInp = document.getElementById("storeSearchInput");
+      if (searchInp) {
+        searchInp.value = rawVal;
+        renderProductsGrid();
+      }
+      getModal("storeQrModal")?.hide();
     }
 
     // ========================================================================
@@ -2482,7 +2898,6 @@
         return;
       }
 
-      // Mobile / clipboard-link fallback: if user pastes an image URL into a text/URL input
       const active = document.activeElement;
       const text = (clipboard.getData("text/plain") || "").trim();
       const isTextInput = active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA") && active.type !== "file" && active.type !== "password";
@@ -2823,6 +3238,10 @@
         renderCustomerChatMessages();
       });
 
+      document.getElementById("storeQrModal")?.addEventListener("hidden.bs.modal", () => {
+        stopQrCameraScanner();
+      });
+
       document.getElementById("tab-orders-chat")?.addEventListener("shown.bs.tab", async () => {
         renderStaffChatThreads();
         renderStaffChatMessages();
@@ -2833,7 +3252,7 @@
 
       await loadSettings();
       await loadShops();
-      await enterMainStorefront();
+      await applyUrlShopDeepLink();
       updateCartBadge();
       syncHeaderState(false);
     });
@@ -3139,9 +3558,6 @@
       const customReqCol = document.getElementById("customRequestCol");
       if (customReqCol) customReqCol.classList.toggle("d-none", !toggles.togShowRequestTab);
 
-      const bnavRequestBtn = document.getElementById("bnavRequestBtn");
-      if (bnavRequestBtn) bnavRequestBtn.classList.toggle("d-none", !toggles.togShowRequestTab);
-
       const analyticsRow = document.getElementById("analyticsKpiRow");
       if (analyticsRow) analyticsRow.classList.toggle("d-none", !toggles.togShowAnalytics);
 
@@ -3331,9 +3747,14 @@
                 ${sh.phone ? `<div class="text-secondary" style="font-size:0.74rem;">Contact: ${escapeHtml(sh.phone)}</div>` : ""}
               </div>
             </div>
-            <button type="button" class="btn btn-sm ${isCurrent ? "btn-info text-dark" : "btn-outline-warning"} fw-bold w-100" data-bs-dismiss="offcanvas" onclick="enterPartnerStorefront('${escapeHtml(sh.slug)}')">
-              ${isCurrent ? "Currently Shopping Here" : `Shop / Buy with ${escapeHtml(sh.name)}`}
-            </button>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-sm ${isCurrent ? "btn-info text-dark" : "btn-outline-warning"} fw-bold flex-grow-1" data-bs-dismiss="offcanvas" onclick="enterPartnerStorefront('${escapeHtml(sh.slug)}')">
+                ${isCurrent ? "Shopping Here" : "Open Store"}
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-info fw-bold" data-bs-dismiss="offcanvas" onclick="openStoreQrModal('${escapeHtml(sh.slug)}')">
+                QR Code
+              </button>
+            </div>
           </div>
         `;
       }).join("");
@@ -3343,6 +3764,7 @@
       state.selectedShopId = "main";
       state.cart = [];
       updateCartBadge();
+      syncUrlShopParam("main");
 
       document.getElementById("staffSection")?.classList.add("d-none");
       document.getElementById("storefrontSection")?.classList.remove("d-none");
@@ -3365,6 +3787,7 @@
       state.selectedShopId = partner.slug;
       state.cart = [];
       updateCartBadge();
+      syncUrlShopParam(partner.slug);
 
       document.getElementById("staffSection")?.classList.add("d-none");
       document.getElementById("storefrontSection")?.classList.remove("d-none");
@@ -3408,7 +3831,7 @@
       if (fb) fb.innerHTML = "";
       if (notice) {
         notice.textContent = isSuperAdmin()
-          ? "Register a business with its store location. Customers will see it in the Stores sidebar and enter its dedicated storefront."
+          ? "Register a business with its store location. Customers will see it in the Stores sidebar and get a dedicated store QR code."
           : "Sign in as Super Admin (CEO) first to activate a new business storefront.";
       }
       getModal("registerShopModal")?.show();
@@ -3439,7 +3862,15 @@
           throw new Error(data.detail || "Could not register business");
         }
         form.reset();
-        if (fb) fb.innerHTML = `<span class="text-success">Business "${escapeHtml(data.shop?.name || "")}" registered in Stores sidebar!</span>`;
+        const newSlug = data.shop?.slug || "all";
+        if (fb) {
+          fb.innerHTML = `
+            <span class="text-success">Business "${escapeHtml(data.shop?.name || "")}" registered!</span>
+            <button type="button" class="btn btn-sm btn-outline-info py-0 px-2 ms-2" data-bs-dismiss="modal" onclick="openStoreQrModal('${escapeHtml(newSlug)}')">
+              View Store QR Code
+            </button>
+          `;
+        }
         await loadShops();
         renderPartnerShopsAdminList();
       } catch (err) {
@@ -4048,7 +4479,7 @@
           box.innerHTML = `<div class="alert alert-success py-2 small mb-0">Sent! Ref: <strong>${escapeHtml(data.payment_ref)}</strong> • PIN: <strong>${escapeHtml(data.customer_pin)}</strong></div>`;
         }
       } catch (err) {
-        if (box) resBox.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${escapeHtml(err.message)}</div>`;
+        if (box) box.innerHTML = `<div class="alert alert-danger py-2 small mb-0">${escapeHtml(err.message)}</div>`;
       }
     }
 
@@ -4481,7 +4912,6 @@
 
     async function saveStagedBatchItems() {
       const checks = Array.from(document.querySelectorAll(".staged-item-check")).filter(c => c.checked);
-      const stEl = document.getElementById("autoStockBatchStatus");
       if (!checks.length) return;
 
       let saved = 0;
@@ -4860,144 +5290,41 @@
             const verified = String(o.status || "").toLowerCase() === "verified";
             const summary = Array.isArray(o.special_items) && o.special_items.length
               ? o.special_items.map(sp => sp.item || sp.name || "").join("; ")
-              : (Array.isArray(o.items) ? o.items.map(it => `${it.qty} ${it.unit} ${it.name}`).join(", ") : "");
+              : (Array.isArray(o.items) ? o.items.map(it => `${it.qty}× ${it.name}`).join(", ") : "");
             return `
               <div class="dark-subpanel">
                 <div class="d-flex justify-content-between align-items-start gap-2">
                   <div>
-                    <div class="fw-bold small">${escapeHtml(o.customer || "Customer")} • <span class="text-secondary">${escapeHtml(o.contact_phone || "")}</span></div>
-                    <div style="font-size:0.74rem;" class="text-secondary">Ref: <strong class="text-warning">${escapeHtml(o.payment_ref || "")}</strong> • ${escapeHtml(o.timestamp || "")}</div>
+                    <div class="fw-bold small">${escapeHtml(o.customer || "Customer")} (${escapeHtml(o.contact_phone || "")})</div>
+                    <div class="text-secondary" style="font-size:0.74rem;">Ref: ${escapeHtml(o.payment_ref || "")} • PIN: ${escapeHtml(o.customer_pin || "")} • Shop: ${escapeHtml(o.shop_id || "main")}</div>
                   </div>
                   <span class="badge ${verified ? "text-bg-success" : "text-bg-warning text-dark"}">${escapeHtml(o.status || "Pending")}</span>
                 </div>
-                ${summary ? `<div class="small mt-1">${escapeHtml(summary)}</div>` : ""}
-                <div class="d-flex flex-wrap gap-1 mt-2">
-                  ${!verified ? `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="verifyStaffOrder('${escapeHtml(o.id)}')">Verify &amp; Receipt</button>` : ""}
-                  <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="focusStaffChatPhone('${escapeHtml(o.contact_phone || "")}')">Open Chat</button>
-                  <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteStaffOrder('${escapeHtml(o.id)}')">Delete</button>
+                <div class="small mt-1">${escapeHtml(summary)}</div>
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-1 mt-2">
+                  <span class="fw-bold text-warning small">${formatMoney(o.total_amount || 0)}</span>
+                  <div class="d-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="selectStaffChatThread('${escapeHtml(o.contact_phone || "")}')">Open Chat</button>
+                    ${verified ? "" : `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="verifyCustomerOrder('${escapeHtml(o.id)}')">Verify</button>`}
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteCustomerOrder('${escapeHtml(o.id)}')">Del</button>
+                  </div>
                 </div>
               </div>`;
           }).join("")
         : `<div class="text-secondary small text-center py-3">No orders in this filter.</div>`;
     }
 
-    function focusStaffChatPhone(phone) {
-      const cleanPhone = String(phone || "").trim();
-      const filterInp = document.getElementById("staffChatPhoneFilter");
-      const replyInp = document.getElementById("staffReplyPhone");
-      if (filterInp) filterInp.value = cleanPhone;
-      if (replyInp) replyInp.value = cleanPhone;
-      updateStaffChatTargetLabel();
-      renderStaffChatThreads();
-      renderStaffChatMessages();
+    async function verifyCustomerOrder(orderId) {
+      const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/verify`, { method: "POST", headers: getStaffHeaders() });
+      if (handleStaffUnauthorized(res)) return;
+      if (res.ok) await refreshStaffWorkspace();
     }
 
-    function clearStaffThreadSelection() {
-      const filterInp = document.getElementById("staffChatPhoneFilter");
-      if (filterInp) filterInp.value = "";
-      updateStaffChatTargetLabel();
-      renderStaffChatThreads();
-      renderStaffChatMessages();
-    }
-
-    function onStaffPhoneFilterChange() {
-      const val = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
-      const replyInp = document.getElementById("staffReplyPhone");
-      if (val && replyInp) replyInp.value = val;
-      updateStaffChatTargetLabel();
-      renderStaffChatThreads();
-      renderStaffChatMessages();
-    }
-
-    function updateStaffChatTargetLabel() {
-      const val = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
-      const lbl = document.getElementById("staffActiveChatTargetLabel");
-      if (lbl) {
-        lbl.textContent = val
-          ? `Conversation with ${val}`
-          : "Viewing all store conversations";
-      }
-    }
-
-    function renderStaffChatThreads() {
-      const list = document.getElementById("staffChatThreadsList");
-      if (!list) return;
-      const activeDigits = normalizePhoneDigits(document.getElementById("staffChatPhoneFilter")?.value || "");
-
-      const threadMap = new Map();
-      for (const o of state.orders) {
-        const ph = String(o.contact_phone || "").trim();
-        const digits = normalizePhoneDigits(ph);
-        if (!digits) continue;
-        if (!threadMap.has(digits)) {
-          threadMap.set(digits, {
-            phone: ph,
-            digits,
-            name: o.customer || "Customer",
-            preview: `Order ${o.payment_ref || ""}`,
-            time: o.timestamp || ""
-          });
-        }
-      }
-
-      for (const m of state.staffMessages) {
-        const ph = String(m.customer_phone || m.phone || "").trim();
-        const digits = normalizePhoneDigits(ph);
-        if (!digits) continue;
-        const txt = m.proof_url
-          ? "🖼 Sent an image / receipt"
-          : String(m.message || m.text || "").replace(/<[^>]*>/g, "").trim() || "Message";
-        const existing = threadMap.get(digits);
-        threadMap.set(digits, {
-          phone: ph || existing?.phone || digits,
-          digits,
-          name: existing?.name || "Customer",
-          preview: txt,
-          time: m.timestamp || existing?.time || ""
-        });
-      }
-
-      const threads = Array.from(threadMap.values());
-      if (!threads.length) {
-        list.innerHTML = `<div class="small text-secondary py-2">No active customer chats yet.</div>`;
-        return;
-      }
-
-      list.innerHTML = threads.map(t => {
-        const isSelected = activeDigits && (t.digits === activeDigits || t.digits.includes(activeDigits) || activeDigits.includes(t.digits));
-        return `
-          <button type="button" class="wa-thread-item ${isSelected ? "active" : ""}" onclick="focusStaffChatPhone('${escapeHtml(t.phone)}')">
-            <div class="d-flex justify-content-between align-items-center gap-2">
-              <strong class="small text-light">${escapeHtml(t.name)} • <span class="text-warning">${escapeHtml(t.phone)}</span></strong>
-              <span style="font-size:0.68rem;" class="text-secondary">${escapeHtml(t.time)}</span>
-            </div>
-            <div class="small text-secondary text-truncate mt-1">${escapeHtml(t.preview)}</div>
-          </button>
-        `;
-      }).join("");
-    }
-
-    async function verifyStaffOrder(orderId) {
-      try {
-        const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/verify`, {
-          method: "POST",
-          headers: getStaffHeaders({ "Content-Type": "application/json" }),
-          body: JSON.stringify({ verified_by: state.staff.username || "admin" })
-        });
-        if (handleStaffUnauthorized(res)) return;
-        if (!res.ok) throw new Error("Verification failed");
-        const qShop = encodeURIComponent(state.staffShopId || "main");
-        await Promise.all([loadStaffOrders(qShop), loadStaffMessages(qShop)]);
-      } catch (err) {
-        alert(err.message);
-      }
-    }
-
-    async function deleteStaffOrder(orderId) {
+    async function deleteCustomerOrder(orderId) {
       if (!confirm("Delete this order?")) return;
       const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`, { method: "DELETE", headers: getStaffHeaders() });
       if (handleStaffUnauthorized(res)) return;
-      if (res.ok) await loadStaffOrders(encodeURIComponent(state.staffShopId || "main"));
+      if (res.ok) await refreshStaffWorkspace();
     }
 
     async function loadStaffMessages(qShop, silent = false) {
@@ -5005,13 +5332,10 @@
         const res = await fetch(`/api/messages?shop_id=${qShop}`, { headers: getStaffHeaders() });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
-        if (res.ok && Array.isArray(data.messages)) {
-          const pendingOpts = state.staffMessages.filter(m => String(m.id || "").startsWith("opt_"));
-          state.staffMessages = data.messages.length >= state.staffMessages.length - pendingOpts.length
-            ? data.messages
-            : [...data.messages, ...pendingOpts];
-        } else if (!silent) {
-          state.staffMessages = [];
+        const serverMsgs = res.ok && Array.isArray(data.messages) ? data.messages : [];
+        const pendingOpts = state.staffMessages.filter(m => String(m.id || "").startsWith("opt_"));
+        if (!silent || serverMsgs.length >= state.staffMessages.length - pendingOpts.length) {
+          state.staffMessages = serverMsgs;
         }
       } catch {
         if (!silent) state.staffMessages = [];
@@ -5020,29 +5344,147 @@
       renderStaffChatMessages();
     }
 
+    function renderStaffChatThreads() {
+      const box = document.getElementById("staffChatThreadsList");
+      if (!box) return;
+
+      const selectedDigits = normalizePhoneDigits(document.getElementById("staffChatPhoneFilter")?.value || "");
+      const threadMap = new Map();
+
+      for (const o of state.orders) {
+        const ph = String(o.contact_phone || "").trim();
+        const key = normalizePhoneDigits(ph);
+        if (!key) continue;
+        threadMap.set(key, {
+          phone: ph,
+          customer: o.customer || "Customer",
+          lastPreview: `Order ${o.payment_ref || ""}: ${formatMoney(o.total_amount || 0)}`,
+          timestamp: o.timestamp || "",
+          hasPhoto: false
+        });
+      }
+
+      for (const m of state.staffMessages) {
+        const ph = String(m.customer_phone || "").trim();
+        const key = normalizePhoneDigits(ph);
+        if (!key) continue;
+        const prev = threadMap.get(key) || {
+          phone: ph,
+          customer: m.sender && m.sender !== "Staff" && m.sender !== "System" ? m.sender : "Customer",
+          lastPreview: "",
+          timestamp: "",
+          hasPhoto: false
+        };
+        if (m.sender && m.sender !== "Staff" && m.sender !== "System") {
+          prev.customer = m.sender;
+        }
+        prev.phone = ph;
+        prev.lastPreview = m.message ? m.message : (m.proof_url ? "📷 Photo attachment" : prev.lastPreview);
+        prev.timestamp = m.timestamp || prev.timestamp;
+        if (m.proof_url) prev.hasPhoto = true;
+        threadMap.set(key, prev);
+      }
+
+      const threads = Array.from(threadMap.entries());
+      if (!threads.length) {
+        box.innerHTML = `<div class="small text-secondary">No active customer chats yet.</div>`;
+        return;
+      }
+
+      box.innerHTML = threads.map(([digits, t]) => {
+        const isSelected = Boolean(selectedDigits && digits === selectedDigits);
+        return `
+          <button type="button" class="wa-thread-item ${isSelected ? "active" : ""}" onclick="selectStaffChatThread('${escapeHtml(t.phone)}')">
+            <div class="d-flex justify-content-between align-items-center">
+              <strong class="small text-warning">${escapeHtml(t.customer)} (${escapeHtml(t.phone)})</strong>
+              <span class="text-secondary" style="font-size:0.68rem;">${escapeHtml(t.timestamp)}</span>
+            </div>
+            <div class="small text-truncate text-light mt-1">
+              ${t.hasPhoto ? `<span class="badge text-bg-info text-dark me-1">Photo</span>` : ""}${escapeHtml(t.lastPreview || "Open conversation")}
+            </div>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function selectStaffChatThread(phone) {
+      const clean = String(phone || "").trim();
+      const filterInp = document.getElementById("staffChatPhoneFilter");
+      const replyInp = document.getElementById("staffReplyPhone");
+      if (filterInp) filterInp.value = clean;
+      if (replyInp && clean) replyInp.value = clean;
+      onStaffPhoneFilterChange();
+    }
+
+    function clearStaffThreadSelection() {
+      const filterInp = document.getElementById("staffChatPhoneFilter");
+      if (filterInp) filterInp.value = "";
+      onStaffPhoneFilterChange();
+    }
+
+    function onStaffPhoneFilterChange() {
+      const val = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+      const replyInp = document.getElementById("staffReplyPhone");
+      const targetLbl = document.getElementById("staffActiveChatTargetLabel");
+      if (val && replyInp && !replyInp.value.trim()) {
+        replyInp.value = val;
+      }
+      if (targetLbl) {
+        targetLbl.textContent = val ? `Conversation with ${val}` : "Viewing all store conversations";
+      }
+      renderStaffChatThreads();
+      renderStaffChatMessages();
+    }
+
     function renderStaffChatMessages() {
       const box = document.getElementById("staffChatMessagesBox");
       if (!box) return;
-      const rawFilter = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
-      const normFilter = normalizePhoneDigits(rawFilter);
+      const filterRaw = (document.getElementById("staffChatPhoneFilter")?.value || "").trim();
+      const filterDigits = normalizePhoneDigits(filterRaw);
 
-      const rows = state.staffMessages.filter(m => {
-        if (!normFilter) return true;
-        const msgPhone = normalizePhoneDigits(m.customer_phone || m.phone || "");
-        return msgPhone.includes(normFilter) || normFilter.includes(msgPhone);
+      const msgs = state.staffMessages.filter(m => {
+        if (!filterRaw) return true;
+        const msgPhone = String(m.customer_phone || "");
+        if (filterDigits) {
+          return normalizePhoneDigits(msgPhone).includes(filterDigits);
+        }
+        return msgPhone.toLowerCase().includes(filterRaw.toLowerCase());
       });
 
-      box.innerHTML = rows.length
-        ? rows.map(m => renderWhatsAppBubble(m, "staff", true)).join("")
-        : `<div data-empty-chat="1" class="text-secondary small text-center py-5">No messages in this conversation.</div>`;
+      box.innerHTML = msgs.length
+        ? msgs.map(m => renderWhatsAppBubble(m, "staff", true)).join("")
+        : `<div data-empty-chat="1" class="text-secondary small text-center py-5">No messages in this conversation yet.</div>`;
       box.scrollTop = box.scrollHeight;
+    }
+
+    async function deleteSingleChatPhoto(msgId) {
+      if (!confirm("Remove this chat photo? The text message will stay.")) return;
+      const res = await fetch(`/api/messages/${encodeURIComponent(msgId)}/photo`, {
+        method: "DELETE",
+        headers: getStaffHeaders()
+      });
+      if (handleStaffUnauthorized(res)) return;
+      if (res.ok) await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"));
+    }
+
+    async function clearAllStaffChatPhotos() {
+      if (!confirm("Remove all uploaded chat photos for this store? Text messages will remain intact.")) return;
+      const qShop = encodeURIComponent(state.staffShopId || "main");
+      const res = await fetch(`/api/messages/photos?shop_id=${qShop}`, {
+        method: "DELETE",
+        headers: getStaffHeaders()
+      });
+      if (handleStaffUnauthorized(res)) return;
+      if (res.ok) await loadStaffMessages(qShop);
     }
 
     async function sendStaffChatReply(event) {
       event.preventDefault();
       const phone = (document.getElementById("staffReplyPhone")?.value || "").trim();
-      const text = (document.getElementById("staffReplyText")?.value || "").trim();
-      const file = document.getElementById("staffReplyProofFile")?.files?.[0] || null;
+      const txtEl = document.getElementById("staffReplyText");
+      const fileEl = document.getElementById("staffReplyProofFile");
+      const text = (txtEl?.value || "").trim();
+      const file = fileEl?.files?.[0] || null;
       if (!phone || (!text && !file)) return;
 
       const tempPreviewUrl = file ? URL.createObjectURL(file) : "";
@@ -5055,15 +5497,9 @@
         timestamp: formatNowTime()
       };
       state.staffMessages.push(optimisticMsg);
-      document.getElementById("staffReplyText").value = "";
+      if (txtEl) txtEl.value = "";
       clearStaffAttachment();
-      renderStaffChatThreads();
-
-      const filterDigits = normalizePhoneDigits(document.getElementById("staffChatPhoneFilter")?.value || "");
-      const phoneDigits = normalizePhoneDigits(phone);
-      if (!filterDigits || phoneDigits.includes(filterDigits) || filterDigits.includes(phoneDigits)) {
-        appendImmediateBubble("staffChatMessagesBox", optimisticMsg, "staff", true);
-      }
+      appendImmediateBubble("staffChatMessagesBox", optimisticMsg, "staff", true);
 
       const fd = new FormData();
       fd.append("phone", phone);
@@ -5079,20 +5515,6 @@
       }
     }
 
-    async function deleteSingleChatPhoto(messageId) {
-      const res = await fetch(`/api/messages/${encodeURIComponent(messageId)}/photo`, { method: "DELETE", headers: getStaffHeaders() });
-      if (handleStaffUnauthorized(res)) return;
-      if (res.ok) await loadStaffMessages(encodeURIComponent(state.staffShopId || "main"));
-    }
-
-    async function clearAllStaffChatPhotos() {
-      if (!confirm("Delete all proof photos in this shop?")) return;
-      const qShop = encodeURIComponent(state.staffShopId || "main");
-      const res = await fetch(`/api/messages/photos?shop_id=${qShop}`, { method: "DELETE", headers: getStaffHeaders() });
-      if (handleStaffUnauthorized(res)) return;
-      if (res.ok) await loadStaffMessages(qShop);
-    }
-
     async function loadStaffDebtors(qShop) {
       try {
         const res = await fetch(`/api/debtors?shop_id=${qShop}`, { headers: getStaffHeaders() });
@@ -5102,54 +5524,51 @@
       } catch {
         state.debtors = [];
       }
-      const box = document.getElementById("debtorsList");
-      if (!box) return;
-      box.innerHTML = state.debtors.length
-        ? state.debtors.map(d => {
-            const paid = String(d.status || "").toLowerCase() === "paid";
-            return `
-              <div class="dark-subpanel small">
-                <div class="d-flex justify-content-between"><strong>${escapeHtml(d.customer)}</strong><span class="badge ${paid ? "text-bg-success" : "text-bg-danger"}">${escapeHtml(d.status || "unpaid")}</span></div>
-                <div class="text-secondary">${escapeHtml(d.phone || "")} • ${formatMoney(d.amount || 0)}</div>
-                <div class="d-flex gap-1 mt-1">
-                  ${!paid ? `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="markDebtorPaid('${escapeHtml(d.id)}')">Paid</button>` : ""}
-                  <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteDebtor('${escapeHtml(d.id)}')">Del</button>
-                </div>
-              </div>`;
-          }).join("")
-        : `<div class="text-secondary small">No debtors.</div>`;
+      const list = document.getElementById("debtorsList");
+      if (!list) return;
+      list.innerHTML = state.debtors.length
+        ? state.debtors.map(d => `
+            <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2">
+              <div>
+                <div class="fw-semibold small">${escapeHtml(d.customer)} (${escapeHtml(d.phone)})</div>
+                <div class="text-warning small">${formatMoney(d.amount)} • <span class="text-secondary">${escapeHtml(d.status || "Unpaid")}</span></div>
+              </div>
+              <div class="d-flex gap-1">
+                ${d.status === "Paid" ? "" : `<button type="button" class="btn btn-sm btn-success py-0 px-2" onclick="settleDebtor('${escapeHtml(d.id)}')">Paid</button>`}
+                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteDebtor('${escapeHtml(d.id)}')">×</button>
+              </div>
+            </div>`).join("")
+        : `<div class="text-secondary small text-center py-2">No debtors recorded.</div>`;
     }
 
     async function submitDebtorForm(event) {
       event.preventDefault();
+      const customer = document.getElementById("debtorCustomer")?.value.trim();
+      const phone = document.getElementById("debtorPhone")?.value.trim();
+      const amount = parseFloat(document.getElementById("debtorAmount")?.value || "0") || 0;
+      const items = document.getElementById("debtorItems")?.value.trim();
       const res = await fetch("/api/debtors", {
         method: "POST",
         headers: getStaffHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main"),
-          customer: document.getElementById("debtorCustomer").value.trim(),
-          phone: document.getElementById("debtorPhone").value.trim(),
-          amount: Math.max(0, parseFloat(document.getElementById("debtorAmount").value || "0") || 0),
-          items_bought: document.getElementById("debtorItems").value.trim()
-        })
+        body: JSON.stringify({ shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main"), customer, phone, amount, items })
       });
       if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
-        document.getElementById("debtorForm").reset();
-        await loadStaffDebtors(encodeURIComponent(state.staffShopId || "main"));
+        document.getElementById("debtorForm")?.reset();
+        await refreshStaffWorkspace();
       }
     }
 
-    async function markDebtorPaid(id) {
-      const res = await fetch(`/api/debtors/${encodeURIComponent(id)}/pay`, { method: "POST", headers: getStaffHeaders() });
+    async function settleDebtor(id) {
+      const res = await fetch(`/api/debtors/${encodeURIComponent(id)}/settle`, { method: "POST", headers: getStaffHeaders() });
       if (handleStaffUnauthorized(res)) return;
-      if (res.ok) await loadStaffDebtors(encodeURIComponent(state.staffShopId || "main"));
+      if (res.ok) await refreshStaffWorkspace();
     }
 
     async function deleteDebtor(id) {
       const res = await fetch(`/api/debtors/${encodeURIComponent(id)}`, { method: "DELETE", headers: getStaffHeaders() });
       if (handleStaffUnauthorized(res)) return;
-      if (res.ok) await loadStaffDebtors(encodeURIComponent(state.staffShopId || "main"));
+      if (res.ok) await refreshStaffWorkspace();
     }
 
     async function loadStaffExpenses(qShop) {
@@ -5161,47 +5580,41 @@
       } catch {
         state.expenses = [];
       }
-      const box = document.getElementById("expensesList");
-      if (!box) return;
-      box.innerHTML = state.expenses.length
+      const list = document.getElementById("expensesList");
+      if (!list) return;
+      list.innerHTML = state.expenses.length
         ? state.expenses.map(ex => `
-            <div class="dark-subpanel small d-flex justify-content-between align-items-start gap-2">
+            <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2">
               <div>
-                <strong>${escapeHtml(ex.category || "Operations")}</strong> • <span class="text-danger">${formatMoney(ex.amount || 0)}</span>
-                ${ex.note ? `<div class="text-secondary">${escapeHtml(ex.note)}</div>` : ""}
+                <div class="fw-semibold small">${escapeHtml(ex.category)}: ${formatMoney(ex.amount)}</div>
+                <div class="text-secondary" style="font-size:0.75rem;">${escapeHtml(ex.note || "")}</div>
               </div>
-              <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteExpense('${escapeHtml(ex.id)}')">Del</button>
+              <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteExpense('${escapeHtml(ex.id)}')">×</button>
             </div>`).join("")
-        : `<div class="text-secondary small">No expenses.</div>`;
+        : `<div class="text-secondary small text-center py-2">No expenses recorded.</div>`;
     }
 
     async function submitExpenseForm(event) {
       event.preventDefault();
+      const category = document.getElementById("expenseCategory")?.value.trim() || "Operations";
+      const amount = parseFloat(document.getElementById("expenseAmount")?.value || "0") || 0;
+      const note = document.getElementById("expenseNote")?.value.trim() || "";
       const res = await fetch("/api/expenses", {
         method: "POST",
         headers: getStaffHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main"),
-          category: document.getElementById("expenseCategory").value.trim() || "Operations",
-          amount: Math.max(0, parseFloat(document.getElementById("expenseAmount").value || "0") || 0),
-          note: document.getElementById("expenseNote").value.trim()
-        })
+        body: JSON.stringify({ shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main"), category, amount, note })
       });
       if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
-        document.getElementById("expenseForm").reset();
-        const qShop = encodeURIComponent(state.staffShopId || "main");
-        await Promise.all([loadStaffExpenses(qShop), loadStaffAnalytics(qShop)]);
+        document.getElementById("expenseForm")?.reset();
+        await refreshStaffWorkspace();
       }
     }
 
     async function deleteExpense(id) {
       const res = await fetch(`/api/expenses/${encodeURIComponent(id)}`, { method: "DELETE", headers: getStaffHeaders() });
       if (handleStaffUnauthorized(res)) return;
-      if (res.ok) {
-        const qShop = encodeURIComponent(state.staffShopId || "main");
-        await Promise.all([loadStaffExpenses(qShop), loadStaffAnalytics(qShop)]);
-      }
+      if (res.ok) await refreshStaffWorkspace();
     }
 
     async function loadStaffWorkers() {
@@ -5213,74 +5626,75 @@
       } catch {
         state.workers = [];
       }
-      const box = document.getElementById("workersList");
-      if (!box) return;
-      box.innerHTML = state.workers.length
+      const list = document.getElementById("workersList");
+      if (!list) return;
+      list.innerHTML = state.workers.length
         ? state.workers.map(w => `
-            <div class="dark-subpanel small d-flex justify-content-between align-items-center">
-              <div><strong>${escapeHtml(w.name)}</strong> <span class="text-secondary">(${escapeHtml(w.role || "Staff")})</span></div>
-              ${isSuperAdmin() ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteWorker('${escapeHtml(w.id)}')">Del</button>` : ""}
+            <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2">
+              <div>
+                <div class="fw-semibold small">${escapeHtml(w.name)} (${escapeHtml(w.role)})</div>
+                <div class="text-secondary" style="font-size:0.75rem;">User: ${escapeHtml(w.username || "")}</div>
+              </div>
+              ${isSuperAdmin() ? `<button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deleteWorker('${escapeHtml(w.id)}')">×</button>` : ""}
             </div>`).join("")
-        : `<div class="text-secondary small">No staff accounts.</div>`;
+        : `<div class="text-secondary small text-center py-2">No staff accounts.</div>`;
     }
 
     async function submitWorkerForm(event) {
       event.preventDefault();
       if (!isSuperAdmin()) return;
+      const name = document.getElementById("workerName")?.value.trim();
+      const username = document.getElementById("workerUsername")?.value.trim();
+      const role = document.getElementById("workerRole")?.value.trim() || "Staff";
+      const password = document.getElementById("workerPassword")?.value || "";
       const res = await fetch("/api/workers", {
         method: "POST",
         headers: getStaffHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({
-          name: document.getElementById("workerName").value.trim(),
-          username: document.getElementById("workerUsername").value.trim(),
-          role: document.getElementById("workerRole").value.trim() || "Staff",
-          password: document.getElementById("workerPassword").value
-        })
+        body: JSON.stringify({ name, username, role, password, shop_id: state.staffShopId === "all" ? "main" : (state.staffShopId || "main") })
       });
       if (handleStaffUnauthorized(res)) return;
-      const data = await safeJson(res);
-      if (res.ok && data.ok !== false) {
-        document.getElementById("workerForm").reset();
+      if (res.ok) {
+        document.getElementById("workerForm")?.reset();
         await loadStaffWorkers();
-      } else {
-        alert(data.detail || "Could not add worker");
       }
     }
 
     async function deleteWorker(id) {
-      if (!isSuperAdmin()) return;
       const res = await fetch(`/api/workers/${encodeURIComponent(id)}`, { method: "DELETE", headers: getStaffHeaders() });
       if (handleStaffUnauthorized(res)) return;
       if (res.ok) await loadStaffWorkers();
     }
 
     function renderPartnerShopsAdminList() {
-      const box = document.getElementById("partnerShopsAdminList");
-      if (!box || !isSuperAdmin()) return;
-      const list = state.shops.filter(s => s.slug && s.slug !== "main");
-      box.innerHTML = list.length
-        ? list.map(s => {
-            const cleanLoc = stripMarketLabel(s.location || "Calabar") || "Calabar";
+      const list = document.getElementById("partnerShopsAdminList");
+      if (!list || !isSuperAdmin()) return;
+      const subs = state.shops.filter(sh => sh.slug && sh.slug !== "main");
+      list.innerHTML = subs.length
+        ? subs.map(sh => {
+            const cleanLoc = stripMarketLabel(sh.location || "Calabar") || "Calabar";
             return `
               <div class="col-md-6">
-                <div class="dark-subpanel small d-flex justify-content-between align-items-center">
+                <div class="dark-subpanel d-flex justify-content-between align-items-center gap-2">
                   <div>
-                    <div class="fw-bold">${escapeHtml(s.name)} <span class="text-info">(${escapeHtml(s.slug)})</span></div>
-                    <div class="text-secondary">Location: ${escapeHtml(cleanLoc)} • Owner: ${escapeHtml(s.owner_username || "-")}</div>
+                    <div class="fw-bold small text-warning">${escapeHtml(sh.name)} (${escapeHtml(sh.slug)})</div>
+                    <div class="text-secondary" style="font-size:0.75rem;">Location: ${escapeHtml(cleanLoc)} • Owner: ${escapeHtml(sh.owner_name || sh.owner_username || "-")}</div>
                   </div>
-                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="deletePartnerShop('${escapeHtml(s.slug)}')">Remove</button>
+                  <div class="d-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-warning py-0 px-2" onclick="openStoreQrModal('${escapeHtml(sh.slug)}')">QR</button>
+                    <button type="button" class="btn btn-sm btn-outline-info py-0 px-2" onclick="enterPartnerStorefront('${escapeHtml(sh.slug)}')">Open</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2" onclick="deletePartnerShop('${escapeHtml(sh.slug)}')">Delete</button>
+                  </div>
                 </div>
               </div>`;
           }).join("")
-        : `<div class="col-12 small text-secondary">No partner shops registered yet.</div>`;
+        : `<div class="col-12 text-secondary small">No partner shops registered yet.</div>`;
     }
 
     async function deletePartnerShop(slug) {
-      if (!isSuperAdmin() || !confirm(`Remove partner shop "${slug}"?`)) return;
+      if (!confirm(`Delete shop "${slug}"?`)) return;
       const res = await fetch(`/api/shops/${encodeURIComponent(slug)}`, { method: "DELETE", headers: getStaffHeaders() });
       if (handleStaffUnauthorized(res)) return;
       if (res.ok) {
-        if (state.staffShopId === slug) state.staffShopId = "main";
         await loadShops();
         renderPartnerShopsAdminList();
       }
@@ -5291,14 +5705,13 @@
         const res = await fetch(`/api/analytics?shop_id=${qShop}`, { headers: getStaffHeaders() });
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
-        if (res.ok) {
-          document.getElementById("kpiRevenue").textContent = formatMoney(data.revenue || 0);
-          document.getElementById("kpiProfit").textContent = formatMoney(data.gross_profit || 0);
-          document.getElementById("kpiExpenses").textContent = formatMoney(data.expenses || 0);
-          document.getElementById("kpiCashflow").textContent = formatMoney(data.net_cashflow || 0);
-        }
+        if (!res.ok) return;
+        document.getElementById("kpiRevenue").textContent = formatMoney(data.total_revenue || 0);
+        document.getElementById("kpiProfit").textContent = formatMoney(data.gross_profit || 0);
+        document.getElementById("kpiExpenses").textContent = formatMoney(data.total_expenses || 0);
+        document.getElementById("kpiCashflow").textContent = formatMoney(data.net_cashflow || 0);
       } catch {
-        // Keep current values on transient network error
+        // Ignore transient analytics fetch error
       }
     }
 
@@ -5312,69 +5725,47 @@
         fb.textContent = "Saving settings...";
       }
 
+      syncAwarenessBackingFields();
+
+      const extraPayload = {
+        autoColorCycle: Boolean(document.getElementById("togAutoColorCycle")?.checked),
+        scatterBrandLogo: Boolean(document.getElementById("togScatterBrandLogo")?.checked),
+        scatterBrandLogoUrl: (document.getElementById("setScatterLogoUrl")?.value || "").trim(),
+        scatterBrandLogoOpacity: Number(document.getElementById("setScatterLogoOpacity")?.value || 6),
+        footerCopyright: document.getElementById("setFooterCopyright")?.value.trim() || "",
+        receiptFooter: document.getElementById("setReceiptFooter")?.value.trim() || "",
+        showAnalytics: Boolean(document.getElementById("togShowAnalytics")?.checked),
+        showStockAlerts: Boolean(document.getElementById("togShowStockAlerts")?.checked),
+        showRequestTab: Boolean(document.getElementById("togShowRequestTab")?.checked),
+        showLiveCartBadge: Boolean(document.getElementById("togShowLiveCartBadge")?.checked),
+        showChatReceiptsTab: Boolean(document.getElementById("togShowChatReceiptsTab")?.checked),
+        showHeaderCartBtn: Boolean(document.getElementById("togShowHeaderCartBtn")?.checked),
+        showWatchAd: Boolean(document.getElementById("togShowWatchAd")?.checked),
+        showVendorTags: Boolean(document.getElementById("togShowVendorTags")?.checked),
+        showAvailability: Boolean(document.getElementById("togShowAvailability")?.checked),
+        hideOutOfStock: Boolean(document.getElementById("togHideOutOfStock")?.checked),
+        searchPlaceholder: document.getElementById("setSearchPlaceholder")?.value.trim() || "Search products, brands, or sponsors...",
+        autoGeneratePin: Boolean(document.getElementById("togAutoGeneratePin")?.checked),
+        bankDetails: document.getElementById("setBankDetails")?.value.trim() || "",
+        pinHelperMsg: document.getElementById("setPinHelperMsg")?.value.trim() || "",
+        pinFieldLabel: document.getElementById("setPinFieldLabel")?.value.trim() || "4-Digit Chat PIN (leave blank — auto)",
+        orderNotePlaceholder: document.getElementById("setOrderNotePlaceholder")?.value.trim() || "",
+        showRotatingTips: Boolean(document.getElementById("togShowRotatingTips")?.checked),
+        secondsPerTip: parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10,
+        rotatingTips: document.getElementById("setRotatingTips")?.value.trim() || "",
+        showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
+        autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
+        secondsPerSlide: parseInt(document.getElementById("setSecondsPerSlide")?.value || "10", 10) || 10,
+        awarenessSlides: document.getElementById("setAwarenessSlides")?.value.trim() || "",
+        awarenessDescriptions: document.getElementById("setAwarenessDescriptions")?.value.trim() || "",
+        awarenessBottomCaption: document.getElementById("setAwarenessBottomCaption")?.value.trim() || ""
+      };
+
+      const form = document.getElementById("appSettingsForm");
+      const fd = new FormData(form);
+      fd.append("extra_settings_json", JSON.stringify(extraPayload));
+
       try {
-        const form = document.getElementById("appSettingsForm");
-        const fd = new FormData(form);
-
-        const quickUrl = (document.getElementById("newAwarenessSlideUrl")?.value || "").trim();
-        const quickDesc = (document.getElementById("newAwarenessSlideDesc")?.value || "").trim();
-        if (quickUrl) {
-          awarenessSlidesList.push({
-            url: quickUrl,
-            caption: quickDesc || (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
-          });
-          document.getElementById("newAwarenessSlideUrl").value = "";
-          document.getElementById("newAwarenessSlideDesc").value = "";
-          renderAwarenessSlidesManager();
-        } else {
-          syncAwarenessBackingFields();
-        }
-
-        const awarenessFile = document.getElementById("setAwarenessImageFile")?.files?.[0];
-        if (awarenessFile) {
-          fd.set("awareness_image_file", awarenessFile);
-        }
-
-        const scatterOn = Boolean(document.getElementById("togScatterBrandLogo")?.checked);
-        const scatterLogoUrl = (document.getElementById("setScatterLogoUrl")?.value || "").trim();
-        const scatterLogoOpacity = Number(document.getElementById("setScatterLogoOpacity")?.value || 6);
-        const autoColorCycle = Boolean(document.getElementById("togAutoColorCycle")?.checked);
-
-        const extraPayload = {
-          autoColorCycle,
-          scatterBrandLogo: scatterOn,
-          scatterBrandLogoUrl: scatterLogoUrl,
-          scatterBrandLogoOpacity: scatterLogoOpacity,
-          footerCopyright: (document.getElementById("setFooterCopyright")?.value || "").trim(),
-          receiptFooter: (document.getElementById("setReceiptFooter")?.value || "").trim(),
-          showAnalytics: Boolean(document.getElementById("togShowAnalytics")?.checked),
-          showStockAlerts: Boolean(document.getElementById("togShowStockAlerts")?.checked),
-          showRequestTab: Boolean(document.getElementById("togShowRequestTab")?.checked),
-          showLiveCartBadge: Boolean(document.getElementById("togShowLiveCartBadge")?.checked),
-          showChatReceiptsTab: Boolean(document.getElementById("togShowChatReceiptsTab")?.checked),
-          showHeaderCartBtn: Boolean(document.getElementById("togShowHeaderCartBtn")?.checked),
-          showWatchAd: Boolean(document.getElementById("togShowWatchAd")?.checked),
-          showVendorTags: Boolean(document.getElementById("togShowVendorTags")?.checked),
-          showAvailability: Boolean(document.getElementById("togShowAvailability")?.checked),
-          hideOutOfStock: Boolean(document.getElementById("togHideOutOfStock")?.checked),
-          searchPlaceholder: (document.getElementById("setSearchPlaceholder")?.value || "").trim(),
-          autoGeneratePin: Boolean(document.getElementById("togAutoGeneratePin")?.checked),
-          bankDetails: (document.getElementById("setBankDetails")?.value || "").trim(),
-          pinHelperMsg: (document.getElementById("setPinHelperMsg")?.value || "").trim(),
-          pinFieldLabel: (document.getElementById("setPinFieldLabel")?.value || "").trim(),
-          orderNotePlaceholder: (document.getElementById("setOrderNotePlaceholder")?.value || "").trim(),
-          showRotatingTips: Boolean(document.getElementById("togShowRotatingTips")?.checked),
-          secondsPerTip: Math.max(2, parseInt(document.getElementById("setSecondsPerTip")?.value || "10", 10) || 10),
-          rotatingTips: (document.getElementById("setRotatingTips")?.value || "").trim(),
-          showFloatingAwareness: Boolean(document.getElementById("togShowFloatingAwareness")?.checked),
-          autoSlidePhotos: Boolean(document.getElementById("togAutoSlidePhotos")?.checked),
-          secondsPerSlide: Math.max(2, parseInt(document.getElementById("setSecondsPerSlide")?.value || "10", 10) || 10),
-          awarenessSlides: (document.getElementById("setAwarenessSlides")?.value || "").trim(),
-          awarenessDescriptions: (document.getElementById("setAwarenessDescriptions")?.value || "").trim(),
-          awarenessBottomCaption: (document.getElementById("setAwarenessBottomCaption")?.value || "").trim()
-        };
-        fd.append("extra_settings_json", JSON.stringify(extraPayload));
-
         const res = await fetch("/api/settings", {
           method: "POST",
           headers: getStaffHeaders(),
@@ -5383,21 +5774,12 @@
         if (handleStaffUnauthorized(res)) return;
         const data = await safeJson(res);
         if (!res.ok || data.ok === false) throw new Error(data.detail || "Could not save settings");
-
-        state.settings = {
-          ...state.settings,
-          ...(data.settings || {}),
-          extra_settings: {
-            ...extraPayload,
-            ...((data.settings && data.settings.extra_settings) || {})
-          }
-        };
-        const awFileInp = document.getElementById("setAwarenessImageFile");
-        if (awFileInp) awFileInp.value = "";
-        applySettingsToUI();
+        const awarenessFileInp = document.getElementById("setAwarenessImageFile");
+        if (awarenessFileInp) awarenessFileInp.value = "";
+        await loadSettings();
         if (fb) {
           fb.className = "small text-success fw-semibold";
-          fb.textContent = "All settings saved!";
+          fb.textContent = "All settings saved and applied!";
         }
       } catch (err) {
         if (fb) {

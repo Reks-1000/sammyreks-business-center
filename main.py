@@ -48,8 +48,19 @@ MAIN_SHOP_ID = "main"
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY", "").strip()
 PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY", "").strip()
 AUTO_STOCK_VIDEO_TARGET = (
-    os.getenv("AUTO_STOCK_VIDEO_TARGET", "local").strip().lower()
+    os.getenv("AUTO_STOCK_VIDEO_TARGET", "cloudinary").strip().lower()
 )  # "local" or "cloudinary"
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    print(f"[ERROR] {request.method} {request.url.path}: {exc}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong on the server. Please try again."},
+    )
 
 
 def init_firestore() -> firestore.Client:
@@ -169,6 +180,16 @@ def _cache_invalidate(prefix: str = "") -> None:
         _local_cache.pop(k, None)
 
 
+def _stream_by_shop(collection_name: str, shop_id: Optional[str]):
+    col = db.collection(collection_name)
+    if shop_id and shop_id != "all":
+        try:
+            return col.where("shop_id", "==", shop_id).stream()
+        except Exception:
+            pass
+    return col.stream()
+
+
 def make_slug(text: str) -> str:
     clean = re.sub(r"[^a-z0-9]+", "-", (text or "").strip().lower()).strip("-")
     return clean or f"shop-{uuid.uuid4().hex[:6]}"
@@ -180,7 +201,7 @@ def normalize_shop_id(raw_shop_id: Optional[str]) -> str:
 
 
 def _client_ip(request: Request) -> str:
-    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[-1].strip()
     if forwarded:
         return forwarded
     return request.client.host if request.client else "unknown"
@@ -835,7 +856,7 @@ def _download_video_advert(video_url: str, target_mode: Optional[str] = None) ->
     if parsed.scheme not in {"http", "https"} or not parsed.netloc:
         return ""
 
-    mode = (target_mode or AUTO_STOCK_VIDEO_TARGET or "local").strip().lower()
+    mode = (target_mode or AUTO_STOCK_VIDEO_TARGET or "cloudinary").strip().lower()
     tmp_path: Optional[str] = None
     try:
         req = UrlRequest(clean_url, headers={"User-Agent": "SammyreksBusinessCenter/2.0"}, method="GET")
@@ -1076,7 +1097,7 @@ def get_products(shop_id: str = Query(default=MAIN_SHOP_ID)):
         return {"products": cached, "shop_id": target_shop, "cached": True}
 
     try:
-        docs = db.collection("products").stream()
+        docs = _stream_by_shop("products", target_shop)
         products: List[Dict[str, Any]] = []
         for doc in docs:
             p = normalize_product(doc.id, doc.to_dict())
@@ -1293,7 +1314,7 @@ def delete_product(product_id: str, request: Request):
 def get_orders(request: Request, shop_id: Optional[str] = Query(default=None)):
     staff = require_staff(request)
     effective_shop = resolve_effective_shop_id(staff, shop_id)
-    docs = db.collection("orders").stream()
+    docs = _stream_by_shop("orders", effective_shop)
     orders: List[Dict[str, Any]] = []
     for doc in docs:
         order = normalize_order(doc.id, doc.to_dict())
@@ -1579,7 +1600,7 @@ def get_messages(
     else:
         target_shop = resolve_effective_shop_id(staff, shop_id)
 
-    docs = db.collection("messages").stream()
+    docs = _stream_by_shop("messages", target_shop)
     messages: List[Dict[str, Any]] = []
     for doc in docs:
         data = normalize_message(doc.id, doc.to_dict())
@@ -1644,6 +1665,10 @@ async def post_message(
         "proof_public_id": proof_public_id or "",
         "timestamp": now_str(),
     }
+    if pin.strip():
+        msg_doc["customer_pin_hash"] = hash_pin(pin.strip())
+        msg_doc["payment_ref_hash"] = hash_pin(pin.strip())
+
     msg_id = uuid.uuid4().hex
     db.collection("messages").document(msg_id).set(msg_doc)
     return {"ok": True, "id": msg_id, "shop_id": target_shop, "proof_url": proof_url}
@@ -1676,7 +1701,7 @@ def delete_message_photo(message_id: str, request: Request):
 def delete_all_message_photos(request: Request, shop_id: Optional[str] = Query(default=None)):
     staff = require_staff(request)
     effective_shop = resolve_effective_shop_id(staff, shop_id)
-    docs = db.collection("messages").stream()
+    docs = _stream_by_shop("messages", effective_shop)
     cleared = 0
     for doc in docs:
         data = doc.to_dict() or {}
@@ -1698,7 +1723,7 @@ def delete_all_message_photos(request: Request, shop_id: Optional[str] = Query(d
 def get_sales(request: Request, shop_id: Optional[str] = Query(default=None)):
     staff = require_staff(request)
     effective_shop = resolve_effective_shop_id(staff, shop_id)
-    docs = db.collection("sales").stream()
+    docs = _stream_by_shop("sales", effective_shop)
     sales: List[Dict[str, Any]] = []
     for doc in docs:
         item = dict(doc.to_dict() or {})
@@ -1804,7 +1829,7 @@ async def record_sale(request: Request):
 def get_debtors(request: Request, shop_id: Optional[str] = Query(default=None)):
     staff = require_staff(request)
     effective_shop = resolve_effective_shop_id(staff, shop_id)
-    docs = db.collection("debtors").stream()
+    docs = _stream_by_shop("debtors", effective_shop)
     debtors: List[Dict[str, Any]] = []
     for doc in docs:
         item = dict(doc.to_dict() or {})
@@ -1874,7 +1899,7 @@ def delete_debtor(debtor_id: str, request: Request):
 def get_expenses(request: Request, shop_id: Optional[str] = Query(default=None)):
     staff = require_staff(request)
     effective_shop = resolve_effective_shop_id(staff, shop_id)
-    docs = db.collection("expenses").stream()
+    docs = _stream_by_shop("expenses", effective_shop)
     expenses: List[Dict[str, Any]] = []
     for doc in docs:
         item = dict(doc.to_dict() or {})
@@ -1924,7 +1949,7 @@ def delete_expense(expense_id: str, request: Request):
 @app.get("/api/workers")
 def get_workers(request: Request):
     staff = require_staff(request)
-    docs = db.collection("workers").stream()
+    docs = _stream_by_shop("workers", None if is_super_admin(staff) else staff["shop_id"])
     workers: List[Dict[str, Any]] = []
     for doc in docs:
         item = dict(doc.to_dict() or {})
@@ -1945,6 +1970,12 @@ async def add_worker(request: Request):
     if not name:
         raise HTTPException(status_code=400, detail="Worker name is required")
     username = str(payload.get("username") or name.lower().replace(" ", "")).strip()
+    if hmac.compare_digest(username, ADMIN_USERNAME):
+        raise HTTPException(status_code=400, detail="Username cannot match the Super Admin username")
+    for existing_w in db.collection("workers").where("username", "==", username).stream():
+        if existing_w.exists:
+            raise HTTPException(status_code=400, detail=f"Username '{username}' is already taken")
+
     raw_pw = str(payload.get("password") or "")
     target_shop = resolve_effective_shop_id(staff, str(payload.get("shop_id") or MAIN_SHOP_ID))
     doc = {
@@ -1976,7 +2007,7 @@ def get_analytics(request: Request, shop_id: Optional[str] = Query(default=None)
     effective_shop = resolve_effective_shop_id(staff, shop_id)
     products_by_id: Dict[str, Dict[str, Any]] = {}
     products_by_name: Dict[str, Dict[str, Any]] = {}
-    for doc in db.collection("products").stream():
+    for doc in _stream_by_shop("products", effective_shop):
         p = normalize_product(doc.id, doc.to_dict())
         if effective_shop == "all" or p["shop_id"] == effective_shop:
             products_by_id[p["id"]] = p
@@ -1984,7 +2015,7 @@ def get_analytics(request: Request, shop_id: Optional[str] = Query(default=None)
 
     total_revenue = 0.0
     total_profit = 0.0
-    for doc in db.collection("sales").stream():
+    for doc in _stream_by_shop("sales", effective_shop):
         s = doc.to_dict() or {}
         s_shop = normalize_shop_id(str(s.get("shop_id") or MAIN_SHOP_ID))
         if effective_shop != "all" and s_shop != effective_shop:
@@ -2018,7 +2049,7 @@ def get_analytics(request: Request, shop_id: Optional[str] = Query(default=None)
             total_profit += row_total
 
     total_expenses = 0.0
-    for doc in db.collection("expenses").stream():
+    for doc in _stream_by_shop("expenses", effective_shop):
         ex = doc.to_dict() or {}
         ex_shop = normalize_shop_id(str(ex.get("shop_id") or MAIN_SHOP_ID))
         if effective_shop != "all" and ex_shop != effective_shop:
@@ -2050,7 +2081,7 @@ def get_settings():
         settings = snap.to_dict() if snap.exists else default_settings
         resolved = settings or default_settings
         _cache_set("settings:business", resolved)
-        _fallback_store["settings"] = resolved
+        _fallback_store["settings"] = dict(resolved)
         return {"settings": resolved, "cached": False}
     except Exception as exc:
         print(f"[WARN] /api/settings fallback triggered: {exc}")
@@ -2067,12 +2098,20 @@ async def save_settings(
     broadcast_video_url: str = Form(""),
     currency: str = Form("₦"),
     extra_settings: str = Form(""),
+    clear_awareness_image: str = Form("false"),
+    clear_broadcast_video: str = Form("false"),
+    clear_active_notice: str = Form("false"),
     broadcast_video_file: Optional[UploadFile] = File(None),
     awareness_image_file: Optional[UploadFile] = File(None),
 ):
     require_super_admin(request)
     ref = db.collection("settings").document("business")
-    existing = ref.get().to_dict() if ref.get().exists else {}
+    snap = ref.get()
+    existing = snap.to_dict() if snap.exists else {}
+
+    want_clear_awareness = clear_awareness_image.strip().lower() in {"1", "true", "yes", "on"}
+    want_clear_video = clear_broadcast_video.strip().lower() in {"1", "true", "yes", "on"}
+    want_clear_notice = clear_active_notice.strip().lower() in {"1", "true", "yes", "on"}
 
     old_video = str(existing.get("broadcast_video_url") or "").strip()
     old_video_public_id = str(existing.get("broadcast_video_public_id") or "").strip()
@@ -2100,13 +2139,16 @@ async def save_settings(
             if clean_link == old_video
             else (extract_cloudinary_public_id(clean_link) or "")
         )
+    elif want_clear_video:
+        if old_video or old_video_public_id:
+            delete_from_cloudinary(
+                public_id=old_video_public_id, url=old_video, resource_type="video"
+            )
+        final_video = ""
+        final_video_public_id = ""
     else:
         final_video = old_video
         final_video_public_id = old_video_public_id
-
-    uploaded_awareness_url, uploaded_awareness_public_id = upload_to_cloudinary(
-        awareness_image_file, folder="sammyreks_awareness", resource_type="image", max_dim=800
-    )
 
     parsed_extra: Any = existing.get("extra_settings")
     if extra_settings.strip():
@@ -2115,12 +2157,17 @@ async def save_settings(
         except json.JSONDecodeError:
             parsed_extra = extra_settings.strip()
 
-    final_awareness_url = str(existing.get("awareness_image_url") or "").strip()
-    final_awareness_public_id = str(existing.get("awareness_image_public_id") or "").strip()
+    old_awareness_url = str(existing.get("awareness_image_url") or "").strip()
+    old_awareness_public_id = str(existing.get("awareness_image_public_id") or "").strip()
+
+    uploaded_awareness_url, uploaded_awareness_public_id = upload_to_cloudinary(
+        awareness_image_file, folder="sammyreks_awareness", resource_type="image", max_dim=800
+    )
+
     if uploaded_awareness_url:
-        if final_awareness_public_id:
+        if old_awareness_url or old_awareness_public_id:
             delete_from_cloudinary(
-                public_id=final_awareness_public_id, url=final_awareness_url, resource_type="image"
+                public_id=old_awareness_public_id, url=old_awareness_url, resource_type="image"
             )
         final_awareness_url = uploaded_awareness_url
         final_awareness_public_id = uploaded_awareness_public_id or ""
@@ -2133,11 +2180,25 @@ async def save_settings(
             if uploaded_awareness_url not in existing_urls:
                 existing_urls.append(uploaded_awareness_url)
             parsed_extra["awarenessImageUrl"] = "\n".join(existing_urls)
+    elif want_clear_awareness:
+        if old_awareness_url or old_awareness_public_id:
+            delete_from_cloudinary(
+                public_id=old_awareness_public_id, url=old_awareness_url, resource_type="image"
+            )
+        final_awareness_url = ""
+        final_awareness_public_id = ""
+        if isinstance(parsed_extra, dict):
+            parsed_extra["awarenessImageUrl"] = ""
+    else:
+        final_awareness_url = old_awareness_url
+        final_awareness_public_id = old_awareness_public_id
+
+    final_notice = "" if want_clear_notice else active_notice.strip()
 
     doc: Dict[str, Any] = {
         "business_name": business_name.strip() or "Sammyreks Business Center",
         "tagline": tagline.strip(),
-        "active_notice": active_notice.strip(),
+        "active_notice": final_notice,
         "broadcast_video_url": final_video,
         "broadcast_video_public_id": final_video_public_id,
         "awareness_image_url": final_awareness_url,
@@ -2149,18 +2210,61 @@ async def save_settings(
         doc["extra_settings"] = parsed_extra
 
     ref.set(doc, merge=True)
-    merged_out = {**existing, **doc}
+
+    unset_fields: Dict[str, Any] = {}
+    if want_clear_awareness:
+        unset_fields["awareness_image_url"] = firestore.DELETE_FIELD
+        unset_fields["awareness_image_public_id"] = firestore.DELETE_FIELD
+    if want_clear_video:
+        unset_fields["broadcast_video_url"] = firestore.DELETE_FIELD
+        unset_fields["broadcast_video_public_id"] = firestore.DELETE_FIELD
+    if want_clear_notice:
+        unset_fields["active_notice"] = ""
+    if unset_fields:
+        ref.update(unset_fields)
+
+    fresh_snap = ref.get()
+    merged_out = fresh_snap.to_dict() if fresh_snap.exists else {**existing, **doc}
     _cache_invalidate("settings:")
-    _fallback_store["settings"] = merged_out
+    _fallback_store["settings"] = dict(merged_out)
     return {"ok": True, "settings": merged_out}
 
 
-@app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
-    if isinstance(exc, HTTPException):
-        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
-    print(f"[ERROR] {request.method} {request.url.path}: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Something went wrong on the server. Please try again."},
+@app.post("/api/settings/clear-slide")
+def force_clear_store_slide(request: Request):
+    require_super_admin(request)
+    ref = db.collection("settings").document("business")
+    snap = ref.get()
+    existing = snap.to_dict() if snap.exists else {}
+
+    old_url = str(existing.get("awareness_image_url") or "").strip()
+    old_pub_id = str(existing.get("awareness_image_public_id") or "").strip()
+    if old_url or old_pub_id:
+        delete_from_cloudinary(public_id=old_pub_id, url=old_url, resource_type="image")
+
+    extra = (
+        dict(existing.get("extra_settings") or {})
+        if isinstance(existing.get("extra_settings"), dict)
+        else {}
     )
+    if "awarenessImageUrl" in extra:
+        extra["awarenessImageUrl"] = ""
+
+    updates: Dict[str, Any] = {
+        "awareness_image_url": firestore.DELETE_FIELD,
+        "awareness_image_public_id": firestore.DELETE_FIELD,
+        "active_notice": "",
+        "updated_at": now_str(),
+    }
+    if extra:
+        updates["extra_settings"] = extra
+
+    ref.update(updates)
+    fresh_snap = ref.get()
+    merged_out = fresh_snap.to_dict() if fresh_snap.exists else {
+        "business_name": existing.get("business_name") or "Sammyreks Business Center",
+        "currency": existing.get("currency") or "₦",
+    }
+    _cache_invalidate("settings:")
+    _fallback_store["settings"] = dict(merged_out)
+    return {"ok": True, "settings": merged_out}

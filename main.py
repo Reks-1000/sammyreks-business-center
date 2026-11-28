@@ -788,122 +788,6 @@ async def update_shop(
 # AUTO-STOCK ROUTES (BARCODE & NAME-FIRST BATCH SEARCH)
 # ==============================================================================
 
-def _http_get_json(url: str, headers: Optional[Dict[str, str]] = None, timeout: int = 12) -> Dict[str, Any]:
-    parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise ValueError("Invalid outbound URL")
-    req_headers = {
-        "User-Agent": "SammyreksBusinessCenter/2.0 (Calabar, Nigeria; contact@sammyreks.local)",
-        "Accept": "application/json",
-    }
-    if headers:
-        req_headers.update(headers)
-    req = UrlRequest(url, headers=req_headers, method="GET")
-    with urlopen(req, timeout=timeout) as resp:
-        if resp.status != 200:
-            raise RuntimeError(f"HTTP {resp.status} for {url}")
-        raw = resp.read().decode("utf-8", errors="replace")
-        return json.loads(raw)
-
-
-def _find_royalty_free_video_url(query_text: str) -> Optional[str]:
-    clean_q = (query_text or "product commercial").strip()
-    if PEXELS_API_KEY:
-        try:
-            url = f"https://api.pexels.com/videos/search?query={quote(clean_q)}&per_page=8&orientation=landscape"
-            data = _http_get_json(url, headers={"Authorization": PEXELS_API_KEY}, timeout=10)
-            for vid in data.get("videos") or []:
-                duration = int(vid.get("duration") or 0)
-                if duration and not (4 <= duration <= 25):
-                    continue
-                for vf in vid.get("video_files") or []:
-                    w = int(vf.get("width") or 0)
-                    h = int(vf.get("height") or 0)
-                    link = str(vf.get("link") or "").strip()
-                    if link and ".mp4" in link.lower() and (w == 0 or h == 0 or w >= h):
-                        return link
-        except Exception as exc:
-            print(f"[WARN] Pexels video search failed: {exc}")
-
-    if PIXABAY_API_KEY:
-        try:
-            url = f"https://pixabay.com/api/videos/?key={quote(PIXABAY_API_KEY)}&q={quote(clean_q)}&per_page=8"
-            data = _http_get_json(url, timeout=10)
-            for hit in data.get("hits") or []:
-                duration = int(hit.get("duration") or 0)
-                if duration and not (4 <= duration <= 25):
-                    continue
-                videos_map = hit.get("videos") or {}
-                for quality in ("medium", "large", "small"):
-                    info = videos_map.get(quality) or {}
-                    link = str(info.get("url") or "").strip()
-                    w = int(info.get("width") or 0)
-                    h = int(info.get("height") or 0)
-                    if link and (w == 0 or h == 0 or w >= h):
-                        return link
-        except Exception as exc:
-            print(f"[WARN] Pixabay video search failed: {exc}")
-
-    return None
-
-
-def _download_video_advert(video_url: str, target_mode: Optional[str] = None) -> str:
-    clean_url = (video_url or "").strip()
-    if not clean_url:
-        return ""
-    parsed = urlparse(clean_url)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        return ""
-
-    mode = (target_mode or AUTO_STOCK_VIDEO_TARGET or "cloudinary").strip().lower()
-    tmp_path: Optional[str] = None
-    try:
-        req = UrlRequest(clean_url, headers={"User-Agent": "SammyreksBusinessCenter/2.0"}, method="GET")
-        with urlopen(req, timeout=20) as resp:
-            if resp.status != 200:
-                return ""
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
-                tmp_path = tmp.name
-                total_written = 0
-                first_chunk = True
-                while True:
-                    chunk = resp.read(65536)
-                    if not chunk:
-                        break
-                    if first_chunk:
-                        if not _looks_like_valid_media(chunk[:32], "video"):
-                            return ""
-                        first_chunk = False
-                    total_written += len(chunk)
-                    if total_written > MAX_VIDEO_BYTES:
-                        return ""
-                    tmp.write(chunk)
-
-        if total_written <= 0:
-            return ""
-
-        if mode == "cloudinary" and cloudinary_ready:
-            res = cloudinary.uploader.upload(
-                tmp_path, folder="sammyreks_videos", resource_type="video"
-            )
-            return str(res.get("secure_url") or res.get("url") or "")
-
-        filename = f"ad_{uuid.uuid4().hex[:12]}.mp4"
-        dest_path = os.path.join(LOCAL_ADS_DIR, filename)
-        os.replace(tmp_path, dest_path)
-        tmp_path = None
-        return f"/static/uploads/ads/{filename}"
-    except Exception as exc:
-        print(f"[WARN] Video advert download failed ({clean_url}): {exc}")
-        return ""
-    finally:
-        if tmp_path and os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except OSError:
-                pass
-
-
 def _infer_category_from_name(product_name: str) -> str:
     q = (product_name or "").strip().lower()
     rules: List[Tuple[str, List[str]]] = [
@@ -2017,9 +1901,28 @@ async def add_worker(request: Request):
 def delete_worker(worker_id: str, request: Request):
     require_super_admin(request)
     doc_ref = db.collection("workers").document(worker_id)
-    if not doc_ref.get().exists:
+    snap = doc_ref.get()
+    if not snap.exists:
         raise HTTPException(status_code=404, detail="Worker not found")
+    wdata = snap.to_dict() or {}
     doc_ref.delete()
+
+    if str(wdata.get("role") or "").strip().upper() == "SHOPOWNER":
+        w_shop = normalize_shop_id(str(wdata.get("shop_id") or MAIN_SHOP_ID))
+        w_user = str(wdata.get("username") or "").strip()
+        if w_shop != MAIN_SHOP_ID:
+            shop_ref = db.collection("shops").document(w_shop)
+            s_snap = shop_ref.get()
+            if s_snap.exists:
+                sdata = s_snap.to_dict() or {}
+                if not w_user or str(sdata.get("owner_username") or "").strip() == w_user:
+                    delete_from_cloudinary(
+                        public_id=sdata.get("avatar_public_id"),
+                        url=sdata.get("avatar_url"),
+                        resource_type="image",
+                    )
+                    shop_ref.delete()
+
     return {"ok": True, "id": worker_id}
 
 
@@ -2212,8 +2115,21 @@ async def save_settings(
         if isinstance(parsed_extra, dict):
             parsed_extra["awarenessImageUrl"] = ""
     else:
-        final_awareness_url = old_awareness_url
-        final_awareness_public_id = old_awareness_public_id
+        if isinstance(parsed_extra, dict) and "awarenessImageUrl" in parsed_extra:
+            rem = [
+                u.strip()
+                for u in str(parsed_extra.get("awarenessImageUrl") or "").splitlines()
+                if u.strip()
+            ]
+            final_awareness_url = rem[-1] if rem else ""
+            final_awareness_public_id = (
+                extract_cloudinary_public_id(final_awareness_url) or ""
+                if final_awareness_url
+                else ""
+            )
+        else:
+            final_awareness_url = old_awareness_url
+            final_awareness_public_id = old_awareness_public_id
 
     final_notice = "" if want_clear_notice else active_notice.strip()
 
@@ -2234,7 +2150,7 @@ async def save_settings(
     ref.set(doc, merge=True)
 
     unset_fields: Dict[str, Any] = {}
-    if want_clear_awareness:
+    if want_clear_awareness or not final_awareness_url:
         unset_fields["awareness_image_url"] = firestore.DELETE_FIELD
         unset_fields["awareness_image_public_id"] = firestore.DELETE_FIELD
     if want_clear_video:
@@ -2247,6 +2163,72 @@ async def save_settings(
 
     fresh_snap = ref.get()
     merged_out = fresh_snap.to_dict() if fresh_snap.exists else {**existing, **doc}
+    _cache_invalidate("settings:")
+    _fallback_store["settings"] = dict(merged_out)
+    return {"ok": True, "settings": merged_out}
+
+
+@app.post("/api/settings/delete-slide")
+async def delete_single_store_slide(request: Request):
+    require_super_admin(request)
+    payload = await request.json()
+    target_url = str(payload.get("url") or "").strip()
+    if not target_url:
+        raise HTTPException(status_code=400, detail="Slide URL is required")
+
+    ref = db.collection("settings").document("business")
+    snap = ref.get()
+    existing = snap.to_dict() if snap.exists else {}
+
+    old_top_url = str(existing.get("awareness_image_url") or "").strip()
+    old_top_pub = str(existing.get("awareness_image_public_id") or "").strip()
+    if target_url == old_top_url:
+        delete_from_cloudinary(public_id=old_top_pub, url=target_url, resource_type="image")
+    else:
+        delete_from_cloudinary(url=target_url, resource_type="image")
+
+    extra = (
+        dict(existing.get("extra_settings") or {})
+        if isinstance(existing.get("extra_settings"), dict)
+        else {}
+    )
+
+    raw_urls = [
+        u.strip()
+        for u in str(extra.get("awarenessImageUrl") or "").splitlines()
+        if u.strip() and u.strip() != target_url
+    ]
+    extra["awarenessImageUrl"] = "\n".join(raw_urls)
+
+    if isinstance(extra.get("awarenessSlides"), list):
+        extra["awarenessSlides"] = [
+            sl
+            for sl in extra["awarenessSlides"]
+            if (sl.strip() if isinstance(sl, str) else str((sl or {}).get("url") or "").strip())
+            != target_url
+        ]
+
+    if isinstance(extra.get("awarenessCaptions"), list) and isinstance(payload.get("index"), int):
+        idx = payload["index"]
+        if 0 <= idx < len(extra["awarenessCaptions"]):
+            extra["awarenessCaptions"].pop(idx)
+
+    updates: Dict[str, Any] = {
+        "extra_settings": extra,
+        "updated_at": now_str(),
+    }
+
+    if target_url == old_top_url:
+        if raw_urls:
+            updates["awareness_image_url"] = raw_urls[-1]
+            updates["awareness_image_public_id"] = extract_cloudinary_public_id(raw_urls[-1]) or ""
+        else:
+            updates["awareness_image_url"] = firestore.DELETE_FIELD
+            updates["awareness_image_public_id"] = firestore.DELETE_FIELD
+
+    ref.update(updates)
+    fresh_snap = ref.get()
+    merged_out = fresh_snap.to_dict() if fresh_snap.exists else existing
     _cache_invalidate("settings:")
     _fallback_store["settings"] = dict(merged_out)
     return {"ok": True, "settings": merged_out}
@@ -2271,6 +2253,10 @@ def force_clear_store_slide(request: Request):
     )
     if "awarenessImageUrl" in extra:
         extra["awarenessImageUrl"] = ""
+    if "awarenessSlides" in extra:
+        extra["awarenessSlides"] = []
+    if "awarenessCaptions" in extra:
+        extra["awarenessCaptions"] = []
 
     updates: Dict[str, Any] = {
         "awareness_image_url": firestore.DELETE_FIELD,

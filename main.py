@@ -311,13 +311,22 @@ def verify_password(plain_password: str, stored_password: str) -> bool:
     return hmac.compare_digest(plain_password, stored_password)
 
 
-def issue_staff_token(username: str, role: str, shop_id: str = MAIN_SHOP_ID) -> str:
+def issue_staff_token(
+    username: str,
+    role: str,
+    shop_id: str = MAIN_SHOP_ID,
+    worker_id: Optional[str] = None,
+    token_version: int = 0,
+) -> str:
     payload = {
         "u": username,
         "r": role,
         "s": normalize_shop_id(shop_id),
         "exp": int(time.time()) + TOKEN_TTL_SECONDS,
     }
+    if worker_id:
+        payload["wid"] = worker_id
+        payload["ver"] = int(token_version or 0)
     payload_b64 = base64.urlsafe_b64encode(
         json.dumps(payload, separators=(",", ":")).encode("utf-8")
     ).decode("ascii")
@@ -349,6 +358,16 @@ def parse_staff_token(request: Request) -> Optional[Dict[str, str]]:
         exp = data.get("exp")
         if exp is not None and int(time.time()) > int(exp):
             return None
+        worker_id = str(data.get("wid") or "").strip()
+        if worker_id:
+            worker_snap = db.collection("workers").document(worker_id).get()
+            if not worker_snap.exists:
+                return None
+            worker_data = worker_snap.to_dict() or {}
+            if str(worker_data.get("username") or "").strip() != str(data.get("u") or "").strip():
+                return None
+            if int(worker_data.get("token_version") or 0) != int(data.get("ver") or 0):
+                return None
         return {
             "username": str(data["u"]),
             "role": str(data.get("r") or "Staff"),
@@ -684,6 +703,7 @@ async def register_shop(
         "shop_id": slug,
         "username": clean_user,
         "password": hash_password(owner_password),
+        "token_version": 0,
         "timestamp": ts,
     }
     db.collection("workers").document(uuid.uuid4().hex).set(worker_doc)
@@ -959,7 +979,13 @@ async def login(request: Request):
             resolved_user = w.get("username") or w.get("name") or username
             resolved_role = w.get("role") or "Staff"
             resolved_shop_id = normalize_shop_id(str(w.get("shop_id") or MAIN_SHOP_ID))
-            token = issue_staff_token(resolved_user, resolved_role, shop_id=resolved_shop_id)
+            token = issue_staff_token(
+                resolved_user,
+                resolved_role,
+                shop_id=resolved_shop_id,
+                worker_id=doc.id,
+                token_version=int(w.get("token_version") or 0),
+            )
             return {
                 "ok": True,
                 "username": resolved_user,
@@ -1890,11 +1916,77 @@ async def add_worker(request: Request):
         "shop_id": target_shop,
         "username": username,
         "password": hash_password(raw_pw),
+        "token_version": 0,
         "timestamp": now_str(),
     }
     doc_id = uuid.uuid4().hex
     db.collection("workers").document(doc_id).set(doc)
     return {"ok": True, "id": doc_id}
+
+
+@app.put("/api/workers/{worker_id}")
+async def update_worker(worker_id: str, request: Request):
+    require_super_admin(request)
+    payload = await request.json()
+    doc_ref = db.collection("workers").document(worker_id)
+    snap = doc_ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail="Staff account not found")
+
+    existing = snap.to_dict() or {}
+    name = str(payload.get("name") if payload.get("name") is not None else existing.get("name") or "").strip()
+    username = str(payload.get("username") if payload.get("username") is not None else existing.get("username") or "").strip()
+    role = str(payload.get("role") if payload.get("role") is not None else existing.get("role") or "Staff").strip()
+    if not name or not username:
+        raise HTTPException(status_code=400, detail="Name and username are required")
+    if hmac.compare_digest(username, ADMIN_USERNAME):
+        raise HTTPException(status_code=400, detail="Username cannot match the Super Admin username")
+    if role.upper() == "CEO":
+        raise HTTPException(status_code=400, detail="A staff account cannot be assigned Super Admin (CEO) role")
+
+    for other in db.collection("workers").where("username", "==", username).stream():
+        if other.id != worker_id:
+            raise HTTPException(status_code=400, detail=f"Username '{username}' is already taken")
+
+    old_role = str(existing.get("role") or "").strip().upper()
+    old_shop = normalize_shop_id(str(existing.get("shop_id") or MAIN_SHOP_ID))
+    target_shop = normalize_shop_id(str(payload.get("shop_id") or old_shop))
+    if role.upper() == "SHOPOWNER":
+        if target_shop == MAIN_SHOP_ID:
+            raise HTTPException(status_code=400, detail="A Shop Owner must be assigned to a partner shop")
+        if not db.collection("shops").document(target_shop).get().exists:
+            raise HTTPException(status_code=404, detail="Selected partner shop does not exist")
+
+    updates: Dict[str, Any] = {
+        "name": name,
+        "username": username,
+        "role": role,
+        "shop_id": target_shop,
+        "updated_at": now_str(),
+        "token_version": int(existing.get("token_version") or 0) + 1,
+    }
+    new_password = str(payload.get("password") or "")
+    if new_password:
+        if len(new_password) < 8:
+            raise HTTPException(status_code=400, detail="New password must contain at least 8 characters")
+        updates["password"] = hash_password(new_password)
+
+    doc_ref.set(updates, merge=True)
+
+    # Keep the partner shop's owner profile in sync with its ShopOwner login.
+    if old_role == "SHOPOWNER" and (role.upper() != "SHOPOWNER" or old_shop != target_shop):
+        old_shop_ref = db.collection("shops").document(old_shop)
+        old_shop_snap = old_shop_ref.get()
+        if old_shop_snap.exists:
+            old_shop_data = old_shop_snap.to_dict() or {}
+            if str(old_shop_data.get("owner_username") or "").strip() == str(existing.get("username") or "").strip():
+                old_shop_ref.set({"owner_name": "", "owner_username": ""}, merge=True)
+
+    if role.upper() == "SHOPOWNER":
+        shop_ref = db.collection("shops").document(target_shop)
+        shop_ref.set({"owner_name": name, "owner_username": username}, merge=True)
+
+    return {"ok": True, "id": worker_id}
 
 
 @app.delete("/api/workers/{worker_id}")
@@ -1908,6 +2000,7 @@ def delete_worker(worker_id: str, request: Request):
     doc_ref.delete()
 
     if str(wdata.get("role") or "").strip().upper() == "SHOPOWNER":
+        # Removing an owner login must not delete the business storefront or its data.
         w_shop = normalize_shop_id(str(wdata.get("shop_id") or MAIN_SHOP_ID))
         w_user = str(wdata.get("username") or "").strip()
         if w_shop != MAIN_SHOP_ID:
@@ -1915,13 +2008,8 @@ def delete_worker(worker_id: str, request: Request):
             s_snap = shop_ref.get()
             if s_snap.exists:
                 sdata = s_snap.to_dict() or {}
-                if not w_user or str(sdata.get("owner_username") or "").strip() == w_user:
-                    delete_from_cloudinary(
-                        public_id=sdata.get("avatar_public_id"),
-                        url=sdata.get("avatar_url"),
-                        resource_type="image",
-                    )
-                    shop_ref.delete()
+                if str(sdata.get("owner_username") or "").strip() == w_user:
+                    shop_ref.set({"owner_name": "", "owner_username": ""}, merge=True)
 
     return {"ok": True, "id": worker_id}
 
@@ -2023,6 +2111,8 @@ async def save_settings(
     broadcast_video_url: str = Form(""),
     currency: str = Form("₦"),
     extra_settings: str = Form(""),
+    extra_settings_json: str = Form(""),
+    awareness_image_url: str = Form(""),
     clear_awareness_image: str = Form("false"),
     clear_broadcast_video: str = Form("false"),
     clear_active_notice: str = Form("false"),
@@ -2075,12 +2165,14 @@ async def save_settings(
         final_video = old_video
         final_video_public_id = old_video_public_id
 
+    # Accept both field names so older deployed frontends remain compatible.
+    extra_payload_text = extra_settings.strip() or extra_settings_json.strip()
     parsed_extra: Any = existing.get("extra_settings")
-    if extra_settings.strip():
+    if extra_payload_text:
         try:
-            parsed_extra = json.loads(extra_settings)
+            parsed_extra = json.loads(extra_payload_text)
         except json.JSONDecodeError:
-            parsed_extra = extra_settings.strip()
+            raise HTTPException(status_code=400, detail="App settings payload is not valid JSON")
 
     old_awareness_url = str(existing.get("awareness_image_url") or "").strip()
     old_awareness_public_id = str(existing.get("awareness_image_public_id") or "").strip()
@@ -2115,18 +2207,26 @@ async def save_settings(
         if isinstance(parsed_extra, dict):
             parsed_extra["awarenessImageUrl"] = ""
     else:
-        if isinstance(parsed_extra, dict) and "awarenessImageUrl" in parsed_extra:
-            rem = [
+        requested_awareness_url = sanitize_url(awareness_image_url)
+        if requested_awareness_url:
+            final_awareness_url = requested_awareness_url
+            final_awareness_public_id = extract_cloudinary_public_id(final_awareness_url) or ""
+        elif isinstance(parsed_extra, dict):
+            saved_urls = [
                 u.strip()
                 for u in str(parsed_extra.get("awarenessImageUrl") or "").splitlines()
                 if u.strip()
             ]
-            final_awareness_url = rem[-1] if rem else ""
-            final_awareness_public_id = (
-                extract_cloudinary_public_id(final_awareness_url) or ""
-                if final_awareness_url
-                else ""
-            )
+            slide_source = parsed_extra.get("awarenessSlides")
+            if isinstance(slide_source, list):
+                slide_urls = [
+                    (str(sl.get("url") or "").strip() if isinstance(sl, dict) else str(sl or "").strip())
+                    for sl in slide_source
+                ]
+            else:
+                slide_urls = [u.strip() for u in re.split(r"[\r\n|]+", str(slide_source or "")) if u.strip()]
+            final_awareness_url = (saved_urls or slide_urls or [old_awareness_url])[0]
+            final_awareness_public_id = extract_cloudinary_public_id(final_awareness_url) or old_awareness_public_id
         else:
             final_awareness_url = old_awareness_url
             final_awareness_public_id = old_awareness_public_id
@@ -2179,6 +2279,7 @@ async def delete_single_store_slide(request: Request):
     ref = db.collection("settings").document("business")
     snap = ref.get()
     existing = snap.to_dict() if snap.exists else {}
+    extra = dict(existing.get("extra_settings") or {}) if isinstance(existing.get("extra_settings"), dict) else {}
 
     old_top_url = str(existing.get("awareness_image_url") or "").strip()
     old_top_pub = str(existing.get("awareness_image_public_id") or "").strip()
@@ -2187,12 +2288,10 @@ async def delete_single_store_slide(request: Request):
     else:
         delete_from_cloudinary(url=target_url, resource_type="image")
 
-    extra = (
-        dict(existing.get("extra_settings") or {})
-        if isinstance(existing.get("extra_settings"), dict)
-        else {}
-    )
+    def slide_url(value: Any) -> str:
+        return str(value.get("url") or "").strip() if isinstance(value, dict) else str(value or "").strip()
 
+    # Remove the target from the URL collection used by older versions.
     raw_urls = [
         u.strip()
         for u in str(extra.get("awarenessImageUrl") or "").splitlines()
@@ -2200,35 +2299,50 @@ async def delete_single_store_slide(request: Request):
     ]
     extra["awarenessImageUrl"] = "\n".join(raw_urls)
 
-    if isinstance(extra.get("awarenessSlides"), list):
-        extra["awarenessSlides"] = [
-            sl
-            for sl in extra["awarenessSlides"]
-            if (sl.strip() if isinstance(sl, str) else str((sl or {}).get("url") or "").strip())
-            != target_url
-        ]
+    # awarenessSlides has existed as both a newline string and a list of strings/objects.
+    slide_source = extra.get("awarenessSlides")
+    if isinstance(slide_source, list):
+        extra["awarenessSlides"] = [sl for sl in slide_source if slide_url(sl) != target_url]
+        remaining_slide_urls = [slide_url(sl) for sl in extra["awarenessSlides"] if slide_url(sl)]
+    elif isinstance(slide_source, str):
+        slide_urls = [u.strip() for u in re.split(r"[\r\n|]+", slide_source) if u.strip()]
+        remaining_slide_urls = [u for u in slide_urls if u != target_url]
+        extra["awarenessSlides"] = "\n".join(remaining_slide_urls)
+    else:
+        remaining_slide_urls = []
 
-    if isinstance(extra.get("awarenessCaptions"), list) and isinstance(payload.get("index"), int):
-        idx = payload["index"]
-        if 0 <= idx < len(extra["awarenessCaptions"]):
-            extra["awarenessCaptions"].pop(idx)
+    # Keep captions aligned with the slide removed by its original index.
+    idx = payload.get("index")
+    if isinstance(idx, int) and idx >= 0:
+        for key in ("awarenessCaptions",):
+            values = extra.get(key)
+            if isinstance(values, list) and idx < len(values):
+                values.pop(idx)
+                extra[key] = values
+        descriptions = extra.get("awarenessDescriptions")
+        if isinstance(descriptions, str):
+            desc_values = [v.strip() for v in re.split(r"[\r\n|]+", descriptions)]
+            if idx < len(desc_values):
+                desc_values.pop(idx)
+            extra["awarenessDescriptions"] = " | ".join(v for v in desc_values if v)
 
+    # The primary awareness URL must point at a remaining slide, not the deleted one.
+    remaining = remaining_slide_urls or raw_urls
     updates: Dict[str, Any] = {
         "extra_settings": extra,
         "updated_at": now_str(),
     }
-
     if target_url == old_top_url:
-        if raw_urls:
-            updates["awareness_image_url"] = raw_urls[-1]
-            updates["awareness_image_public_id"] = extract_cloudinary_public_id(raw_urls[-1]) or ""
+        if remaining:
+            updates["awareness_image_url"] = remaining[0]
+            updates["awareness_image_public_id"] = extract_cloudinary_public_id(remaining[0]) or ""
         else:
             updates["awareness_image_url"] = firestore.DELETE_FIELD
             updates["awareness_image_public_id"] = firestore.DELETE_FIELD
 
-    ref.update(updates)
+    ref.set(updates, merge=True)
     fresh_snap = ref.get()
-    merged_out = fresh_snap.to_dict() if fresh_snap.exists else existing
+    merged_out = fresh_snap.to_dict() if fresh_snap.exists else {**existing, **updates}
     _cache_invalidate("settings:")
     _fallback_store["settings"] = dict(merged_out)
     return {"ok": True, "settings": merged_out}
@@ -2240,34 +2354,38 @@ def force_clear_store_slide(request: Request):
     ref = db.collection("settings").document("business")
     snap = ref.get()
     existing = snap.to_dict() if snap.exists else {}
+    extra = dict(existing.get("extra_settings") or {}) if isinstance(existing.get("extra_settings"), dict) else {}
 
-    old_url = str(existing.get("awareness_image_url") or "").strip()
-    old_pub_id = str(existing.get("awareness_image_public_id") or "").strip()
-    if old_url or old_pub_id:
-        delete_from_cloudinary(public_id=old_pub_id, url=old_url, resource_type="image")
+    urls = set()
+    top_url = str(existing.get("awareness_image_url") or "").strip()
+    if top_url:
+        urls.add(top_url)
+    urls.update(u.strip() for u in str(extra.get("awarenessImageUrl") or "").splitlines() if u.strip())
+    slides = extra.get("awarenessSlides")
+    if isinstance(slides, list):
+        for slide in slides:
+            url = str(slide.get("url") or "").strip() if isinstance(slide, dict) else str(slide or "").strip()
+            if url:
+                urls.add(url)
+    elif isinstance(slides, str):
+        urls.update(u.strip() for u in re.split(r"[\r\n|]+", slides) if u.strip())
 
-    extra = (
-        dict(existing.get("extra_settings") or {})
-        if isinstance(existing.get("extra_settings"), dict)
-        else {}
-    )
-    if "awarenessImageUrl" in extra:
-        extra["awarenessImageUrl"] = ""
-    if "awarenessSlides" in extra:
-        extra["awarenessSlides"] = []
-    if "awarenessCaptions" in extra:
-        extra["awarenessCaptions"] = []
+    for url in urls:
+        public_id = existing.get("awareness_image_public_id") if url == top_url else None
+        delete_from_cloudinary(public_id=public_id, url=url, resource_type="image")
+
+    extra["awarenessImageUrl"] = ""
+    extra["awarenessSlides"] = ""
+    extra["awarenessDescriptions"] = ""
+    extra["awarenessCaptions"] = []
 
     updates: Dict[str, Any] = {
         "awareness_image_url": firestore.DELETE_FIELD,
         "awareness_image_public_id": firestore.DELETE_FIELD,
-        "active_notice": "",
+        "extra_settings": extra,
         "updated_at": now_str(),
     }
-    if extra:
-        updates["extra_settings"] = extra
-
-    ref.update(updates)
+    ref.set(updates, merge=True)
     fresh_snap = ref.get()
     merged_out = fresh_snap.to_dict() if fresh_snap.exists else {
         "business_name": existing.get("business_name") or "Sammyreks Business Center",
@@ -2276,3 +2394,4 @@ def force_clear_store_slide(request: Request):
     _cache_invalidate("settings:")
     _fallback_store["settings"] = dict(merged_out)
     return {"ok": True, "settings": merged_out}
+
